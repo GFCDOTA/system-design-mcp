@@ -225,23 +225,6 @@
     ]
   },
   {
-    "id": "rag",
-    "term": "RAG (Retrieval-Augmented Generation)",
-    "framing": "padrão de contexto",
-    "kind": "term",
-    "definition": "Em vez de confiar só no que o modelo 'sabe', você BUSCA documentos relevantes numa base sua e os injeta no prompt como contexto antes de gerar. Recuperar -> aumentar o prompt -> gerar.",
-    "backendAnalogy": "É um cache-aside semântico: no 'miss' de conhecimento você consulta um índice (vetorial), pega os trechos certos e monta a resposta com eles — como enriquecer um DTO com dados de outra fonte antes de responder.",
-    "pitfall": "Lixo entra, lixo sai: se a recuperação traz trecho irrelevante, o modelo responde errado com confiança. A qualidade do retrieval (chunking, índice) pesa mais que o modelo.",
-    "sourceRefs": [
-      {
-        "kind": "reference",
-        "source": "Anthropic",
-        "locator": "Contextual Retrieval",
-        "url": "https://anthropic.com/news/contextual-retrieval"
-      }
-    ]
-  },
-  {
     "id": "embeddings",
     "term": "Embeddings",
     "framing": "representação",
@@ -272,29 +255,6 @@
         "source": "Anthropic",
         "locator": "Contextual Retrieval",
         "url": "https://anthropic.com/news/contextual-retrieval"
-      }
-    ]
-  },
-  {
-    "id": "function-calling",
-    "term": "Function Calling / Tool Use",
-    "framing": "como o modelo AGE",
-    "kind": "term",
-    "definition": "O modelo não executa nada — ele DECIDE chamar uma função que VOCÊ definiu (nome + schema de parâmetros) e devolve um JSON com os argumentos. Seu código executa e devolve o resultado para o modelo continuar.",
-    "backendAnalogy": "O modelo é o cliente que monta a request (escolhe endpoint e corpo); seu harness é o servidor que executa de verdade. O MCP padroniza esse contrato de 'ferramentas' entre modelo e tools.",
-    "pitfall": "O modelo pode 'alucinar' uma chamada com argumentos inválidos ou inventar uma função que não existe — valide o JSON contra o schema e trate erro como em qualquer borda de API.",
-    "sourceRefs": [
-      {
-        "kind": "reference",
-        "source": "Model Context Protocol",
-        "locator": "spec",
-        "url": "https://modelcontextprotocol.io"
-      },
-      {
-        "kind": "reference",
-        "source": "Anthropic",
-        "locator": "Building effective agents",
-        "url": "https://anthropic.com/engineering/building-effective-agents"
       }
     ]
   },
@@ -346,6 +306,114 @@
         "source": "Anthropic",
         "locator": "Building effective agents",
         "url": "https://anthropic.com/engineering/building-effective-agents"
+      }
+    ]
+  },
+  {
+    "id": "chain-of-thought",
+    "term": "Chain of Thought (CoT)",
+    "framing": "técnica de prompt",
+    "kind": "term",
+    "definition": "Pedir ao modelo para RACIOCINAR passo a passo antes de dar a resposta final, em vez de cuspir a conclusão. Melhora tarefas de raciocínio (matemática, lógica, multi-passo).",
+    "backendAnalogy": "É forçar o modelo a 'logar o raciocínio' (como um trace de execução) antes do return — você vê o passo a passo e a resposta tende a ser mais correta.",
+    "pitfall": "O 'raciocínio' não é garantia de correção (pode racionalizar um erro). E gasta tokens — em tarefa trivial, é desperdício.",
+    "sourceRefs": [
+      {
+        "kind": "reference",
+        "source": "Claude Docs",
+        "locator": "Prompt engineering",
+        "url": "https://docs.claude.com"
+      }
+    ]
+  },
+  {
+    "id": "few-shot",
+    "term": "Few-shot / In-context Learning",
+    "framing": "técnica de prompt",
+    "kind": "term",
+    "definition": "Dar alguns EXEMPLOS de entrada->saída no prompt para o modelo inferir o padrão, sem treinar nada. Zero-shot = nenhum exemplo; few-shot = alguns.",
+    "backendAnalogy": "É configurar o comportamento por exemplos em runtime, não por código: como passar casos de teste e o modelo 'implementa' a função imitando o padrão.",
+    "pitfall": "Exemplos enviesados/ruins ensinam o padrão errado; e ocupam contexto (tokens). Qualidade e representatividade dos exemplos importam mais que a quantidade.",
+    "sourceRefs": [
+      {
+        "kind": "reference",
+        "source": "Claude Docs",
+        "locator": "Prompt engineering",
+        "url": "https://docs.claude.com"
+      }
+    ]
+  },
+  {
+    "id": "structured-output",
+    "term": "Structured Output",
+    "framing": "saída confiável",
+    "kind": "term",
+    "definition": "Forçar o modelo a responder num FORMATO definido (JSON conforme um schema), em vez de texto livre — via tool use / response schema. Garante que a saída seja parseável pelo seu código.",
+    "backendAnalogy": "É o contrato de resposta da sua API: em vez de string solta, um DTO tipado e validável. Some a fragilidade de 'extrair com regex' do texto do modelo.",
+    "pitfall": "O schema reduz, mas não elimina, valores semanticamente errados dentro do formato certo — continue validando o conteúdo (Bean Validation), não só a forma.",
+    "sourceRefs": [
+      {
+        "kind": "reference",
+        "source": "Claude Docs",
+        "locator": "Prompt engineering",
+        "url": "https://docs.claude.com"
+      },
+      {
+        "kind": "reference",
+        "source": "Model Context Protocol",
+        "locator": "tools",
+        "url": "https://modelcontextprotocol.io"
+      }
+    ]
+  },
+  {
+    "id": "multi-agent",
+    "term": "Multi-agent (Orquestração de Agentes)",
+    "framing": "arquitetura de agentes",
+    "kind": "term",
+    "definition": "Dividir uma tarefa entre vários agentes especializados (ex.: um orquestrador + workers; ou pipeline de papéis), em vez de um agente único fazendo tudo. Cada agente tem contexto e ferramentas próprios.",
+    "backendAnalogy": "É decompor em microsserviços/workers: um coordenador (orquestrador) distribui subtarefas a workers paralelos e agrega — mesma ideia de fan-out/fan-in, só que os 'workers' são agentes LLM.",
+    "pitfall": "Custa tokens e latência (N agentes); e erro de um agente propaga. Vale quando a tarefa decompõe de verdade — não use multi-agente para o que um agente resolve.",
+    "sourceRefs": [
+      {
+        "kind": "reference",
+        "source": "Anthropic",
+        "locator": "Building effective agents",
+        "url": "https://anthropic.com/engineering/building-effective-agents"
+      }
+    ]
+  },
+  {
+    "id": "context-engineering",
+    "term": "Context Engineering",
+    "framing": "além do prompt",
+    "kind": "term",
+    "definition": "Curar TUDO que entra na janela de contexto do modelo a cada passo — não só o prompt, mas histórico, resultados de ferramentas, memória, documentos recuperados — para o modelo ter o necessário e nada de ruído.",
+    "backendAnalogy": "É montar o request certo: como você cura o payload/headers/contexto de uma chamada. Prompt é uma parte; context engineering é gerenciar TODO o estado que o modelo vê (janela é um recurso escasso, como memória).",
+    "pitfall": "Encher o contexto de lixo piora a resposta (e custa). Mais contexto != melhor — relevância e ordem importam; o modelo 'esquece' o que afoga no meio.",
+    "sourceRefs": [
+      {
+        "kind": "reference",
+        "source": "Anthropic",
+        "locator": "Building effective agents",
+        "url": "https://anthropic.com/engineering/building-effective-agents"
+      }
+    ]
+  },
+  {
+    "id": "streaming",
+    "term": "Streaming",
+    "framing": "entrega da resposta",
+    "kind": "term",
+    "definition": "Receber a resposta do modelo token a token conforme é gerada (Server-Sent Events), em vez de esperar a resposta completa. Melhora a latência PERCEBIDA.",
+    "backendAnalogy": "É um response em chunked/SSE em vez de um payload único: o usuário vê o texto aparecendo (como um cursor digitando), mesmo que o total demore o mesmo.",
+    "pitfall": "Streaming muda o parsing: você processa pedaços incompletos. E não acelera o tempo TOTAL — só o tempo até o primeiro token (TTFT).",
+    "sourceRefs": [
+      {
+        "kind": "reference",
+        "source": "Claude Docs",
+        "locator": "Prompt engineering",
+        "url": "https://docs.claude.com"
       }
     ]
   }

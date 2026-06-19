@@ -1698,5 +1698,234 @@
         "url": "https://microservices.io/patterns/observability/application-logging.html"
       }
     ]
+  },
+  {
+    "id": "decompose-by-business-capability",
+    "name": "Decompose by Business Capability",
+    "category": "Decomposição",
+    "problem": "Como dividir um sistema em microsserviços de forma ESTÁVEL, sem que a fronteira mude a cada refactor técnico?",
+    "solution": "Definir cada serviço em torno de uma CAPACIDADE de negócio (o que a empresa faz: 'Gestão de Pedidos', 'Cobrança', 'Estoque'). Capacidades são estáveis no tempo; a tecnologia muda, a capacidade não.",
+    "whenToUse": [
+      "Decomposição inicial de um sistema ou monolito.",
+      "Times organizados por área de negócio (Lei de Conway)."
+    ],
+    "whenToAvoid": [
+      "Domínio muito pequeno (um serviço basta).",
+      "Quando as capacidades ainda não estão claras — decompor por subdomínio (DDD) pode vir antes."
+    ],
+    "exampleFromRepo": "No domínio financeiro, 'Transações', 'Limite' e 'Extrato' são capacidades, cada uma candidata a um serviço.",
+    "financialExample": "'Cobrança' e 'Gestão de Conta' viram serviços separados porque são capacidades distintas do negócio, com donos e ritmos diferentes.",
+    "tradeOffs": [
+      {
+        "dimension": "Estabilidade",
+        "pro": "Fronteiras estáveis (capacidade muda devagar).",
+        "con": "Exige entender o negócio a fundo antes de cortar."
+      }
+    ],
+    "relatedPatterns": [
+      "decompose-by-subdomain",
+      "database-per-service"
+    ],
+    "interviewAngle": "É uma das 2 estratégias canônicas de decomposição (a outra é por subdomínio/DDD); cite a Lei de Conway.",
+    "diagrams": [],
+    "sourceRefs": [
+      {
+        "kind": "reference",
+        "source": "microservices.io",
+        "locator": "patterns/decomposition/decompose-by-business-capability.html",
+        "url": "https://microservices.io/patterns/decomposition/decompose-by-business-capability.html"
+      }
+    ]
+  },
+  {
+    "id": "decompose-by-subdomain",
+    "name": "Decompose by Subdomain (DDD)",
+    "category": "Decomposição",
+    "problem": "Capacidades de negócio às vezes são amplas demais. Como achar fronteiras de serviço que respeitem o MODELO do domínio?",
+    "solution": "Usar DDD: identificar subdomínios e seus bounded contexts; cada bounded context vira um serviço com seu próprio modelo (ubiquitous language). A fronteira do serviço = a fronteira do contexto.",
+    "whenToUse": [
+      "Domínio complexo, com modelos que conflitam entre áreas.",
+      "Quando 'por capacidade' deixa serviços grandes demais."
+    ],
+    "whenToAvoid": [
+      "Domínio simples (DDD vira cerimônia).",
+      "Sem acesso a especialista de domínio para mapear os contextos."
+    ],
+    "exampleFromRepo": "O 'ledger' (registro de movimentações) é um bounded context com modelo próprio (evento/agregado), separado do contexto de 'consulta/extrato'.",
+    "financialExample": "'Movimentação' (escrita, event-sourced) e 'Extrato' (leitura, documento) são contextos distintos do mesmo domínio — modelos diferentes, serviços diferentes.",
+    "tradeOffs": [
+      {
+        "dimension": "Alinhamento",
+        "pro": "Fronteira casa com o modelo; baixo acoplamento semântico.",
+        "con": "Exige maturidade em DDD e especialista de domínio."
+      }
+    ],
+    "relatedPatterns": [
+      "decompose-by-business-capability",
+      "anti-corruption-layer"
+    ],
+    "interviewAngle": "Conecte bounded context -> serviço; cite que ACL protege a fronteira entre contextos.",
+    "diagrams": [],
+    "sourceRefs": [
+      {
+        "kind": "reference",
+        "source": "microservices.io",
+        "locator": "patterns/decomposition/decompose-by-subdomain.html",
+        "url": "https://microservices.io/patterns/decomposition/decompose-by-subdomain.html"
+      }
+    ]
+  },
+  {
+    "id": "sidecar",
+    "name": "Sidecar",
+    "category": "Deployment",
+    "problem": "Como dar a TODO serviço capacidades transversais (TLS, métricas, discovery, logging) sem duplicar código em cada linguagem?",
+    "solution": "Rodar um processo auxiliar (o 'sidecar') no MESMO pod/host do serviço, cuidando das preocupações de infra. O serviço foca na lógica de negócio; o sidecar intercepta rede/observabilidade. É a base do service mesh (Envoy/Istio).",
+    "whenToUse": [
+      "Frota poliglota que precisa de comportamento de infra uniforme.",
+      "Service mesh (mTLS, retry, telemetria) sem tocar no app."
+    ],
+    "whenToAvoid": [
+      "Poucos serviços homogêneos (uma lib compartilhada basta).",
+      "Ambiente sem orquestrador (o overhead operacional não paga)."
+    ],
+    "exampleFromRepo": "Em Kubernetes, um sidecar Envoy ao lado de cada serviço dá mTLS e métricas sem mudar o código.",
+    "financialExample": "Os serviços de transação ganham mTLS e telemetria padronizados via sidecar, sem cada time reimplementar TLS na sua linguagem.",
+    "tradeOffs": [
+      {
+        "dimension": "Reuso",
+        "pro": "Infra uniforme, agnóstica de linguagem.",
+        "con": "Mais um container por pod (CPU/memória + latência de hop)."
+      }
+    ],
+    "relatedPatterns": [
+      "service-discovery",
+      "circuit-breaker"
+    ],
+    "interviewAngle": "Ligue sidecar -> service mesh (Envoy/Istio); o app não sabe que existe.",
+    "diagrams": [],
+    "sourceRefs": [
+      {
+        "kind": "reference",
+        "source": "microservices.io",
+        "locator": "patterns/deployment/sidecar.html",
+        "url": "https://microservices.io/patterns/deployment/sidecar.html"
+      }
+    ]
+  },
+  {
+    "id": "access-token",
+    "name": "Access Token",
+    "category": "Segurança",
+    "problem": "Depois do login no gateway, como cada serviço downstream sabe QUEM é o usuário e o que ele pode, sem reautenticar a cada hop?",
+    "solution": "O gateway autentica e emite um token (ex.: JWT) com a identidade e os escopos; o token viaja nas chamadas internas e cada serviço o VALIDA (assinatura + claims) sem chamar o serviço de auth. Stateless, propagável.",
+    "whenToUse": [
+      "Autorização distribuída entre microsserviços.",
+      "Evitar round-trip ao serviço de auth a cada request."
+    ],
+    "whenToAvoid": [
+      "Monolito (sessão local resolve).",
+      "Quando revogação imediata é crítica (JWT é difícil de revogar antes do expiry)."
+    ],
+    "exampleFromRepo": "O BFF valida o usuário e propaga um JWT; o serviço de transação confere assinatura e escopo antes de debitar.",
+    "financialExample": "O token carrega 'conta_id' e escopo 'transferir'; o serviço de transação autoriza a operação só com base no token assinado, sem consultar o auth.",
+    "tradeOffs": [
+      {
+        "dimension": "Escala",
+        "pro": "Validação stateless e local; sem gargalo no auth.",
+        "con": "Revogação difícil; expiry curto + refresh é o mitigante."
+      }
+    ],
+    "relatedPatterns": [
+      "api-gateway",
+      "backend-for-frontend"
+    ],
+    "interviewAngle": "Diferencie autenticação (no gateway) de autorização (em cada serviço via claims do token); cite o trade-off de revogação do JWT.",
+    "diagrams": [],
+    "sourceRefs": [
+      {
+        "kind": "reference",
+        "source": "microservices.io",
+        "locator": "patterns/security/access-token.html",
+        "url": "https://microservices.io/patterns/security/access-token.html"
+      }
+    ]
+  },
+  {
+    "id": "exception-tracking",
+    "name": "Exception Tracking",
+    "category": "Observability",
+    "problem": "Exceções viram linhas perdidas no log agregado; ninguém percebe um erro novo subindo até virar incidente.",
+    "solution": "Um serviço dedicado (Sentry, Rollbar) AGREGA, deduplica e ALERTA sobre exceções — agrupa por fingerprint, mostra frequência/tendência e notifica. Complementa o log: foca no que QUEBROU.",
+    "whenToUse": [
+      "Qualquer serviço em produção que precisa saber de erro novo rápido.",
+      "Reduzir ruído: 10k ocorrências do mesmo erro viram 1 alerta."
+    ],
+    "whenToAvoid": [
+      "Protótipo/throwaway.",
+      "Quando log aggregation + alertas já cobrem o caso simples."
+    ],
+    "exampleFromRepo": "Uma NullPointer nova no consumidor do ledger dispara alerta no exception tracker antes de o usuário reclamar.",
+    "financialExample": "Um pico de exceções de 'saldo insuficiente mal tratado' é agrupado e alertado, separando erro de sistema de regra de negócio.",
+    "tradeOffs": [
+      {
+        "dimension": "Sinal",
+        "pro": "Deduplica e alerta; tendência de erro visível.",
+        "con": "Mais um serviço; risco de vazar PII no stack trace (redatar)."
+      }
+    ],
+    "relatedPatterns": [
+      "log-aggregation",
+      "distributed-tracing"
+    ],
+    "interviewAngle": "Posicione como o 4º complemento da observabilidade (logs + métricas + tracing + exceptions), focado em deduplicação e alerta.",
+    "diagrams": [],
+    "sourceRefs": [
+      {
+        "kind": "reference",
+        "source": "microservices.io",
+        "locator": "patterns/observability/exception-tracking.html",
+        "url": "https://microservices.io/patterns/observability/exception-tracking.html"
+      }
+    ]
+  },
+  {
+    "id": "messaging",
+    "name": "Messaging (Comunicação Assíncrona)",
+    "category": "Comunicação",
+    "problem": "Comunicação síncrona (REST) acopla serviços em disponibilidade: se o downstream cai, o upstream falha. Como desacoplar?",
+    "solution": "Comunicar via mensagens assíncronas por um broker (Kafka, RabbitMQ, SQS). O produtor publica e segue; o consumidor processa no seu ritmo. Desacopla no tempo (buffer) e no espaço (não conhece o consumidor).",
+    "whenToUse": [
+      "Desacoplar produtor/consumidor e absorver picos (buffer).",
+      "Eventos de domínio, integração orientada a eventos, fan-out."
+    ],
+    "whenToAvoid": [
+      "Quando o cliente PRECISA da resposta na hora (request/response síncrono).",
+      "Fluxo trivial onde a complexidade do broker não paga."
+    ],
+    "exampleFromRepo": "A API publica 'conta_movimentacao' no Kafka; o ledger consome e agrega no seu tempo — a API não espera.",
+    "financialExample": "Um pico de transações é absorvido pela fila; o ledger processa at-least-once com idempotência, sem derrubar a API de entrada.",
+    "tradeOffs": [
+      {
+        "dimension": "Acoplamento",
+        "pro": "Desacopla disponibilidade; absorve picos; escala consumidores.",
+        "con": "Consistência eventual; exige idempotência/ordenação e observabilidade da fila."
+      }
+    ],
+    "relatedPatterns": [
+      "idempotent-consumer",
+      "transactional-outbox",
+      "domain-event"
+    ],
+    "interviewAngle": "Contraste síncrono (acopla disponibilidade) vs assíncrono (desacopla, mas eventual + idempotência); é a base de event-driven.",
+    "diagrams": [],
+    "sourceRefs": [
+      {
+        "kind": "reference",
+        "source": "microservices.io",
+        "locator": "patterns/communication-style/messaging.html",
+        "url": "https://microservices.io/patterns/communication-style/messaging.html"
+      }
+    ]
   }
 ]

@@ -2519,5 +2519,177 @@
         "url": "https://morling.dev/blog/on-idempotency-keys/"
       }
     ]
+  },
+  {
+    "id": "q36",
+    "question": "Como você projeta um rate limiter?",
+    "difficulty": "staff",
+    "shortAnswer": "Defino o limite (req/janela por chave: usuário/IP/API key) e o algoritmo: token bucket (permite burst) ou sliding window (preciso). Em escala distribuída, o estado do contador vai num store rápido compartilhado (Redis) com operações atômicas; o gateway aplica antes de chegar no serviço.",
+    "detailedAnswer": "Eixos: (1) **Identidade do limite** — por usuário, IP, API key, ou rota. (2) **Algoritmo** — fixed window (simples, sofre burst na virada), sliding window (justo, mais caro), token bucket (permite rajada controlada, o mais usado), leaky bucket (suaviza saída). (3) **Distribuído** — várias instâncias do gateway precisam compartilhar o contador: Redis com INCR/EXPIRE atômico (ou Lua script) evita corrida. (4) **Resposta** — 429 Too Many Requests + header Retry-After. (5) **Onde** — no API Gateway, antes do serviço. Cuidado com hot key e com o custo de um round-trip ao Redis por request.",
+    "mentalModel": "Um balde de fichas por chave: cada request gasta uma ficha; fichas repõem a uma taxa fixa. Sem ficha -> 429. O balde vive no Redis para todas as instâncias verem o mesmo.",
+    "patterns": [
+      "api-gateway",
+      "bulkhead"
+    ],
+    "risks": [
+      "Contador local por instância -> limite real = N x o configurado.",
+      "Hot key no Redis (uma chave muito quente).",
+      "Fixed window deixa passar 2x no instante da virada."
+    ],
+    "tradeOffs": [
+      {
+        "dimension": "Precisão vs custo",
+        "pro": "Sliding window é justo.",
+        "con": "Mais memória/CPU; token bucket é o equilíbrio prático."
+      }
+    ],
+    "repoExample": "O gateway à frente da API de transações limita por API key com token bucket em Redis, devolvendo 429 + Retry-After no estouro.",
+    "howToAnswerInInterview": "Pergunte 'limite por quê (usuário/IP/key)?' e diga token bucket + Redis atômico para o caso distribuído; cite 429 + Retry-After e o problema do contador local.",
+    "relatedTopics": [
+      "capacity-queueing",
+      "performance-scalability"
+    ],
+    "diagrams": [],
+    "sourceRefs": [
+      {
+        "kind": "pdf",
+        "source": "System Design Workbook",
+        "locator": "Capacity & Queueing"
+      },
+      {
+        "kind": "reference",
+        "source": "microservices.io",
+        "locator": "patterns/apigateway.html",
+        "url": "https://microservices.io/patterns/apigateway.html"
+      }
+    ]
+  },
+  {
+    "id": "q37",
+    "question": "Quais estratégias de cache e como lidar com invalidação?",
+    "difficulty": "senior",
+    "shortAnswer": "Padrão mais comum: cache-aside (a app lê do cache; no miss, lê do banco e popula). Invalidação é o problema difícil: TTL (simples, aceita stale por um tempo) ou invalidação na escrita (write-through / write-around / deletar a chave no update). Escolho conforme a tolerância a dado velho.",
+    "detailedAnswer": "Estratégias: **cache-aside** (lazy, a app gerencia — mais comum), **read-through** (o cache busca a origem no miss), **write-through** (escreve no cache e no banco juntos — consistente, mais lento), **write-back** (escreve no cache e assíncrono no banco — rápido, risco de perda). Invalidação: **TTL** (expira sozinho; aceita janela de stale) e **invalidação ativa** (no update, deletar/atualizar a chave). Problemas: thundering herd (muitos miss simultâneos batem no banco — mitigado com lock/single-flight ou TTL jitter) e cache stampede. ElastiCache (Redis) é o cache típico à frente de Aurora/RDS.",
+    "mentalModel": "Cache = cópia rápida e PERECÍVEL da verdade. Toda decisão é sobre quanto stale você tolera (TTL) vs quanto esforço de invalidação você paga.",
+    "patterns": [
+      "cqrs"
+    ],
+    "risks": [
+      "Invalidação errada -> servir dado velho (o bug clássico de cache).",
+      "Thundering herd no expiry de uma chave quente.",
+      "Cachear o que muda toda hora (hit ratio baixo, custo sem ganho)."
+    ],
+    "tradeOffs": [
+      {
+        "dimension": "Frescor vs latência",
+        "pro": "TTL é simples e barato.",
+        "con": "Aceita stale; invalidação ativa é consistente mas complexa."
+      }
+    ],
+    "repoExample": "O saldo quente fica em Redis (cache-aside) à frente do Postgres; no update de saldo, a chave é invalidada para a próxima leitura recompor.",
+    "howToAnswerInInterview": "Nomeie cache-aside como default, depois TTL vs invalidação ativa conforme a tolerância a stale, e cite thundering herd como o risco de escala.",
+    "relatedTopics": [
+      "caching",
+      "data-replication"
+    ],
+    "diagrams": [],
+    "sourceRefs": [
+      {
+        "kind": "pdf",
+        "source": "System Design Workbook",
+        "locator": "Cache Strategies"
+      },
+      {
+        "kind": "reference",
+        "source": "AWS Documentation",
+        "locator": "ElastiCache for Redis",
+        "url": "https://aws.amazon.com/elasticache/redis/"
+      }
+    ]
+  },
+  {
+    "id": "q38",
+    "question": "Como você decompõe um monolito em microsserviços?",
+    "difficulty": "staff",
+    "shortAnswer": "Acho as fronteiras (por capacidade de negócio ou por subdomínio/DDD), não por camada técnica. Migro incrementalmente com Strangler (gateway roteando fatia a fatia), uso ACL na fronteira com o legado, e dou a cada serviço o seu banco (database-per-service). Não faço big-bang.",
+    "detailedAnswer": "Passos: (1) **Fronteiras** — decompose por capacidade de negócio (estável) ou por subdomínio/bounded context (DDD) quando o modelo é complexo. Evite cortar por camada (UI/serviço/DAO). (2) **Dados** — database-per-service: cada serviço dono do seu schema; quebrar o banco compartilhado é a parte mais difícil. (3) **Migração** — Strangler Application: um gateway roteia rotas novas para os serviços e o resto para o legado, migrando fatia a fatia; ACL traduz o modelo do legado. (4) **Ordem** — comece por um contexto de baixo acoplamento e alto valor. Riscos: transações que cruzavam tabelas viram Saga; consultas que faziam JOIN viram API Composition/CQRS.",
+    "mentalModel": "Não é 'partir o código', é 'partir o DOMÍNIO': ache os bounded contexts, depois estrangule o legado fatia a fatia, sem virar a chave de uma vez.",
+    "patterns": [
+      "decompose-by-business-capability",
+      "decompose-by-subdomain",
+      "strangler-application",
+      "database-per-service"
+    ],
+    "risks": [
+      "Cortar por camada técnica (gera serviços anêmicos acoplados).",
+      "Esquecer da quebra do banco (database-per-service é o gargalo).",
+      "Big-bang em vez de incremental."
+    ],
+    "tradeOffs": [
+      {
+        "dimension": "Risco vs velocidade",
+        "pro": "Strangler é incremental e reversível.",
+        "con": "Convivência prolongada legado+novo; dados duplicados na transição."
+      }
+    ],
+    "repoExample": "O domínio financeiro separa 'Movimentação' (escrita) de 'Extrato' (leitura) como contextos; o roteamento migra fatia a fatia via gateway.",
+    "howToAnswerInInterview": "Comece pelas fronteiras (capacidade vs subdomínio), depois database-per-service e Strangler+ACL para migrar sem parar; mencione Saga/API Composition como consequência.",
+    "relatedTopics": [
+      "microservices-monoliths"
+    ],
+    "diagrams": [],
+    "sourceRefs": [
+      {
+        "kind": "reference",
+        "source": "microservices.io",
+        "locator": "patterns/decomposition/decompose-by-subdomain.html",
+        "url": "https://microservices.io/patterns/decomposition/decompose-by-subdomain.html"
+      },
+      {
+        "kind": "pdf",
+        "source": "System Design Workbook",
+        "locator": "Microsserviços & Monolitos"
+      }
+    ]
+  },
+  {
+    "id": "q39",
+    "question": "API Gateway vs Backend for Frontend (BFF) — quando usar cada um?",
+    "difficulty": "senior",
+    "shortAnswer": "API Gateway é a porta única, genérica, com preocupações transversais (auth, rate limit, roteamento). BFF é um backend POR canal (web, mobile), que agrega serviços e molda o payload sob medida para aquela tela. Use gateway para o transversal; BFF quando os canais têm necessidades de dados muito diferentes.",
+    "detailedAnswer": "**API Gateway**: ponto de entrada único para todos os clientes; cuida de auth, rate limiting, TLS, roteamento, observabilidade. Genérico — não conhece a tela. **BFF**: um backend dedicado por experiência/canal; faz API Composition (agrega vários serviços numa resposta), molda o payload para o front (mobile quer menos dados que web) e isola o blast radius por canal. Eles se COMPÕEM: muitas arquiteturas têm um gateway na borda + BFFs por canal atrás dele. Use só gateway quando os clientes são parecidos; adicione BFF quando web/mobile divergem em dados/agregação.",
+    "mentalModel": "Gateway = recepção do prédio (vale para todos). BFF = um assistente dedicado por tipo de visitante, que já traz tudo mastigado para aquela pessoa.",
+    "patterns": [
+      "api-gateway",
+      "backend-for-frontend",
+      "api-composition"
+    ],
+    "risks": [
+      "Pôr lógica de tela no gateway (vira monolito de borda).",
+      "Um BFF por canal vira N backends para manter.",
+      "Gateway virar gargalo/SPOF sem HA."
+    ],
+    "tradeOffs": [
+      {
+        "dimension": "Genérico vs sob medida",
+        "pro": "Gateway centraliza o transversal.",
+        "con": "BFF customiza por canal mas multiplica backends."
+      }
+    ],
+    "repoExample": "O BFF do Lab faz API Composition do conhecimento para o front; numa arquitetura maior, um gateway na borda ficaria à frente de BFFs por canal.",
+    "howToAnswerInInterview": "Diga que NÃO são exclusivos: gateway para o transversal na borda, BFF por canal quando os fronts divergem; cite API Composition como o que o BFF faz.",
+    "relatedTopics": [
+      "api-gateway",
+      "bff"
+    ],
+    "diagrams": [],
+    "sourceRefs": [
+      {
+        "kind": "reference",
+        "source": "microservices.io",
+        "locator": "patterns/apigateway.html",
+        "url": "https://microservices.io/patterns/apigateway.html"
+      }
+    ]
   }
 ]

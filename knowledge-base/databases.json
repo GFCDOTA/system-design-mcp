@@ -273,5 +273,141 @@
         "locator": "Cache Strategies"
       }
     ]
+  },
+  {
+    "id": "redshift",
+    "name": "Amazon Redshift",
+    "category": "Analítico (OLAP)",
+    "engine": "Columnar MPP (PostgreSQL-like)",
+    "summary": "Data warehouse colunar e massivamente paralelo (MPP) para ANALÍTICO (OLAP): agregações e relatórios sobre bilhões de linhas. Não é OLTP — é o lugar onde os dados transacionais vão para serem analisados.",
+    "priceMonthly": "$180–1000+",
+    "priceAnnual": "Variável (por nó ou serverless)",
+    "capTheorem": "CP",
+    "pacelc": "PC/EC",
+    "failover": "Gerenciado (snapshots)",
+    "azs": "Multi-AZ (RA3)",
+    "whenToUse": [
+      "Relatórios/BI e agregações pesadas sobre histórico.",
+      "ETL de dados transacionais para análise (separar OLAP do OLTP)."
+    ],
+    "whenToAvoid": [
+      "Carga transacional OLTP (leituras/escritas de baixa latência por linha).",
+      "Lookups por chave — use o banco operacional ou cache."
+    ],
+    "tradeOffs": [
+      {
+        "dimension": "Workload",
+        "pro": "Colunar + MPP: agregação em escala muito rápida.",
+        "con": "Ruim para OLTP linha-a-linha; latência de carga (ETL)."
+      }
+    ],
+    "relatedPatterns": [
+      "cqrs"
+    ],
+    "relatedTopics": [
+      "databases-indexing",
+      "performance-scalability"
+    ],
+    "diagrams": [],
+    "sourceRefs": [
+      {
+        "kind": "reference",
+        "source": "AWS Documentation",
+        "locator": "Amazon Redshift",
+        "url": "https://aws.amazon.com/redshift/"
+      },
+      {
+        "kind": "pdf",
+        "source": "System Design Workbook",
+        "locator": "Databases, Models & Indexing"
+      }
+    ]
+  },
+  {
+    "id": "opensearch",
+    "name": "Amazon OpenSearch",
+    "category": "Busca",
+    "engine": "Lucene (full-text + analytics)",
+    "summary": "Motor de busca e analytics (fork do Elasticsearch). Full-text search, faceting, agregações e observabilidade de logs. Read model especializado, não fonte de verdade.",
+    "priceMonthly": "$50–500+",
+    "priceAnnual": "Variável (por instância)",
+    "capTheorem": "AP",
+    "pacelc": "PA/EL",
+    "failover": "Multi-AZ (réplicas de shard)",
+    "azs": "Multi-AZ opcional",
+    "whenToUse": [
+      "Busca textual relevante (autocomplete, full-text, faceting).",
+      "Backend de log aggregation / observabilidade (ELK)."
+    ],
+    "whenToAvoid": [
+      "Como fonte de verdade transacional (é read model/índice).",
+      "Quando um índice do Postgres já resolve a busca."
+    ],
+    "tradeOffs": [
+      {
+        "dimension": "Busca",
+        "pro": "Full-text + relevância + agregações que SQL faz mal.",
+        "con": "Eventual; sincronizar com a fonte de verdade (CDC/indexação) é trabalho."
+      }
+    ],
+    "relatedPatterns": [
+      "cqrs",
+      "log-aggregation"
+    ],
+    "relatedTopics": [
+      "databases-indexing",
+      "data-replication"
+    ],
+    "diagrams": [],
+    "sourceRefs": [
+      {
+        "kind": "reference",
+        "source": "AWS Documentation",
+        "locator": "Amazon OpenSearch Service",
+        "url": "https://aws.amazon.com/opensearch-service/"
+      }
+    ]
+  },
+  {
+    "id": "s3-object-storage",
+    "name": "Amazon S3 (Object Storage)",
+    "category": "Object Storage",
+    "engine": "Object store (HTTP/REST)",
+    "summary": "Armazenamento de objetos durável (11 noves) e barato para BLOBs: arquivos, backups, data lake, artefatos, mídia. Não é banco de consulta — é o repositório de objetos grandes endereçados por chave/URL.",
+    "priceMonthly": "$0,023/GB",
+    "priceAnnual": "Por GB armazenado + requests",
+    "capTheorem": "CP",
+    "pacelc": "PC/EC",
+    "failover": "Multi-AZ nativo",
+    "azs": "Multi-AZ (por padrão)",
+    "whenToUse": [
+      "Arquivos/BLOBs, backups, data lake, artefatos de build, mídia.",
+      "Guardar o objeto grande e referenciar só a URL/chave no banco."
+    ],
+    "whenToAvoid": [
+      "Consultas/queries sobre os dados (S3 é por chave, não por campo).",
+      "Dados que mudam linha-a-linha com baixa latência."
+    ],
+    "tradeOffs": [
+      {
+        "dimension": "Durabilidade/custo",
+        "pro": "11 noves de durabilidade, barato, escala infinita.",
+        "con": "Sem query relacional; read-after-write forte mas latência de objeto (não é cache)."
+      }
+    ],
+    "relatedPatterns": [],
+    "relatedTopics": [
+      "data-replication",
+      "storage-raid"
+    ],
+    "diagrams": [],
+    "sourceRefs": [
+      {
+        "kind": "reference",
+        "source": "AWS Documentation",
+        "locator": "Amazon S3",
+        "url": "https://aws.amazon.com/s3/"
+      }
+    ]
   }
 ]
