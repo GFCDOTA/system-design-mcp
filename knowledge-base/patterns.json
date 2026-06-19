@@ -1477,5 +1477,226 @@
         "url": "https://microservices.io/patterns/index.html"
       }
     ]
+  },
+  {
+    "id": "service-discovery",
+    "name": "Service Discovery",
+    "category": "Comunicação",
+    "problem": "Em ambientes dinâmicos (containers, autoscaling), os endereços (IP:porta) das instâncias mudam o tempo todo. Como um cliente descobre onde está um serviço sem hardcodar endereço?",
+    "solution": "Um Service Registry (Consul, Eureka, etcd, ou o DNS/Service do Kubernetes) mantém o catálogo vivo de instâncias saudáveis. Descoberta **client-side** (o cliente consulta o registry e balanceia) ou **server-side** (um balanceador/gateway resolve). Instâncias se registram (self-registration) ou são registradas por um agente (3rd-party).",
+    "whenToUse": [
+      "Microsserviços com instâncias efêmeras (autoscaling, deploys frequentes).",
+      "Mais de uma instância por serviço, com endereços não fixos."
+    ],
+    "whenToAvoid": [
+      "Monolito ou poucos serviços com endereços estáveis.",
+      "Quando a plataforma (Kubernetes, service mesh) já resolve discovery — não reinvente."
+    ],
+    "exampleFromRepo": "Em Kubernetes, cada serviço de referência é alcançado por nome via DNS interno — discovery server-side embutido na plataforma.",
+    "financialExample": "A API de transações chama o serviço de limite por 'limite-service' (resolvido no registry) e balanceia entre as réplicas saudáveis, em vez de IP fixo.",
+    "tradeOffs": [
+      {
+        "dimension": "Acoplamento",
+        "pro": "O cliente não conhece endereços; instâncias escalam livremente.",
+        "con": "O registry vira infra crítica (precisa de HA)."
+      },
+      {
+        "dimension": "Complexidade",
+        "pro": "Discovery server-side esconde a lógica do cliente.",
+        "con": "Mais uma peça operacional (registry + health checks)."
+      }
+    ],
+    "relatedPatterns": [
+      "api-gateway",
+      "health-check-api",
+      "circuit-breaker"
+    ],
+    "interviewAngle": "Diferencie client-side vs server-side discovery e self vs 3rd-party registration; cite que o Kubernetes já entrega discovery por DNS/Service.",
+    "diagrams": [],
+    "sourceRefs": [
+      {
+        "kind": "reference",
+        "source": "microservices.io",
+        "locator": "patterns/service-registry.html",
+        "url": "https://microservices.io/patterns/service-registry.html"
+      },
+      {
+        "kind": "reference",
+        "source": "microservices.io",
+        "locator": "patterns/client-side-discovery.html",
+        "url": "https://microservices.io/patterns/client-side-discovery.html"
+      }
+    ]
+  },
+  {
+    "id": "externalized-configuration",
+    "name": "Externalized Configuration",
+    "category": "Entrega",
+    "problem": "Credenciais, endpoints e flags variam por ambiente (dev/staging/prod). Como entregar o MESMO artefato em todos os ambientes sem recompilar nem vazar segredo no código?",
+    "solution": "Tirar a configuração do build e injetar em runtime: variáveis de ambiente, config server (Spring Cloud Config) ou secret manager (AWS Secrets Manager, Vault). O artefato é imutável; o ambiente fornece os valores.",
+    "whenToUse": [
+      "O mesmo binário/imagem é promovido entre ambientes.",
+      "Segredos (senha de banco, chave) que não podem ir pro git."
+    ],
+    "whenToAvoid": [
+      "Config trivial e estável de um app único (o overhead não paga).",
+      "Quando a plataforma já injeta (ConfigMap/Secret do Kubernetes) — use isso."
+    ],
+    "exampleFromRepo": "O BFF e os serviços lêem URL de banco e credenciais de env/secret, nunca hardcoded — o mesmo container roda em qualquer ambiente.",
+    "financialExample": "A connection string do PostgreSQL de produção vem do Secrets Manager; em dev, de um .env local. O jar é idêntico nos dois.",
+    "tradeOffs": [
+      {
+        "dimension": "Segurança",
+        "pro": "Segredo fora do código/imagem; rotação sem rebuild.",
+        "con": "Mais uma dependência (config/secret server) no boot."
+      },
+      {
+        "dimension": "Portabilidade",
+        "pro": "Um artefato, N ambientes.",
+        "con": "Erro de config só aparece em runtime, não em compile-time."
+      }
+    ],
+    "relatedPatterns": [
+      "health-check-api"
+    ],
+    "interviewAngle": "Cite os 3 níveis (env var -> config server -> secret manager) e o princípio 12-factor 'build once, deploy anywhere'.",
+    "diagrams": [],
+    "sourceRefs": [
+      {
+        "kind": "reference",
+        "source": "microservices.io",
+        "locator": "patterns/externalized-configuration.html",
+        "url": "https://microservices.io/patterns/externalized-configuration.html"
+      }
+    ]
+  },
+  {
+    "id": "anti-corruption-layer",
+    "name": "Anti-Corruption Layer (ACL)",
+    "category": "Refatoração",
+    "problem": "Ao integrar com um sistema legado (ou um bounded context de modelo diferente), o modelo deles tende a 'vazar' e corromper o seu domínio limpo.",
+    "solution": "Uma camada de tradução entre os dois mundos: adapta o modelo/contrato do legado para o seu modelo de domínio (e vice-versa), isolando o seu núcleo das idiossincrasias do outro. É o adapter de fronteira do DDD.",
+    "whenToUse": [
+      "Migração gradual (Strangler) convivendo com o legado.",
+      "Integração com sistema de terceiro/legado de modelo incompatível."
+    ],
+    "whenToAvoid": [
+      "Contextos novos e já alinhados (a ACL vira cerimônia).",
+      "Integração descartável/temporária trivial."
+    ],
+    "exampleFromRepo": "Ao consumir um espelho de saldo do legado, um tradutor converte o payload antigo no agregado de domínio atual — o núcleo não conhece o formato velho.",
+    "financialExample": "O novo ledger lê eventos de um core legado; a ACL mapeia 'COD_LANC/VL_LANC' (modelo do mainframe) para o evento de domínio MovimentacaoRegistrada.",
+    "tradeOffs": [
+      {
+        "dimension": "Isolamento",
+        "pro": "Domínio limpo, imune ao modelo do legado.",
+        "con": "Código + latência de tradução na fronteira."
+      },
+      {
+        "dimension": "Evolução",
+        "pro": "Troca o legado sem mexer no núcleo.",
+        "con": "A ACL precisa acompanhar mudanças do legado."
+      }
+    ],
+    "relatedPatterns": [
+      "strangler-application",
+      "domain-event"
+    ],
+    "interviewAngle": "Posicione a ACL como o adapter de fronteira do DDD; quase sempre anda junto do Strangler numa migração.",
+    "diagrams": [],
+    "sourceRefs": [
+      {
+        "kind": "reference",
+        "source": "microservices.io",
+        "locator": "patterns/refactoring/anti-corruption-layer.html",
+        "url": "https://microservices.io/patterns/refactoring/anti-corruption-layer.html"
+      }
+    ]
+  },
+  {
+    "id": "strangler-application",
+    "name": "Strangler Application",
+    "category": "Refatoração",
+    "problem": "Reescrever um monolito de uma vez (big bang) é arriscado e demorado. Como migrar para microsserviços incrementalmente, sem parar o negócio?",
+    "solution": "Construir o novo sistema ao redor do legado, interceptando chamadas (via gateway/proxy) e migrando funcionalidade fatia a fatia. O novo 'estrangula' o legado aos poucos até ele poder ser desligado. Costuma usar uma ACL na fronteira.",
+    "whenToUse": [
+      "Modernização de um monolito grande em produção.",
+      "Não pode haver janela de big-bang; o risco precisa ser contínuo e reversível."
+    ],
+    "whenToAvoid": [
+      "Sistema pequeno (reescrever direto é mais barato).",
+      "Quando o legado será desligado em breve de qualquer forma."
+    ],
+    "exampleFromRepo": "Um gateway roteia '/movimentacoes' para o novo serviço e o resto para o legado; a cada release, mais rotas migram.",
+    "financialExample": "O roteamento de débito/crédito vai para o novo ledger event-sourced enquanto consultas de extrato antigas seguem no legado, até a paridade total.",
+    "tradeOffs": [
+      {
+        "dimension": "Risco",
+        "pro": "Migração incremental, reversível por rota.",
+        "con": "Convivência prolongada de dois sistemas (e dois conjuntos de dados)."
+      },
+      {
+        "dimension": "Custo",
+        "pro": "Sem big-bang; valor entregue cedo.",
+        "con": "Sincronização/duplicação de dados durante a transição."
+      }
+    ],
+    "relatedPatterns": [
+      "anti-corruption-layer",
+      "api-gateway"
+    ],
+    "interviewAngle": "É a resposta canônica para 'como migrar um monolito sem parar tudo'; cite gateway de roteamento + ACL + paridade de dados.",
+    "diagrams": [],
+    "sourceRefs": [
+      {
+        "kind": "reference",
+        "source": "microservices.io",
+        "locator": "patterns/refactoring/strangler-application.html",
+        "url": "https://microservices.io/patterns/refactoring/strangler-application.html"
+      }
+    ]
+  },
+  {
+    "id": "log-aggregation",
+    "name": "Log Aggregation",
+    "category": "Observability",
+    "problem": "Com N serviços e M instâncias, os logs ficam espalhados e efêmeros (containers somem). Como investigar um incidente sem dar SSH em cada host?",
+    "solution": "Centralizar: cada serviço emite log estruturado (JSON) para stdout; um coletor (Fluent Bit/Fluentd, CloudWatch) agrega num backend pesquisável (OpenSearch/ELK, CloudWatch Logs). Correlacione tudo por requestId/traceId.",
+    "whenToUse": [
+      "Qualquer sistema distribuído em produção.",
+      "Debug de um fluxo que cruza vários serviços."
+    ],
+    "whenToAvoid": [
+      "Nunca evitar de fato — no máximo simplificar o stack para apps pequenos."
+    ],
+    "exampleFromRepo": "Os serviços logam em JSON com requestId; o agregador permite seguir uma transação ponta a ponta pelos serviços.",
+    "financialExample": "Uma movimentação que falhou: a busca pelo requestId no log agregado mostra API -> Kafka -> ledger -> read model num só lugar.",
+    "tradeOffs": [
+      {
+        "dimension": "Observabilidade",
+        "pro": "Visão única e pesquisável; correlação por traceId.",
+        "con": "Custo de storage/ingestão; PII precisa ser redatada."
+      },
+      {
+        "dimension": "Operação",
+        "pro": "Sem SSH em host; os logs sobrevivem ao container.",
+        "con": "Mais infra (coletor + backend de logs)."
+      }
+    ],
+    "relatedPatterns": [
+      "distributed-tracing",
+      "application-metrics",
+      "audit-logging"
+    ],
+    "interviewAngle": "Log aggregation + distributed tracing + metrics são os 3 pilares da observabilidade; cite log estruturado + correlação por traceId.",
+    "diagrams": [],
+    "sourceRefs": [
+      {
+        "kind": "reference",
+        "source": "microservices.io",
+        "locator": "patterns/observability/application-logging.html",
+        "url": "https://microservices.io/patterns/observability/application-logging.html"
+      }
+    ]
   }
 ]

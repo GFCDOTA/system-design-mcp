@@ -407,6 +407,7 @@
   },
   {
     "id": "caching",
+    "databaseRecommendation": {"suggestedDbId": "elasticache-redis", "level": "high", "rationale": "Camada in-memory sub-ms à frente do banco (cache-aside); o dado durável fica no relacional/NoSQL atrás."},
     "title": "Estratégias de Cache",
     "category": "Dados",
     "summary": "Cache é uma camada intermediária de dados entre dois componentes que reduz latência e carga sobre a origem. Envolve princípios (TTL, evicção LRU/LFU/FIFO, hit/miss/hit rate, invalidação/consistência) e estratégias (cache-aside, write-through, write-behind) além de implementações (in-memory, distribuído, CDN).",
