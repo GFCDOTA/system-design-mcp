@@ -2342,5 +2342,182 @@
         "url": "https://github.com/msfidelis/event-source-distributed-ledger"
       }
     ]
+  },
+  {
+    "id": "q32",
+    "question": "Como você escolhe o banco de dados para um novo serviço?",
+    "difficulty": "staff",
+    "shortAnswer": "Parto do requisito, não da tecnologia favorita: modelo de acesso (relacional vs key-value vs documento), consistência necessária (ACID/CP vs eventual/AP), escala/latência e custo. Database-per-service: cada serviço dona o seu. Em dúvida com domínio relacional, relacional gerenciado (Aurora) é o default seguro.",
+    "detailedAnswer": "Sequência: (1) **Modelo de dados** — há JOINs/relações e transações multi-linha? Relacional. Acesso por chave com escala enorme? Key-value (DynamoDB). Documento flexível? DocumentDB. (2) **Consistência** — leitura tem que ver a última escrita (saldo, limite)? CP/ACID (Aurora/RDS). Tolera convergência? AP/BASE (DynamoDB). Mapeie CAP/PACELC. (3) **Escala e latência** — <10ms e crescimento imprevisível favorecem DynamoDB; carga relacional estável favorece Aurora. (4) **Custo e operação** — Aurora inclui 3 AZs; DynamoDB é barato no baseline mas sobe com GSI/Streams/PITR. (5) **Database-per-service** para não acoplar serviços pelo schema. Cache (ElastiCache) é ortogonal: acelera, não substitui o banco.",
+    "mentalModel": "Um eixo 'consistência forte <-> disponibilidade' (CP/AP) cruzado com 'relacional <-> chave/documento'. Plote o requisito nos quadrantes e o banco cai quase sozinho.",
+    "patterns": [
+      "database-per-service",
+      "cqrs"
+    ],
+    "risks": [
+      "Escolher por hype, não por requisito.",
+      "Forçar relacional onde o acesso é puro key-value (ou o contrário, perdendo JOINs).",
+      "Ignorar o custo real do NoSQL (GSI/Streams/PITR)."
+    ],
+    "tradeOffs": [
+      {
+        "dimension": "Consistência vs escala",
+        "pro": "CP/ACID simplifica a correção.",
+        "con": "Coordenação limita escala de escrita; AP escala mas exige idempotência."
+      }
+    ],
+    "repoExample": "msc-transactions-api usa Postgres (consistência forte para saldo/limite); o event-source-distributed-ledger usa Postgres como event store + ScyllaDB/MongoDB como read models.",
+    "howToAnswerInInterview": "Não diga o banco primeiro. Conduza pelos 4 eixos (modelo, consistência, escala, custo), cite CAP/PACELC e database-per-service, e só então recomende — deixando claro o trade-off.",
+    "relatedTopics": [
+      "cap-acid-base",
+      "pacelc",
+      "databases-indexing"
+    ],
+    "diagrams": [],
+    "sourceRefs": [
+      {
+        "kind": "pdf",
+        "source": "System Design Workbook",
+        "locator": "CAP, ACID e BASE / Databases"
+      },
+      {
+        "kind": "reference",
+        "source": "microservices.io",
+        "locator": "patterns/data/database-per-service.html",
+        "url": "https://microservices.io/patterns/data/database-per-service.html"
+      }
+    ]
+  },
+  {
+    "id": "q33",
+    "question": "Quando usar Event Sourcing em vez de um modelo transacional clássico?",
+    "difficulty": "staff",
+    "shortAnswer": "Use Event Sourcing quando o HISTÓRICO é requisito (auditoria, reprocessamento, reatividade) — você guarda a sequência imutável de eventos, não só o estado atual. Para CRUD simples com estado atual, o transacional clássico é mais barato e simples. Quase sempre vem com CQRS.",
+    "detailedAnswer": "No transacional clássico você sobrescreve o estado (UPDATE) e perde o 'como chegou aqui'. No Event Sourcing o estado é derivado de um log append-only de eventos (com versão por agregado), e read models especializados (CQRS) servem as consultas. Ganha auditoria nativa, replay e projeções flexíveis; paga complexidade: consistência eventual entre stores, necessidade de idempotência/ordenação, versionamento de eventos e snapshots para acelerar a reconstrução. Domínios financeiros (ledger) são o caso clássico.",
+    "mentalModel": "Transacional = foto do estado agora. Event Sourcing = filme de todos os fatos; a foto é só o último frame, recomputável.",
+    "patterns": [
+      "event-sourcing",
+      "cqrs",
+      "transactional-outbox"
+    ],
+    "risks": [
+      "Adotar por hype num CRUD simples (complexidade que não paga).",
+      "Esquecer idempotência/ordenação nos consumidores dos read models.",
+      "Não versionar eventos (schema evolution vira dor)."
+    ],
+    "tradeOffs": [
+      {
+        "dimension": "Auditoria vs complexidade",
+        "pro": "Trilha completa, replay e projeções flexíveis.",
+        "con": "Consistência eventual, idempotência, versionamento e snapshots."
+      }
+    ],
+    "repoExample": "event-source-distributed-ledger: event store append-only no Postgres com UNIQUE(aggregate_id, version), publicando pós-commit para read models em ScyllaDB (saldo) e MongoDB (extrato).",
+    "howToAnswerInInterview": "Comece pela pergunta 'o histórico/auditoria é requisito?'. Se sim, justifique Event Sourcing + CQRS e nomeie os custos (eventual, idempotência, versionamento). Se não, defenda o transacional simples.",
+    "relatedTopics": [
+      "cap-acid-base",
+      "data-replication"
+    ],
+    "diagrams": [],
+    "sourceRefs": [
+      {
+        "kind": "reference",
+        "source": "microservices.io",
+        "locator": "patterns/data/event-sourcing.html",
+        "url": "https://microservices.io/patterns/data/event-sourcing.html"
+      },
+      {
+        "kind": "repo",
+        "source": "event-source-distributed-ledger",
+        "locator": "/"
+      }
+    ]
+  },
+  {
+    "id": "q34",
+    "question": "Como você faz sharding e o que muda na aplicação?",
+    "difficulty": "senior",
+    "shortAnswer": "Sharding = particionar os dados horizontalmente por uma shard key, distribuindo entre nós para escalar escrita/volume além de um servidor. Escolher boa shard key é o tudo: ela define distribuição (evitar hot shards) e quais queries ficam baratas. Cross-shard JOIN/transação fica caro — a aplicação precisa lidar com isso.",
+    "detailedAnswer": "Estratégias: por range (bom para varredura, risco de hotspot), por hash (distribui bem, perde range), ou consistent hashing (minimiza remapeamento ao adicionar/remover nós). A shard key ideal tem alta cardinalidade e casa com o padrão de acesso (ex.: conta_id num sistema financeiro). Consequências na aplicação: queries que não incluem a shard key viram scatter-gather (caras); transações/JOINs cross-shard exigem coordenação (ou são evitados pelo design); rebalanceamento e resharding são operações sensíveis. DynamoDB faz isso nativo por partition key; em relacional, costuma ser na camada de aplicação ou via um shard router.",
+    "mentalModel": "A shard key é o CEP do dado: se você sabe o CEP, vai direto no nó certo; se não sabe, tem que perguntar em todos (scatter-gather).",
+    "patterns": [
+      "consistent-hashing"
+    ],
+    "risks": [
+      "Shard key ruim -> hot shard (um nó sofre, os outros ociosos).",
+      "Queries sem a shard key -> scatter-gather lento.",
+      "Resharding sem planejamento -> downtime/migração dolorosa."
+    ],
+    "tradeOffs": [
+      {
+        "dimension": "Escala vs simplicidade",
+        "pro": "Escala escrita/volume além de um nó.",
+        "con": "Cross-shard JOIN/transação caro; operação mais complexa."
+      }
+    ],
+    "repoExample": "msc-shard-router roteia a requisição para o shard certo a partir da chave; consistent hashing minimiza o remapeamento quando um nó entra/sai.",
+    "howToAnswerInInterview": "Centre a resposta na ESCOLHA DA SHARD KEY (cardinalidade + padrão de acesso) e nas consequências (scatter-gather, cross-shard). Cite consistent hashing para rebalanceamento.",
+    "relatedTopics": [
+      "sharding-partitioning",
+      "data-replication"
+    ],
+    "diagrams": [],
+    "sourceRefs": [
+      {
+        "kind": "pdf",
+        "source": "System Design Workbook",
+        "locator": "Sharding & Partitioning"
+      },
+      {
+        "kind": "repo",
+        "source": "msc-shard-router",
+        "locator": "/"
+      }
+    ]
+  },
+  {
+    "id": "q35",
+    "question": "Como garantir idempotência num consumidor de eventos?",
+    "difficulty": "senior",
+    "shortAnswer": "Assuma entrega at-least-once (a mensagem PODE chegar duplicada) e torne o processamento seguro de repetir: chave de idempotência única por mensagem + checagem antes de aplicar (INSERT com UNIQUE, condicional por versão, ou tabela de processados). Aplicar duas vezes = mesmo resultado de aplicar uma.",
+    "detailedAnswer": "Brokers como Kafka entregam at-least-once; retries e rebalanceamento geram duplicatas. Técnicas: (1) chave natural única (movimentacao_id) com INSERT que ignora violação de UNIQUE; (2) controle por versão (aplica só se versão > atual — LWT/condicional), bom para read models; (3) tabela de inbox/processados (registra o id processado na MESMA transação do efeito). Combine com ordenação por agregado quando a ordem importa. O par natural é o Transactional Outbox no lado do produtor (publica sem perder evento).",
+    "mentalModel": "A operação tem que ser um 'PUT' (mesmo resultado se repetida), não um 'INCREMENT' (acumula a cada repetição). Transforme INCREMENT em PUT via chave/versão.",
+    "patterns": [
+      "idempotent-consumer",
+      "transactional-outbox"
+    ],
+    "risks": [
+      "Tratar at-least-once como exactly-once (duplica saldo/efeito).",
+      "Checar duplicata fora da transação do efeito (janela de corrida).",
+      "Ignorar ordenação quando o agregado exige ordem."
+    ],
+    "tradeOffs": [
+      {
+        "dimension": "Garantia vs custo",
+        "pro": "Reprocessar é seguro; resiliente a retries.",
+        "con": "Estado extra (chaves/versões) e custo de checagem por mensagem."
+      }
+    ],
+    "repoExample": "No ledger, o consumidor de ingestão aplica só versões maiores (UPDATE ... IF version < N) ou ignora duplicate key — idempotência por versão e por chave única.",
+    "howToAnswerInInterview": "Diga primeiro 'assumo at-least-once'. Depois escolha a técnica conforme o caso (chave única vs versão vs inbox) e cite que a checagem tem que ser atômica com o efeito.",
+    "relatedTopics": [
+      "cap-acid-base",
+      "messaging-streaming"
+    ],
+    "diagrams": [],
+    "sourceRefs": [
+      {
+        "kind": "reference",
+        "source": "microservices.io",
+        "locator": "patterns/communication-style/idempotent-consumer.html",
+        "url": "https://microservices.io/patterns/communication-style/idempotent-consumer.html"
+      },
+      {
+        "kind": "reference",
+        "source": "morling.dev",
+        "locator": "On idempotency keys",
+        "url": "https://morling.dev/blog/on-idempotency-keys/"
+      }
+    ]
   }
 ]

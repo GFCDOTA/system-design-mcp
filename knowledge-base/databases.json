@@ -205,5 +205,73 @@
       { "kind": "reference", "source": "AWS Documentation", "locator": "DocumentDB", "note": "compatível MongoDB 5.0", "url": "https://aws.amazon.com/documentdb/" },
       { "kind": "repo", "source": "event-source-distributed-ledger", "locator": "/", "note": "MongoDB como read model de extrato no ledger de referência" }
     ]
+  },
+  {
+    "id": "elasticache-redis",
+    "name": "ElastiCache (Redis)",
+    "category": "Cache",
+    "engine": "Redis / Valkey (in-memory, key-value)",
+    "summary": "Cache gerenciado in-memory (Redis/Valkey) com latência sub-milissegundo. É uma camada de aceleração à frente do banco de origem (cache-aside / read-through), além de sessão, rate limiting, contadores, locks distribuídos e filas leves. Não é a fonte de verdade — é volátil.",
+    "priceMonthly": "$15–200",
+    "priceAnnual": "Variável (por nó/hora)",
+    "capTheorem": "AP",
+    "pacelc": "PA/EL",
+    "failover": "<30s (Multi-AZ com réplica)",
+    "azs": "Multi-AZ opcional (primário + réplicas)",
+    "whenToUse": [
+      "Cache de leitura (cache-aside) à frente de Aurora/RDS para cortar latência e carga.",
+      "Sessão, rate limiting, contadores, locks distribuídos (SETNX) e filas leves.",
+      "Dados quentes com TTL, onde leituras >> escritas."
+    ],
+    "whenToAvoid": [
+      "Como fonte de verdade durável (cache é volátil; precisa de um banco por trás).",
+      "Consultas relacionais, JOINs ou transações ACID."
+    ],
+    "tradeOffs": [
+      {
+        "dimension": "Latência",
+        "pro": "Sub-ms in-memory; alivia o banco de origem.",
+        "con": "Volátil; risco de stale e de thundering herd no cache miss."
+      },
+      {
+        "dimension": "Custo",
+        "pro": "Nó pequeno é barato; ROI alto cortando carga do banco.",
+        "con": "RAM custa; o dataset é limitado à memória."
+      },
+      {
+        "dimension": "Consistência",
+        "pro": "AP: alta disponibilidade com réplicas.",
+        "con": "Cache e origem divergem — exige estratégia de invalidação."
+      }
+    ],
+    "relatedPatterns": [
+      "cqrs",
+      "idempotent-consumer"
+    ],
+    "relatedTopics": [
+      "caching",
+      "data-replication",
+      "performance-scalability"
+    ],
+    "diagrams": [],
+    "sourceRefs": [
+      {
+        "kind": "reference",
+        "source": "AWS Documentation",
+        "locator": "ElastiCache for Redis",
+        "url": "https://aws.amazon.com/elasticache/redis/"
+      },
+      {
+        "kind": "reference",
+        "source": "AWS Documentation",
+        "locator": "ElastiCache pricing",
+        "url": "https://aws.amazon.com/elasticache/pricing/"
+      },
+      {
+        "kind": "pdf",
+        "source": "System Design Workbook",
+        "locator": "Cache Strategies"
+      }
+    ]
   }
 ]

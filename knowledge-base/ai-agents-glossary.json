@@ -223,5 +223,130 @@
         "url": "https://docs.claude.com"
       }
     ]
+  },
+  {
+    "id": "rag",
+    "term": "RAG (Retrieval-Augmented Generation)",
+    "framing": "padrão de contexto",
+    "kind": "term",
+    "definition": "Em vez de confiar só no que o modelo 'sabe', você BUSCA documentos relevantes numa base sua e os injeta no prompt como contexto antes de gerar. Recuperar -> aumentar o prompt -> gerar.",
+    "backendAnalogy": "É um cache-aside semântico: no 'miss' de conhecimento você consulta um índice (vetorial), pega os trechos certos e monta a resposta com eles — como enriquecer um DTO com dados de outra fonte antes de responder.",
+    "pitfall": "Lixo entra, lixo sai: se a recuperação traz trecho irrelevante, o modelo responde errado com confiança. A qualidade do retrieval (chunking, índice) pesa mais que o modelo.",
+    "sourceRefs": [
+      {
+        "kind": "reference",
+        "source": "Anthropic",
+        "locator": "Contextual Retrieval",
+        "url": "https://anthropic.com/news/contextual-retrieval"
+      }
+    ]
+  },
+  {
+    "id": "embeddings",
+    "term": "Embeddings",
+    "framing": "representação",
+    "kind": "term",
+    "definition": "Um vetor de números (ex.: 1024 floats) que representa o SIGNIFICADO de um texto. Textos com sentido parecido ficam perto no espaço vetorial (distância de cosseno pequena).",
+    "backendAnalogy": "Como um hash — mas semântico em vez de exato: 'cachorro' e 'cão' caem perto, não idênticos. É a chave que você indexa para busca por similaridade, não por igualdade.",
+    "pitfall": "Embedding != busca por palavra-chave: pode trazer 'parecido no sentido' que não contém o termo literal. E o modelo de embedding tem que ser o MESMO na indexação e na consulta.",
+    "sourceRefs": [
+      {
+        "kind": "reference",
+        "source": "Anthropic",
+        "locator": "Contextual Retrieval",
+        "url": "https://anthropic.com/news/contextual-retrieval"
+      }
+    ]
+  },
+  {
+    "id": "vector-db",
+    "term": "Vector Database",
+    "framing": "infra de RAG",
+    "kind": "term",
+    "definition": "Banco especializado em armazenar embeddings e buscar os mais SIMILARES a um vetor de consulta (k-nearest neighbors), via índices aproximados (HNSW, IVF). Ex.: pgvector, Pinecone, Qdrant.",
+    "backendAnalogy": "É um índice — mas em vez de B-Tree para '=' e range, é um índice de vizinhança para 'mais parecido'. pgvector é literalmente uma extensão do PostgreSQL: você já conhece o banco, ganhou um tipo de índice novo.",
+    "pitfall": "A busca é APROXIMADA (ANN) — troca recall por velocidade. E não substitui filtro estruturado: muitas vezes o melhor é híbrido (vetorial + filtro por metadado/keyword).",
+    "sourceRefs": [
+      {
+        "kind": "reference",
+        "source": "Anthropic",
+        "locator": "Contextual Retrieval",
+        "url": "https://anthropic.com/news/contextual-retrieval"
+      }
+    ]
+  },
+  {
+    "id": "function-calling",
+    "term": "Function Calling / Tool Use",
+    "framing": "como o modelo AGE",
+    "kind": "term",
+    "definition": "O modelo não executa nada — ele DECIDE chamar uma função que VOCÊ definiu (nome + schema de parâmetros) e devolve um JSON com os argumentos. Seu código executa e devolve o resultado para o modelo continuar.",
+    "backendAnalogy": "O modelo é o cliente que monta a request (escolhe endpoint e corpo); seu harness é o servidor que executa de verdade. O MCP padroniza esse contrato de 'ferramentas' entre modelo e tools.",
+    "pitfall": "O modelo pode 'alucinar' uma chamada com argumentos inválidos ou inventar uma função que não existe — valide o JSON contra o schema e trate erro como em qualquer borda de API.",
+    "sourceRefs": [
+      {
+        "kind": "reference",
+        "source": "Model Context Protocol",
+        "locator": "spec",
+        "url": "https://modelcontextprotocol.io"
+      },
+      {
+        "kind": "reference",
+        "source": "Anthropic",
+        "locator": "Building effective agents",
+        "url": "https://anthropic.com/engineering/building-effective-agents"
+      }
+    ]
+  },
+  {
+    "id": "guardrails",
+    "term": "Guardrails",
+    "framing": "segurança/controle",
+    "kind": "term",
+    "definition": "Restrições determinísticas em volta do modelo: validação de entrada/saída, limites de ação, filtros de conteúdo, allowlist de ferramentas. O modelo propõe; o guardrail aprova ou bloqueia.",
+    "backendAnalogy": "É o seu Bean Validation + autorização + rate limit na borda — só que protegendo contra a saída não-determinística do modelo, não contra input do usuário. Nunca confie na saída do modelo sem validar.",
+    "pitfall": "Guardrail no PROMPT ('por favor não faça X') não é garantia — é sugestão. Controle real é código determinístico fora do modelo (schema, allowlist, checagem pós-resposta).",
+    "sourceRefs": [
+      {
+        "kind": "reference",
+        "source": "Anthropic",
+        "locator": "Building effective agents",
+        "url": "https://anthropic.com/engineering/building-effective-agents"
+      }
+    ]
+  },
+  {
+    "id": "temperature",
+    "term": "Temperature / top-p",
+    "framing": "amostragem",
+    "kind": "term",
+    "definition": "Parâmetros que controlam a ALEATORIEDADE da geração. temperature baixa (~0) = determinístico/focado; alta = criativo/variado. top-p limita a amostragem ao núcleo de probabilidade.",
+    "backendAnalogy": "É o seed/jitter da geração: temperature 0 ~ função quase pura (mesma entrada -> quase mesma saída), boa para extração/classificação; alta para brainstorm. Para teste determinístico, fixe baixa.",
+    "pitfall": "temperature 0 NÃO garante determinismo total (há não-determinismo de infra). E temperature alta em tarefa factual aumenta alucinação — use baixa para extrair/classificar.",
+    "sourceRefs": [
+      {
+        "kind": "reference",
+        "source": "Claude Docs",
+        "locator": "API parameters",
+        "url": "https://docs.claude.com"
+      }
+    ]
+  },
+  {
+    "id": "hallucination",
+    "term": "Hallucination (Alucinação)",
+    "framing": "falha característica",
+    "kind": "term",
+    "definition": "Quando o modelo gera algo plausível mas FALSO — uma API que não existe, uma citação inventada, um número errado — com a mesma confiança de um fato correto.",
+    "backendAnalogy": "É um retorno que compila e parece certo mas está semanticamente errado — pior que uma exceção, porque não falha alto. Por isso se ancora a saída em fonte (RAG) e se valida contra schema/realidade.",
+    "pitfall": "Confiança != correção. Mitigações: dar contexto/fonte (RAG), pedir citação verificável, validar com ferramenta determinística e temperature baixa em tarefa factual.",
+    "sourceRefs": [
+      {
+        "kind": "reference",
+        "source": "Anthropic",
+        "locator": "Building effective agents",
+        "url": "https://anthropic.com/engineering/building-effective-agents"
+      }
+    ]
   }
 ]
