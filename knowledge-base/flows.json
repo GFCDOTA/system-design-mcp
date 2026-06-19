@@ -71,24 +71,28 @@
         "kind": "repo",
         "source": "msc-shard-router",
         "locator": "pkg/hashring/",
-        "note": "anel de hashing consistente com réplicas virtuais e busca binária"
+        "note": "anel de hashing consistente com réplicas virtuais e busca binária",
+        "url": "https://github.com/msfidelis/msc-shard-router"
       },
       {
         "kind": "repo",
         "source": "msc-shard-router",
         "locator": "pkg/sharding/",
-        "note": "extração da SHARDING_KEY e resolução do shard de destino"
+        "note": "extração da SHARDING_KEY e resolução do shard de destino",
+        "url": "https://github.com/msfidelis/msc-shard-router"
       },
       {
         "kind": "repo",
         "source": "msc-shard-router",
         "locator": "main.go",
-        "note": "proxy HTTP, circuit breaker e métricas Prometheus"
+        "note": "proxy HTTP, circuit breaker e métricas Prometheus",
+        "url": "https://github.com/msfidelis/msc-shard-router"
       },
       {
         "kind": "reference",
         "source": "microservices.io",
-        "locator": "patterns/cell-based-architecture.html"
+        "locator": "patterns/cell-based-architecture.html",
+        "url": "https://microservices.io/patterns/index.html"
       }
     ]
   },
@@ -162,19 +166,22 @@
         "kind": "repo",
         "source": "msc-transactions-api",
         "locator": "services/",
-        "note": "regras de negócio de saldo/limite e fronteira transacional"
+        "note": "regras de negócio de saldo/limite e fronteira transacional",
+        "url": "https://github.com/msfidelis/msc-transactions-api"
       },
       {
         "kind": "repo",
         "source": "msc-transactions-api",
         "locator": "entities/",
-        "note": "modelos de domínio de cliente, saldo e transação"
+        "note": "modelos de domínio de cliente, saldo e transação",
+        "url": "https://github.com/msfidelis/msc-transactions-api"
       },
       {
         "kind": "repo",
         "source": "msc-transactions-api",
         "locator": "routes/",
-        "note": "endpoints de débito/crédito e validação de DTO"
+        "note": "endpoints de débito/crédito e validação de DTO",
+        "url": "https://github.com/msfidelis/msc-transactions-api"
       },
       {
         "kind": "pdf",
@@ -250,13 +257,15 @@
         "kind": "repo",
         "source": "event-source-distributed-ledger",
         "locator": "ledger/main.go",
-        "note": "consumo de comando, transação SQL, versão e publicação pós-commit"
+        "note": "consumo de comando, transação SQL, versão e publicação pós-commit",
+        "url": "https://github.com/msfidelis/event-source-distributed-ledger"
       },
       {
         "kind": "repo",
         "source": "event-source-distributed-ledger",
         "locator": "database/migrations/",
-        "note": "tabela events append-only com UNIQUE(aggregate_id, version)"
+        "note": "tabela events append-only com UNIQUE(aggregate_id, version)",
+        "url": "https://github.com/msfidelis/event-source-distributed-ledger"
       },
       {
         "kind": "pdf",
@@ -329,13 +338,15 @@
         "kind": "repo",
         "source": "event-source-distributed-ledger",
         "locator": "balance/consumer.go",
-        "note": "atualização de saldo no ScyllaDB com LWT por versão"
+        "note": "atualização de saldo no ScyllaDB com LWT por versão",
+        "url": "https://github.com/msfidelis/event-source-distributed-ledger"
       },
       {
         "kind": "repo",
         "source": "event-source-distributed-ledger",
         "locator": "statement/consumer.go",
-        "note": "inserção idempotente de extrato no MongoDB (ignora erro 11000)"
+        "note": "inserção idempotente de extrato no MongoDB (ignora erro 11000)",
+        "url": "https://github.com/msfidelis/event-source-distributed-ledger"
       },
       {
         "kind": "pdf",
@@ -346,7 +357,8 @@
       {
         "kind": "reference",
         "source": "microservices.io",
-        "locator": "patterns/data/cqrs.html"
+        "locator": "patterns/data/cqrs.html",
+        "url": "https://microservices.io/patterns/data/cqrs.html"
       }
     ]
   },
@@ -414,13 +426,15 @@
         "kind": "repo",
         "source": "event-source-distributed-ledger",
         "locator": "ledger/main.go",
-        "note": "consumo de conta_criada e gravação do primeiro evento do agregado"
+        "note": "consumo de conta_criada e gravação do primeiro evento do agregado",
+        "url": "https://github.com/msfidelis/event-source-distributed-ledger"
       },
       {
         "kind": "repo",
         "source": "event-source-distributed-ledger",
         "locator": "balance/consumer.go",
-        "note": "criação idempotente do saldo no ScyllaDB"
+        "note": "criação idempotente do saldo no ScyllaDB",
+        "url": "https://github.com/msfidelis/event-source-distributed-ledger"
       },
       {
         "kind": "pdf",
@@ -495,19 +509,22 @@
         "kind": "repo",
         "source": "event-source-distributed-ledger",
         "locator": "ledger/main.go",
-        "note": "validação de saldo, evento versionado e publicação pós-commit"
+        "note": "validação de saldo, evento versionado e publicação pós-commit",
+        "url": "https://github.com/msfidelis/event-source-distributed-ledger"
       },
       {
         "kind": "repo",
         "source": "event-source-distributed-ledger",
         "locator": "balance/consumer.go",
-        "note": "LWT por versão no ScyllaDB (UPDATE ... IF version < ?)"
+        "note": "LWT por versão no ScyllaDB (UPDATE ... IF version < ?)",
+        "url": "https://github.com/msfidelis/event-source-distributed-ledger"
       },
       {
         "kind": "repo",
         "source": "event-source-distributed-ledger",
         "locator": "statement/consumer.go",
-        "note": "idempotência por movimentacao_id no MongoDB"
+        "note": "idempotência por movimentacao_id no MongoDB",
+        "url": "https://github.com/msfidelis/event-source-distributed-ledger"
       },
       {
         "kind": "pdf",
@@ -575,7 +592,8 @@
         "kind": "reference",
         "source": "knowledge-base.schema.json",
         "locator": "knowledge-base/schema/knowledge-base.schema.json",
-        "note": "o BFF Java desserializa estes arquivos em records; o frontend os renderiza"
+        "note": "o BFF Java desserializa estes arquivos em records; o frontend os renderiza",
+        "url": "https://knowledge-base.schema.json"
       },
       {
         "kind": "pdf",

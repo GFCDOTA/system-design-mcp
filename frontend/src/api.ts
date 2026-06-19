@@ -5,6 +5,7 @@ export interface SourceRef {
   source: string;
   locator: string;
   note?: string | null;
+  url?: string | null;
 }
 
 export interface TradeOff {

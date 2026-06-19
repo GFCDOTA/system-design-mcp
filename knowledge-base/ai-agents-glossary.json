@@ -8,7 +8,12 @@
     "backendAnalogy": "É a unidade de I/O do modelo, como o byte num stream — ele processa tokens, não \"palavras\".",
     "pitfall": "Token não é palavra; \"casa\" e \" casa\" (com espaço) são tokens diferentes, e nº de caracteres ≠ nº de tokens.",
     "sourceRefs": [
-      { "kind": "reference", "source": "Anthropic docs", "locator": "docs.claude.com — glossary/tokens" }
+      {
+        "kind": "reference",
+        "source": "Anthropic docs",
+        "locator": "docs.claude.com — glossary/tokens",
+        "url": "https://docs.claude.com"
+      }
     ]
   },
   {
@@ -20,7 +25,12 @@
     "backendAnalogy": "É o tamanho máximo do payload/buffer de um request — passou do limite, estoura (tipo HTTP 413).",
     "pitfall": "Não é a \"memória\" do modelo; o que cai fora da janela simplesmente some.",
     "sourceRefs": [
-      { "kind": "reference", "source": "Anthropic docs", "locator": "docs.claude.com — context windows" }
+      {
+        "kind": "reference",
+        "source": "Anthropic docs",
+        "locator": "docs.claude.com — context windows",
+        "url": "https://docs.claude.com"
+      }
     ]
   },
   {
@@ -32,7 +42,12 @@
     "backendAnalogy": "É uma função pura `proximo = f(texto)`, como um endpoint stateless: mesma entrada, mesma distribuição, nada guardado entre chamadas.",
     "pitfall": "Ele não \"pensa\", não acessa banco/internet e não guarda estado — só prevê token a partir do texto recebido.",
     "sourceRefs": [
-      { "kind": "reference", "source": "Anthropic docs", "locator": "docs.claude.com — models overview" }
+      {
+        "kind": "reference",
+        "source": "Anthropic docs",
+        "locator": "docs.claude.com — models overview",
+        "url": "https://docs.claude.com"
+      }
     ]
   },
   {
@@ -44,7 +59,12 @@
     "backendAnalogy": "É o request body que você POSTa pro endpoint do modelo.",
     "pitfall": "Não é config salva; ele é remontado e reenviado a cada chamada — nada persiste sozinho.",
     "sourceRefs": [
-      { "kind": "reference", "source": "Anthropic docs", "locator": "docs.claude.com — prompt engineering" }
+      {
+        "kind": "reference",
+        "source": "Anthropic docs",
+        "locator": "docs.claude.com — prompt engineering",
+        "url": "https://docs.claude.com"
+      }
     ]
   },
   {
@@ -56,7 +76,12 @@
     "backendAnalogy": "É o middleware / variável de ambiente global — vale pra requisição inteira e define o comportamento padrão.",
     "pitfall": "Não é lei inviolável nem cofre de segredo; é texto de alta prioridade, mas ainda é só texto no mesmo prompt.",
     "sourceRefs": [
-      { "kind": "reference", "source": "Anthropic docs", "locator": "docs.claude.com — system prompts" }
+      {
+        "kind": "reference",
+        "source": "Anthropic docs",
+        "locator": "docs.claude.com — system prompts",
+        "url": "https://docs.claude.com"
+      }
     ]
   },
   {
@@ -68,7 +93,12 @@
     "backendAnalogy": "O LLM é o cliente que monta a chamada (o JSON do request); o harness é o servidor que executa a função e devolve a response.",
     "pitfall": "O modelo não executa nada — só PEDE; se o harness não rodar e devolver, não acontece nada.",
     "sourceRefs": [
-      { "kind": "reference", "source": "Anthropic docs", "locator": "docs.claude.com — tool use" }
+      {
+        "kind": "reference",
+        "source": "Anthropic docs",
+        "locator": "docs.claude.com — tool use",
+        "url": "https://docs.claude.com"
+      }
     ]
   },
   {
@@ -80,7 +110,13 @@
     "backendAnalogy": "É o application server (Tomcat/Spring) em volta do seu método: gerencia ciclo de vida, injeta dependência, faz o I/O; o LLM é só o método stateless.",
     "pitfall": "Não confunda harness com modelo — trocar de LLM mantém o mesmo harness, e boa parte da \"inteligência prática\" (tools, loop, memória) está no harness.",
     "sourceRefs": [
-      { "kind": "reference", "source": "Anthropic Engineering — Building Effective Agents", "locator": "anthropic.com/engineering/building-effective-agents", "note": "2024" }
+      {
+        "kind": "reference",
+        "source": "Anthropic Engineering — Building Effective Agents",
+        "locator": "anthropic.com/engineering/building-effective-agents",
+        "note": "2024",
+        "url": "https://anthropic.com/engineering/building-effective-agents"
+      }
     ]
   },
   {
@@ -92,7 +128,13 @@
     "backendAnalogy": "É um worker consumindo de uma fila num while-loop — processa, decide, age de novo; só que a decisão de cada volta vem do LLM.",
     "pitfall": "Agent não é um modelo \"mais esperto\"; é o mesmo LLM stateless que o harness pôs num loop com ferramentas e meta.",
     "sourceRefs": [
-      { "kind": "reference", "source": "Anthropic Engineering — Building Effective Agents", "locator": "anthropic.com/engineering/building-effective-agents", "note": "2024" }
+      {
+        "kind": "reference",
+        "source": "Anthropic Engineering — Building Effective Agents",
+        "locator": "anthropic.com/engineering/building-effective-agents",
+        "note": "2024",
+        "url": "https://anthropic.com/engineering/building-effective-agents"
+      }
     ]
   },
   {
@@ -104,7 +146,12 @@
     "backendAnalogy": "É o \"OpenAPI/JDBC dos agentes\" — um contrato/driver padronizado pra plugar fontes de tool sem código sob medida pra cada uma.",
     "pitfall": "MCP não dá inteligência ao modelo; é só o encanamento (contrato + transporte) entre harness e ferramentas.",
     "sourceRefs": [
-      { "kind": "reference", "source": "Model Context Protocol", "locator": "modelcontextprotocol.io — spec" }
+      {
+        "kind": "reference",
+        "source": "Model Context Protocol",
+        "locator": "modelcontextprotocol.io — spec",
+        "url": "https://modelcontextprotocol.io"
+      }
     ]
   },
   {
@@ -116,7 +163,13 @@
     "backendAnalogy": "É um cache-aside / lookup no banco antes de montar a response — consulta o índice, pega os registros certos, injeta no contexto.",
     "pitfall": "RAG não \"ensina\" o modelo nem muda os pesos; só enriquece o prompt daquela chamada — saiu da janela, sumiu.",
     "sourceRefs": [
-      { "kind": "reference", "source": "Anthropic — Contextual Retrieval", "locator": "anthropic.com/news/contextual-retrieval", "note": "2024" }
+      {
+        "kind": "reference",
+        "source": "Anthropic — Contextual Retrieval",
+        "locator": "anthropic.com/news/contextual-retrieval",
+        "note": "2024",
+        "url": "https://anthropic.com/news/contextual-retrieval"
+      }
     ]
   },
   {
@@ -128,7 +181,12 @@
     "backendAnalogy": "Fine-tuning é recompilar/migrar schema (muda o artefato); RAG é uma query em runtime que traz dado fresco sem tocar no código.",
     "pitfall": "Contraste: fato que muda toda hora → RAG (fácil de atualizar e citar); jeito/estilo fixo de responder → fine-tuning (caro e lento de atualizar).",
     "sourceRefs": [
-      { "kind": "reference", "source": "Anthropic docs", "locator": "docs.claude.com — fine-tuning vs context (RAG)" }
+      {
+        "kind": "reference",
+        "source": "Anthropic docs",
+        "locator": "docs.claude.com — fine-tuning vs context (RAG)",
+        "url": "https://docs.claude.com"
+      }
     ]
   },
   {
@@ -140,7 +198,13 @@
     "backendAnalogy": "É o \"API-first\" — definir o contrato/OpenAPI e o critério de pronto antes de mandar implementar.",
     "pitfall": "Não é doc escrita depois; a spec vem ANTES e dirige o agente — sem ela, ele preenche as lacunas do jeito dele.",
     "sourceRefs": [
-      { "kind": "reference", "source": "Spec-Driven Development (prática)", "locator": "github.com/github/spec-kit", "note": "conceito; citado em nível de prática, não ancorado por página" }
+      {
+        "kind": "reference",
+        "source": "Spec-Driven Development (prática)",
+        "locator": "github.com/github/spec-kit",
+        "note": "conceito; citado em nível de prática, não ancorado por página",
+        "url": "https://github.com/github/spec-kit"
+      }
     ]
   },
   {
@@ -152,7 +216,12 @@
     "backendAnalogy": "É a suíte de testes automatizados / CI do mundo de IA — casos de entrada, asserção na saída, métrica de aprovação.",
     "pitfall": "\"Funcionou uma vez\" não é eval; sem um conjunto repetível de casos e métrica, você está testando na vibe, não medindo.",
     "sourceRefs": [
-      { "kind": "reference", "source": "Anthropic docs", "locator": "docs.claude.com — evaluate & test" }
+      {
+        "kind": "reference",
+        "source": "Anthropic docs",
+        "locator": "docs.claude.com — evaluate & test",
+        "url": "https://docs.claude.com"
+      }
     ]
   }
 ]

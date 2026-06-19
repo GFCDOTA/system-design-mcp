@@ -19,7 +19,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 /** Pure unit test of the use cases with an in-memory fake port — no Spring, no files. */
 class KnowledgeServiceTest {
 
-    private static final SourceRef SRC = new SourceRef("pdf", "System Design Workbook", "p.420", null);
+    private static final SourceRef SRC = new SourceRef("pdf", "System Design Workbook", "p.420", null, null);
 
     private final KnowledgeBasePort fakePort = new KnowledgeBasePort() {
         @Override

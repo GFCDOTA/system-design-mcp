@@ -67,7 +67,8 @@
         "kind": "repo",
         "source": "event-source-distributed-ledger",
         "locator": "ledger/main.go",
-        "note": "Event Store Postgres + publicação pós-commit no Kafka"
+        "note": "Event Store Postgres + publicação pós-commit no Kafka",
+        "url": "https://github.com/msfidelis/event-source-distributed-ledger"
       }
     ]
   },
@@ -130,12 +131,14 @@
         "kind": "repo",
         "source": "event-source-distributed-ledger",
         "locator": "statement/consumer.go",
-        "note": "Mongo ignora duplicate-key 11000; Scylla UPDATE ... IF version < ?"
+        "note": "Mongo ignora duplicate-key 11000; Scylla UPDATE ... IF version < ?",
+        "url": "https://github.com/msfidelis/event-source-distributed-ledger"
       },
       {
         "kind": "reference",
         "source": "microservices.io",
-        "locator": "patterns/communication-style/idempotent-consumer.html"
+        "locator": "patterns/communication-style/idempotent-consumer.html",
+        "url": "https://microservices.io/patterns/communication-style/idempotent-consumer.html"
       }
     ]
   },
@@ -199,7 +202,8 @@
         "kind": "repo",
         "source": "event-source-distributed-ledger",
         "locator": "balance/consumer.go",
-        "note": "Scylla LWT UPDATE ... IF version < ? aplica só versões maiores"
+        "note": "Scylla LWT UPDATE ... IF version < ? aplica só versões maiores",
+        "url": "https://github.com/msfidelis/event-source-distributed-ledger"
       }
     ]
   },
@@ -273,7 +277,8 @@
       {
         "kind": "reference",
         "source": "microservices.io",
-        "locator": "patterns/data/event-sourcing.html"
+        "locator": "patterns/data/event-sourcing.html",
+        "url": "https://microservices.io/patterns/data/event-sourcing.html"
       }
     ]
   },
@@ -341,7 +346,8 @@
         "kind": "repo",
         "source": "msc-transactions-api",
         "locator": "services/",
-        "note": "débito/crédito transacional ACID sem Event Sourcing como contraponto"
+        "note": "débito/crédito transacional ACID sem Event Sourcing como contraponto",
+        "url": "https://github.com/msfidelis/msc-transactions-api"
       }
     ]
   },
@@ -418,7 +424,8 @@
       {
         "kind": "reference",
         "source": "microservices.io",
-        "locator": "patterns/data/cqrs.html"
+        "locator": "patterns/data/cqrs.html",
+        "url": "https://microservices.io/patterns/data/cqrs.html"
       }
     ]
   },
@@ -490,12 +497,14 @@
         "kind": "repo",
         "source": "event-source-distributed-ledger",
         "locator": "ledger/main.go",
-        "note": "publicação no Kafka pós-commit do Event Store evita dual-write"
+        "note": "publicação no Kafka pós-commit do Event Store evita dual-write",
+        "url": "https://github.com/msfidelis/event-source-distributed-ledger"
       },
       {
         "kind": "reference",
         "source": "microservices.io",
-        "locator": "patterns/data/transactional-outbox.html"
+        "locator": "patterns/data/transactional-outbox.html",
+        "url": "https://microservices.io/patterns/data/transactional-outbox.html"
       }
     ]
   },
@@ -558,7 +567,8 @@
       {
         "kind": "reference",
         "source": "microservices.io",
-        "locator": "patterns/data/transactional-outbox.html"
+        "locator": "patterns/data/transactional-outbox.html",
+        "url": "https://microservices.io/patterns/data/transactional-outbox.html"
       }
     ]
   },
@@ -626,7 +636,8 @@
         "kind": "repo",
         "source": "msc-shard-router",
         "locator": "pkg/sharding/",
-        "note": "roteamento por hash da sharding key id_client; descoberta dinâmica de shards"
+        "note": "roteamento por hash da sharding key id_client; descoberta dinâmica de shards",
+        "url": "https://github.com/msfidelis/msc-shard-router"
       }
     ]
   },
@@ -694,12 +705,14 @@
         "kind": "repo",
         "source": "msc-shard-router",
         "locator": "pkg/hashring/",
-        "note": "ConsistentHashRing com réplicas virtuais e sort.Search O(log n)"
+        "note": "ConsistentHashRing com réplicas virtuais e sort.Search O(log n)",
+        "url": "https://github.com/msfidelis/msc-shard-router"
       },
       {
         "kind": "reference",
         "source": "microservices.io",
-        "locator": "patterns/index.html"
+        "locator": "patterns/index.html",
+        "url": "https://microservices.io/patterns/index.html"
       }
     ]
   },
@@ -769,12 +782,14 @@
         "kind": "repo",
         "source": "msc-shard-router",
         "locator": "pkg/sharding/",
-        "note": "shards isolados + circuit breaker por shard contendo cascata de falhas"
+        "note": "shards isolados + circuit breaker por shard contendo cascata de falhas",
+        "url": "https://github.com/msfidelis/msc-shard-router"
       },
       {
         "kind": "reference",
         "source": "microservices.io",
-        "locator": "patterns/reliability/circuit-breaker.html"
+        "locator": "patterns/reliability/circuit-breaker.html",
+        "url": "https://microservices.io/patterns/reliability/circuit-breaker.html"
       }
     ]
   },
@@ -845,7 +860,8 @@
         "kind": "repo",
         "source": "event-source-distributed-ledger",
         "locator": "balance/consumer.go",
-        "note": "saldo em ScyllaDB com LWT; extrato em MongoDB com movimentacao_id único (statement/consumer.go)"
+        "note": "saldo em ScyllaDB com LWT; extrato em MongoDB com movimentacao_id único (statement/consumer.go)",
+        "url": "https://github.com/msfidelis/event-source-distributed-ledger"
       }
     ]
   },
@@ -916,7 +932,8 @@
         "kind": "repo",
         "source": "event-source-distributed-ledger",
         "locator": "docker-compose.yml",
-        "note": "Postgres (Event Store) + ScyllaDB (saldo) + MongoDB (extrato) por papel"
+        "note": "Postgres (Event Store) + ScyllaDB (saldo) + MongoDB (extrato) por papel",
+        "url": "https://github.com/msfidelis/event-source-distributed-ledger"
       }
     ]
   },
@@ -993,7 +1010,8 @@
         "kind": "repo",
         "source": "msc-shard-router",
         "locator": "main.go",
-        "note": "métricas Prometheus por shard + /healthz (application metrics + health check API)"
+        "note": "métricas Prometheus por shard + /healthz (application metrics + health check API)",
+        "url": "https://github.com/msfidelis/msc-shard-router"
       }
     ]
   },
@@ -1070,7 +1088,8 @@
       {
         "kind": "reference",
         "source": "microservices.io",
-        "locator": "patterns/communication-style/idempotent-consumer.html"
+        "locator": "patterns/communication-style/idempotent-consumer.html",
+        "url": "https://microservices.io/patterns/communication-style/idempotent-consumer.html"
       }
     ]
   },
@@ -1136,12 +1155,14 @@
         "kind": "repo",
         "source": "event-source-distributed-ledger",
         "locator": "balance/ (ScyllaDB) + statement/ (MongoDB)",
-        "note": "read models async; Postgres é fonte da verdade"
+        "note": "read models async; Postgres é fonte da verdade",
+        "url": "https://github.com/msfidelis/event-source-distributed-ledger"
       },
       {
         "kind": "reference",
         "source": "microservices.io",
-        "locator": "patterns/data/cqrs.html"
+        "locator": "patterns/data/cqrs.html",
+        "url": "https://microservices.io/patterns/data/cqrs.html"
       }
     ]
   },
@@ -1218,7 +1239,8 @@
       {
         "kind": "reference",
         "source": "microservices.io",
-        "locator": "patterns/apigateway/api-composition.html"
+        "locator": "patterns/apigateway/api-composition.html",
+        "url": "https://microservices.io/patterns/index.html"
       }
     ]
   },
@@ -1284,17 +1306,20 @@
       {
         "kind": "repo",
         "source": "msc-transactions-api",
-        "locator": "services/ (balance/limit) + idempotency support; ENV=shadow"
+        "locator": "services/ (balance/limit) + idempotency support; ENV=shadow",
+        "url": "https://github.com/msfidelis/msc-transactions-api"
       },
       {
         "kind": "repo",
         "source": "event-source-distributed-ledger",
-        "locator": "envoy/ (rate limit) + kong/ (gateway); movimentacao_id único"
+        "locator": "envoy/ (rate limit) + kong/ (gateway); movimentacao_id único",
+        "url": "https://github.com/msfidelis/event-source-distributed-ledger"
       },
       {
         "kind": "reference",
         "source": "microservices.io",
-        "locator": "patterns/communication-style/idempotent-consumer.html"
+        "locator": "patterns/communication-style/idempotent-consumer.html",
+        "url": "https://microservices.io/patterns/communication-style/idempotent-consumer.html"
       }
     ]
   },
@@ -1361,12 +1386,14 @@
       {
         "kind": "repo",
         "source": "event-source-distributed-ledger",
-        "locator": "events table: append-only, UNIQUE(aggregate_id, version)"
+        "locator": "events table: append-only, UNIQUE(aggregate_id, version)",
+        "url": "https://github.com/msfidelis/event-source-distributed-ledger"
       },
       {
         "kind": "reference",
         "source": "microservices.io",
-        "locator": "patterns/observability/audit-logging.html"
+        "locator": "patterns/observability/audit-logging.html",
+        "url": "https://microservices.io/patterns/observability/audit-logging.html"
       }
     ]
   },
@@ -1450,7 +1477,8 @@
       {
         "kind": "reference",
         "source": "microservices.io",
-        "locator": "patterns/data/saga.html"
+        "locator": "patterns/data/saga.html",
+        "url": "https://microservices.io/patterns/data/saga.html"
       }
     ]
   },
@@ -1516,12 +1544,14 @@
       {
         "kind": "repo",
         "source": "event-source-distributed-ledger",
-        "locator": "UNIQUE(aggregate_id, version); Scylla LWT UPDATE ... IF version < ?"
+        "locator": "UNIQUE(aggregate_id, version); Scylla LWT UPDATE ... IF version < ?",
+        "url": "https://github.com/msfidelis/event-source-distributed-ledger"
       },
       {
         "kind": "reference",
         "source": "microservices.io",
-        "locator": "patterns/data/event-sourcing.html"
+        "locator": "patterns/data/event-sourcing.html",
+        "url": "https://microservices.io/patterns/data/event-sourcing.html"
       }
     ]
   },
@@ -1593,12 +1623,14 @@
       {
         "kind": "repo",
         "source": "event-source-distributed-ledger",
-        "locator": "balance/consumer.go + statement/consumer.go (replay/projeção)"
+        "locator": "balance/consumer.go + statement/consumer.go (replay/projeção)",
+        "url": "https://github.com/msfidelis/event-source-distributed-ledger"
       },
       {
         "kind": "reference",
         "source": "microservices.io",
-        "locator": "patterns/data/cqrs.html"
+        "locator": "patterns/data/cqrs.html",
+        "url": "https://microservices.io/patterns/data/cqrs.html"
       }
     ]
   },
@@ -1670,12 +1702,14 @@
       {
         "kind": "repo",
         "source": "event-source-distributed-ledger",
-        "locator": "Mongo ignora dup key 11000; Scylla LWT; Postgres UNIQUE(aggregate_id, version)"
+        "locator": "Mongo ignora dup key 11000; Scylla LWT; Postgres UNIQUE(aggregate_id, version)",
+        "url": "https://github.com/msfidelis/event-source-distributed-ledger"
       },
       {
         "kind": "reference",
         "source": "microservices.io",
-        "locator": "patterns/communication-style/idempotent-consumer.html"
+        "locator": "patterns/communication-style/idempotent-consumer.html",
+        "url": "https://microservices.io/patterns/communication-style/idempotent-consumer.html"
       }
     ]
   },
@@ -1751,12 +1785,14 @@
       {
         "kind": "repo",
         "source": "msc-shard-router",
-        "locator": "pkg/hashring/ + pkg/sharding/ (consistent hashing, células)"
+        "locator": "pkg/hashring/ + pkg/sharding/ (consistent hashing, células)",
+        "url": "https://github.com/msfidelis/msc-shard-router"
       },
       {
         "kind": "reference",
         "source": "microservices.io",
-        "locator": "patterns/data/cqrs.html"
+        "locator": "patterns/data/cqrs.html",
+        "url": "https://microservices.io/patterns/data/cqrs.html"
       }
     ]
   },
@@ -1976,12 +2012,14 @@
       {
         "kind": "repo",
         "source": "msc-shard-router",
-        "locator": "pkg/hashring/ (SHA-512, virtual replicas, O(log n)) + SHARDING_KEY=id_client"
+        "locator": "pkg/hashring/ (SHA-512, virtual replicas, O(log n)) + SHARDING_KEY=id_client",
+        "url": "https://github.com/msfidelis/msc-shard-router"
       },
       {
         "kind": "reference",
         "source": "microservices.io",
-        "locator": "patterns/data/database-per-service.html"
+        "locator": "patterns/data/database-per-service.html",
+        "url": "https://microservices.io/patterns/data/database-per-service.html"
       }
     ]
   },
@@ -2138,7 +2176,8 @@
       {
         "kind": "repo",
         "source": "msc-shard-router",
-        "locator": "main_test.go (~87% cobertura) + docker-compose.yml"
+        "locator": "main_test.go (~87% cobertura) + docker-compose.yml",
+        "url": "https://github.com/msfidelis/msc-shard-router"
       }
     ]
   },

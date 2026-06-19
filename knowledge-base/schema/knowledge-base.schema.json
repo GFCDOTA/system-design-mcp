@@ -13,7 +13,8 @@
         "kind": { "enum": ["pdf", "repo", "reference"], "description": "pdf=workbook; repo=one of the 3 GitHub repos; reference=microservices.io" },
         "source": { "type": "string", "description": "e.g. 'System Design Workbook', 'msc-shard-router', 'event-source-distributed-ledger', 'microservices.io'" },
         "locator": { "type": "string", "description": "pdf: 'p.420'; repo: 'pkg/hashring/'; reference: 'patterns/data/cqrs.html'" },
-        "note": { "type": "string", "description": "optional short quote or clarification" }
+        "note": { "type": "string", "description": "optional short quote or clarification" },
+        "url": { "type": ["string", "null"], "description": "optional clickable URL, curl-verified to resolve; absent/null for sources with no public link (e.g. the PDF)" }
       }
     },
     "TradeOff": {

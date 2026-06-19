@@ -17,7 +17,8 @@
         "kind": "repo",
         "source": "msc-shard-router",
         "locator": "pkg/hashring/",
-        "note": "anel SHA-512 + réplicas virtuais + busca binária O(log n)"
+        "note": "anel SHA-512 + réplicas virtuais + busca binária O(log n)",
+        "url": "https://github.com/msfidelis/msc-shard-router"
       },
       {
         "kind": "pdf",
@@ -47,7 +48,8 @@
         "kind": "repo",
         "source": "event-source-distributed-ledger",
         "locator": "ledger/main.go",
-        "note": "publish pós-commit das confirmações"
+        "note": "publish pós-commit das confirmações",
+        "url": "https://github.com/msfidelis/event-source-distributed-ledger"
       },
       {
         "kind": "pdf",
@@ -75,7 +77,8 @@
         "kind": "repo",
         "source": "event-source-distributed-ledger",
         "locator": "statement/consumer.go",
-        "note": "Mongo ignora duplicate-key 11000 por movimentacao_id"
+        "note": "Mongo ignora duplicate-key 11000 por movimentacao_id",
+        "url": "https://github.com/msfidelis/event-source-distributed-ledger"
       },
       {
         "kind": "pdf",
@@ -103,7 +106,8 @@
         "kind": "repo",
         "source": "event-source-distributed-ledger",
         "locator": "balance/consumer.go",
-        "note": "Scylla LWT: UPDATE ... IF version < ?"
+        "note": "Scylla LWT: UPDATE ... IF version < ?",
+        "url": "https://github.com/msfidelis/event-source-distributed-ledger"
       },
       {
         "kind": "pdf",
@@ -143,7 +147,8 @@
       {
         "kind": "reference",
         "source": "microservices.io",
-        "locator": "patterns/data/saga.html"
+        "locator": "patterns/data/saga.html",
+        "url": "https://microservices.io/patterns/data/saga.html"
       }
     ]
   },
@@ -173,7 +178,8 @@
         "kind": "repo",
         "source": "event-source-distributed-ledger",
         "locator": "balance/, statement/",
-        "note": "read models separados (Scylla saldo, Mongo extrato)"
+        "note": "read models separados (Scylla saldo, Mongo extrato)",
+        "url": "https://github.com/msfidelis/event-source-distributed-ledger"
       }
     ]
   },
@@ -208,7 +214,8 @@
         "kind": "repo",
         "source": "event-source-distributed-ledger",
         "locator": "database/migrations/",
-        "note": "tabela events append-only (UNIQUE aggregate_id, version)"
+        "note": "tabela events append-only (UNIQUE aggregate_id, version)",
+        "url": "https://github.com/msfidelis/event-source-distributed-ledger"
       }
     ]
   },
@@ -242,7 +249,8 @@
       {
         "kind": "reference",
         "source": "microservices.io",
-        "locator": "patterns/apigateway/api-composition.html"
+        "locator": "patterns/apigateway/api-composition.html",
+        "url": "https://microservices.io/patterns/index.html"
       }
     ]
   },
@@ -265,7 +273,8 @@
         "kind": "repo",
         "source": "msc-shard-router",
         "locator": "main.go",
-        "note": "CB_FAILURE_THRESHOLD / CB_OPEN_TIMEOUT_SEC / CB_HALF_OPEN_SUCCESS_THRESHOLD"
+        "note": "CB_FAILURE_THRESHOLD / CB_OPEN_TIMEOUT_SEC / CB_HALF_OPEN_SUCCESS_THRESHOLD",
+        "url": "https://github.com/msfidelis/msc-shard-router"
       },
       {
         "kind": "pdf",
@@ -299,7 +308,8 @@
         "kind": "repo",
         "source": "msc-shard-router",
         "locator": "pkg/hashring/",
-        "note": "réplicas virtuais diluem hotspots"
+        "note": "réplicas virtuais diluem hotspots",
+        "url": "https://github.com/msfidelis/msc-shard-router"
       }
     ]
   },
@@ -321,7 +331,8 @@
         "kind": "repo",
         "source": "msc-transactions-api",
         "locator": "services/",
-        "note": "validação de saldo/limite na transação + rollback"
+        "note": "validação de saldo/limite na transação + rollback",
+        "url": "https://github.com/msfidelis/msc-transactions-api"
       },
       {
         "kind": "pdf",
@@ -362,7 +373,8 @@
         "kind": "repo",
         "source": "msc-shard-router",
         "locator": "/metrics",
-        "note": "shard_router_requests_total / responses_total (Prometheus)"
+        "note": "shard_router_requests_total / responses_total (Prometheus)",
+        "url": "https://github.com/msfidelis/msc-shard-router"
       }
     ]
   },
@@ -390,7 +402,8 @@
         "kind": "repo",
         "source": "msc-shard-router",
         "locator": "pkg/sharding/",
-        "note": "isolamento por shard contém falha (bulkhead)"
+        "note": "isolamento por shard contém falha (bulkhead)",
+        "url": "https://github.com/msfidelis/msc-shard-router"
       }
     ]
   },
@@ -425,7 +438,8 @@
         "kind": "repo",
         "source": "msc-shard-router",
         "locator": "main.go",
-        "note": "roteador da pesquisa de arquitetura celular"
+        "note": "roteador da pesquisa de arquitetura celular",
+        "url": "https://github.com/msfidelis/msc-shard-router"
       }
     ]
   },
@@ -642,7 +656,8 @@
         "kind": "repo",
         "source": "event-source-distributed-ledger",
         "locator": "ledger/main.go",
-        "note": "evento + read models transacionais commitam juntos; publish é pós-commit"
+        "note": "evento + read models transacionais commitam juntos; publish é pós-commit",
+        "url": "https://github.com/msfidelis/event-source-distributed-ledger"
       },
       {
         "kind": "pdf",
@@ -672,13 +687,15 @@
         "kind": "repo",
         "source": "msc-transactions-api",
         "locator": "services/",
-        "note": "consistência forte: valida saldo/limite na transação"
+        "note": "consistência forte: valida saldo/limite na transação",
+        "url": "https://github.com/msfidelis/msc-transactions-api"
       },
       {
         "kind": "repo",
         "source": "event-source-distributed-ledger",
         "locator": "README",
-        "note": "consistência eventual: Postgres source of truth, read models async"
+        "note": "consistência eventual: Postgres source of truth, read models async",
+        "url": "https://github.com/msfidelis/event-source-distributed-ledger"
       },
       {
         "kind": "pdf",
@@ -707,7 +724,8 @@
         "kind": "repo",
         "source": "event-source-distributed-ledger",
         "locator": "database/migrations/",
-        "note": "events append-only, UNIQUE(aggregate_id, version)"
+        "note": "events append-only, UNIQUE(aggregate_id, version)",
+        "url": "https://github.com/msfidelis/event-source-distributed-ledger"
       },
       {
         "kind": "pdf",
