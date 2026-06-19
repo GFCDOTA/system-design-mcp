@@ -78,10 +78,13 @@ npm install
 npm run dev                     # sobe em http://localhost:5173 (proxy /api -> :8080)
 ```
 
-### 3. Tudo junto com Docker
+### 3. Tudo junto com Docker (caminho mais à prova de bala)
 ```bash
-docker compose up --build       # frontend em :5173, bff em :8080
+docker compose up --build       # abra http://localhost:5173 ; API direta em :18080
 ```
+> No Docker o BFF não precisa do workaround AF_UNIX (é Linux). A UI fica em `:5173`
+> (o nginx faz proxy de `/api` para o bff internamente); a API também é exposta em
+> `:18080` para `curl`. (Host 8080 costuma estar ocupado nesta máquina por outra stack.)
 
 ### Atalhos
 ```bash

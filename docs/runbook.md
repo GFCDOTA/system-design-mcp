@@ -79,9 +79,12 @@ cd frontend && npm run build        # gera frontend/dist/ (estático)
 
 ```bash
 docker compose up --build
-# frontend (nginx) em :5173, bff em :8080
+# UI (nginx) em http://localhost:5173 ; API direta em :18080 (o nginx faz proxy de /api -> bff)
 docker compose down
 ```
+No container Linux o BFF sobe sem o workaround AF_UNIX. O host 8080 costuma estar
+ocupado nesta máquina por outra stack Docker, então o BFF é publicado em **18080**
+(porta interna continua 8080; só muda o mapeamento de host).
 
 ## Regenerar a base de conhecimento
 
