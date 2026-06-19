@@ -9,6 +9,7 @@ const NAV: { to: string; label: string }[] = [
   { to: "/interview", label: "Modo Entrevista" },
   { to: "/compare", label: "Comparar" },
   { to: "/evidence", label: "Evidências" },
+  { to: "/ai-agents", label: "IA & Agentes" },
 ];
 
 export function Layout() {

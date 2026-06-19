@@ -1,0 +1,158 @@
+[
+  {
+    "id": "token",
+    "term": "token",
+    "framing": null,
+    "kind": "term",
+    "definition": "Menor pedaço de texto que o modelo lê e gera — aproximadamente um pedaço de palavra (ex.: \"container\" vira \"cont\"+\"ainer\").",
+    "backendAnalogy": "É a unidade de I/O do modelo, como o byte num stream — ele processa tokens, não \"palavras\".",
+    "pitfall": "Token não é palavra; \"casa\" e \" casa\" (com espaço) são tokens diferentes, e nº de caracteres ≠ nº de tokens.",
+    "sourceRefs": [
+      { "kind": "reference", "source": "Anthropic docs", "locator": "docs.claude.com — glossary/tokens" }
+    ]
+  },
+  {
+    "id": "context-window",
+    "term": "context window",
+    "framing": null,
+    "kind": "term",
+    "definition": "Teto de tokens (entrada + saída) que o modelo consegue considerar numa única chamada.",
+    "backendAnalogy": "É o tamanho máximo do payload/buffer de um request — passou do limite, estoura (tipo HTTP 413).",
+    "pitfall": "Não é a \"memória\" do modelo; o que cai fora da janela simplesmente some.",
+    "sourceRefs": [
+      { "kind": "reference", "source": "Anthropic docs", "locator": "docs.claude.com — context windows" }
+    ]
+  },
+  {
+    "id": "llm",
+    "term": "LLM",
+    "framing": "MOTOR",
+    "kind": "term",
+    "definition": "Motor que, dado um texto, prevê o próximo token mais provável e repete isso token a token; é stateless.",
+    "backendAnalogy": "É uma função pura `proximo = f(texto)`, como um endpoint stateless: mesma entrada, mesma distribuição, nada guardado entre chamadas.",
+    "pitfall": "Ele não \"pensa\", não acessa banco/internet e não guarda estado — só prevê token a partir do texto recebido.",
+    "sourceRefs": [
+      { "kind": "reference", "source": "Anthropic docs", "locator": "docs.claude.com — models overview" }
+    ]
+  },
+  {
+    "id": "prompt",
+    "term": "prompt",
+    "framing": null,
+    "kind": "term",
+    "definition": "Todo o texto de entrada que você manda pro LLM numa chamada (instrução + dados + histórico).",
+    "backendAnalogy": "É o request body que você POSTa pro endpoint do modelo.",
+    "pitfall": "Não é config salva; ele é remontado e reenviado a cada chamada — nada persiste sozinho.",
+    "sourceRefs": [
+      { "kind": "reference", "source": "Anthropic docs", "locator": "docs.claude.com — prompt engineering" }
+    ]
+  },
+  {
+    "id": "system-prompt",
+    "term": "system prompt",
+    "framing": null,
+    "kind": "term",
+    "definition": "Parte especial do prompt que define papel, regras e contexto de fundo, com prioridade sobre o resto.",
+    "backendAnalogy": "É o middleware / variável de ambiente global — vale pra requisição inteira e define o comportamento padrão.",
+    "pitfall": "Não é lei inviolável nem cofre de segredo; é texto de alta prioridade, mas ainda é só texto no mesmo prompt.",
+    "sourceRefs": [
+      { "kind": "reference", "source": "Anthropic docs", "locator": "docs.claude.com — system prompts" }
+    ]
+  },
+  {
+    "id": "tool-calling",
+    "term": "tool / function calling",
+    "framing": "LLM PEDE, harness EXECUTA",
+    "kind": "term",
+    "definition": "Em vez de responder texto, o LLM emite um pedido estruturado (\"chame getSaldo(id=7)\") e quem roda de verdade é o harness, que devolve o resultado pro modelo.",
+    "backendAnalogy": "O LLM é o cliente que monta a chamada (o JSON do request); o harness é o servidor que executa a função e devolve a response.",
+    "pitfall": "O modelo não executa nada — só PEDE; se o harness não rodar e devolver, não acontece nada.",
+    "sourceRefs": [
+      { "kind": "reference", "source": "Anthropic docs", "locator": "docs.claude.com — tool use" }
+    ]
+  },
+  {
+    "id": "harness",
+    "term": "harness",
+    "framing": "CASCA / runtime",
+    "kind": "term",
+    "definition": "Runtime em volta do LLM que dá o que ele não tem sozinho — loop, memória/estado e execução das ferramentas (ex.: Claude Code).",
+    "backendAnalogy": "É o application server (Tomcat/Spring) em volta do seu método: gerencia ciclo de vida, injeta dependência, faz o I/O; o LLM é só o método stateless.",
+    "pitfall": "Não confunda harness com modelo — trocar de LLM mantém o mesmo harness, e boa parte da \"inteligência prática\" (tools, loop, memória) está no harness.",
+    "sourceRefs": [
+      { "kind": "reference", "source": "Anthropic Engineering — Building Effective Agents", "locator": "anthropic.com/engineering/building-effective-agents", "note": "2024" }
+    ]
+  },
+  {
+    "id": "agent",
+    "term": "agent",
+    "framing": "MOTOR em LOOP",
+    "kind": "term",
+    "definition": "O LLM (motor) rodando em loop dentro do harness com um objetivo — pede tool, harness executa, resultado volta, ele decide o próximo passo, até concluir.",
+    "backendAnalogy": "É um worker consumindo de uma fila num while-loop — processa, decide, age de novo; só que a decisão de cada volta vem do LLM.",
+    "pitfall": "Agent não é um modelo \"mais esperto\"; é o mesmo LLM stateless que o harness pôs num loop com ferramentas e meta.",
+    "sourceRefs": [
+      { "kind": "reference", "source": "Anthropic Engineering — Building Effective Agents", "locator": "anthropic.com/engineering/building-effective-agents", "note": "2024" }
+    ]
+  },
+  {
+    "id": "mcp",
+    "term": "MCP (Model Context Protocol)",
+    "framing": null,
+    "kind": "term",
+    "definition": "Protocolo padrão de como o harness descobre e chama ferramentas/dados externos, pra qualquer servidor falar a mesma língua.",
+    "backendAnalogy": "É o \"OpenAPI/JDBC dos agentes\" — um contrato/driver padronizado pra plugar fontes de tool sem código sob medida pra cada uma.",
+    "pitfall": "MCP não dá inteligência ao modelo; é só o encanamento (contrato + transporte) entre harness e ferramentas.",
+    "sourceRefs": [
+      { "kind": "reference", "source": "Model Context Protocol", "locator": "modelcontextprotocol.io — spec" }
+    ]
+  },
+  {
+    "id": "rag",
+    "term": "RAG (Retrieval-Augmented Generation)",
+    "framing": null,
+    "kind": "term",
+    "definition": "Buscar trechos relevantes numa base externa na hora da pergunta e colá-los no prompt pra o LLM responder com base neles.",
+    "backendAnalogy": "É um cache-aside / lookup no banco antes de montar a response — consulta o índice, pega os registros certos, injeta no contexto.",
+    "pitfall": "RAG não \"ensina\" o modelo nem muda os pesos; só enriquece o prompt daquela chamada — saiu da janela, sumiu.",
+    "sourceRefs": [
+      { "kind": "reference", "source": "Anthropic — Contextual Retrieval", "locator": "anthropic.com/news/contextual-retrieval", "note": "2024" }
+    ]
+  },
+  {
+    "id": "fine-tuning-vs-rag",
+    "term": "fine-tuning vs RAG",
+    "framing": null,
+    "kind": "comparison",
+    "definition": "Fine-tuning re-treina o modelo com exemplos pra ajustar os PESOS dele; RAG deixa os pesos intactos e injeta conhecimento no prompt em tempo de consulta.",
+    "backendAnalogy": "Fine-tuning é recompilar/migrar schema (muda o artefato); RAG é uma query em runtime que traz dado fresco sem tocar no código.",
+    "pitfall": "Contraste: fato que muda toda hora → RAG (fácil de atualizar e citar); jeito/estilo fixo de responder → fine-tuning (caro e lento de atualizar).",
+    "sourceRefs": [
+      { "kind": "reference", "source": "Anthropic docs", "locator": "docs.claude.com — fine-tuning vs context (RAG)" }
+    ]
+  },
+  {
+    "id": "sdd",
+    "term": "SDD (Spec-Driven Development)",
+    "framing": null,
+    "kind": "term",
+    "definition": "Escrever primeiro uma especificação clara do que se quer e usá-la como fonte de verdade que guia e valida o que o agente constrói.",
+    "backendAnalogy": "É o \"API-first\" — definir o contrato/OpenAPI e o critério de pronto antes de mandar implementar.",
+    "pitfall": "Não é doc escrita depois; a spec vem ANTES e dirige o agente — sem ela, ele preenche as lacunas do jeito dele.",
+    "sourceRefs": [
+      { "kind": "reference", "source": "Spec-Driven Development (prática)", "locator": "github.com/github/spec-kit", "note": "conceito; citado em nível de prática, não ancorado por página" }
+    ]
+  },
+  {
+    "id": "eval",
+    "term": "eval (avaliação)",
+    "framing": null,
+    "kind": "term",
+    "definition": "Teste sistemático que mede a qualidade das saídas do modelo/agent contra casos com resposta esperada (acertou? citou a fonte? quebrou?).",
+    "backendAnalogy": "É a suíte de testes automatizados / CI do mundo de IA — casos de entrada, asserção na saída, métrica de aprovação.",
+    "pitfall": "\"Funcionou uma vez\" não é eval; sem um conjunto repetível de casos e métrica, você está testando na vibe, não medindo.",
+    "sourceRefs": [
+      { "kind": "reference", "source": "Anthropic docs", "locator": "docs.claude.com — evaluate & test" }
+    ]
+  }
+]

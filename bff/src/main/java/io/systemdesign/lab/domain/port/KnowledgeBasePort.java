@@ -3,6 +3,7 @@ package io.systemdesign.lab.domain.port;
 import io.systemdesign.lab.domain.model.Diagram;
 import io.systemdesign.lab.domain.model.Evidence;
 import io.systemdesign.lab.domain.model.Flow;
+import io.systemdesign.lab.domain.model.GlossaryEntry;
 import io.systemdesign.lab.domain.model.InterviewQuestion;
 import io.systemdesign.lab.domain.model.Pattern;
 import io.systemdesign.lab.domain.model.Topic;
@@ -27,4 +28,7 @@ public interface KnowledgeBasePort {
     List<Diagram> diagrams();
 
     List<Evidence> evidence();
+
+    /** AI &amp; Agents glossary — separate track, sourced to AI references (not the workbook). */
+    List<GlossaryEntry> aiGlossary();
 }

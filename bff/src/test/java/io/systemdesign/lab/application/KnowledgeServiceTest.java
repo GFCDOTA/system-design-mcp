@@ -3,6 +3,7 @@ package io.systemdesign.lab.application;
 import io.systemdesign.lab.domain.model.Diagram;
 import io.systemdesign.lab.domain.model.Evidence;
 import io.systemdesign.lab.domain.model.Flow;
+import io.systemdesign.lab.domain.model.GlossaryEntry;
 import io.systemdesign.lab.domain.model.InterviewQuestion;
 import io.systemdesign.lab.domain.model.Pattern;
 import io.systemdesign.lab.domain.model.SourceRef;
@@ -51,6 +52,11 @@ class KnowledgeServiceTest {
         @Override
         public List<Evidence> evidence() {
             return List.of();
+        }
+
+        @Override
+        public List<GlossaryEntry> aiGlossary() {
+            return List.of(new GlossaryEntry("llm", "LLM", "MOTOR", "term", "prevê token", "função pura", "não pensa", List.of(SRC)));
         }
     };
 

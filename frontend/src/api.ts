@@ -114,6 +114,17 @@ export interface Evidence {
   sourceRefs: SourceRef[];
 }
 
+export interface GlossaryEntry {
+  id: string;
+  term: string;
+  framing?: string | null;
+  kind: "term" | "comparison";
+  definition: string;
+  backendAnalogy: string;
+  pitfall: string;
+  sourceRefs: SourceRef[];
+}
+
 export interface Stats {
   topics: number;
   patterns: number;
@@ -121,6 +132,7 @@ export interface Stats {
   interviewQuestions: number;
   diagrams: number;
   evidence: number;
+  aiGlossary: number;
 }
 
 async function get<T>(path: string): Promise<T> {
@@ -144,4 +156,5 @@ export const api = {
   diagrams: () => get<DiagramSummary[]>("/api/diagrams"),
   diagram: (id: string) => get<Diagram>(`/api/diagrams/${id}`),
   evidence: () => get<Evidence[]>("/api/evidence"),
+  aiGlossary: () => get<GlossaryEntry[]>("/api/ai-glossary"),
 };

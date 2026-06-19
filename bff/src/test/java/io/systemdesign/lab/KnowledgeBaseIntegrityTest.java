@@ -73,6 +73,13 @@ class KnowledgeBaseIntegrityTest {
     }
 
     @Test
+    void aiGlossaryIsPresentAndSourced() {
+        // Separate track: not subject to the workbook-sourcing rule, but every entry still cites a source.
+        assertThat(kb.aiGlossary()).as("ai glossary").isNotEmpty();
+        kb.aiGlossary().forEach(g -> assertHasSource("ai:" + g.id(), g.sourceRefs()));
+    }
+
+    @Test
     void crossReferencesResolve() {
         Set<String> topicIds = kb.topics().stream().map(Topic::id).collect(Collectors.toSet());
         Set<String> patternIds = kb.patterns().stream().map(Pattern::id).collect(Collectors.toSet());

@@ -22,7 +22,7 @@ class ApiContractTest {
     @Test
     void listEndpointsReturn200AndArrays() throws Exception {
         for (String path : new String[]{"/api/topics", "/api/patterns", "/api/flows",
-                "/api/interview/questions", "/api/diagrams", "/api/evidence"}) {
+                "/api/interview/questions", "/api/diagrams", "/api/evidence", "/api/ai-glossary"}) {
             mvc.perform(get(path))
                     .andExpect(status().isOk())
                     .andExpect(content().contentTypeCompatibleWith("application/json"))

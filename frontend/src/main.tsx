@@ -13,6 +13,7 @@ import { Diagrams } from "./pages/Diagrams";
 import { Interview } from "./pages/Interview";
 import { Compare } from "./pages/Compare";
 import { EvidencePage } from "./pages/Evidence";
+import { AiGlossary } from "./pages/AiGlossary";
 import "./styles.css";
 
 const router = createBrowserRouter([
@@ -31,6 +32,7 @@ const router = createBrowserRouter([
       { path: "interview", element: <Interview /> },
       { path: "compare", element: <Compare /> },
       { path: "evidence", element: <EvidencePage /> },
+      { path: "ai-agents", element: <AiGlossary /> },
     ],
   },
 ]);

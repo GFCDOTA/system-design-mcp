@@ -102,6 +102,7 @@ scripts/build.sh                # empacota o jar do BFF + build do frontend
 | `GET /api/interview/questions` · `…/{id}` | perguntas de entrevista |
 | `GET /api/diagrams` · `GET /api/diagrams/{id}` | diagramas Mermaid |
 | `GET /api/evidence` | matriz de evidências |
+| `GET /api/ai-glossary` | glossário IA &amp; Agentes (trilha separada) |
 | `GET /api/meta/stats` | contagens |
 | `GET /actuator/health` · `/actuator/prometheus` | health + métricas Micrometer |
 
@@ -116,7 +117,8 @@ curl localhost:8080/api/patterns/event-sourcing | jq '.sourceRefs'
 
 Início (mapa de tópicos) · Tópicos · Padrões · Fluxos · Diagramas ·
 **Modo Entrevista** (Q&A expansível) · **Comparar** (transacional×event sourcing,
-API Gateway×BFF, forte×eventual) · **Evidências e fontes**.
+API Gateway×BFF, forte×eventual) · **Evidências e fontes** · **IA & Agentes**
+(glossário pra dev backend — trilha separada, sourced a refs de IA).
 
 ## Estrutura
 

@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.systemdesign.lab.domain.model.Diagram;
 import io.systemdesign.lab.domain.model.Evidence;
 import io.systemdesign.lab.domain.model.Flow;
+import io.systemdesign.lab.domain.model.GlossaryEntry;
 import io.systemdesign.lab.domain.model.InterviewQuestion;
 import io.systemdesign.lab.domain.model.Pattern;
 import io.systemdesign.lab.domain.model.Topic;
@@ -49,6 +50,7 @@ public class JsonKnowledgeBaseAdapter implements KnowledgeBasePort {
     private List<InterviewQuestion> interviewQuestions = List.of();
     private List<Diagram> diagrams = List.of();
     private List<Evidence> evidence = List.of();
+    private List<GlossaryEntry> aiGlossary = List.of();
 
     public JsonKnowledgeBaseAdapter(ResourceLoader resourceLoader,
                                     ObjectMapper objectMapper,
@@ -68,9 +70,10 @@ public class JsonKnowledgeBaseAdapter implements KnowledgeBasePort {
         interviewQuestions = read("interview-questions.json", new TypeReference<>() {});
         diagrams = read("diagrams.json", new TypeReference<>() {});
         evidence = read("evidence.json", new TypeReference<>() {});
-        log.info("Knowledge base loaded: topics={} patterns={} flows={} questions={} diagrams={} evidence={}",
+        aiGlossary = read("ai-agents-glossary.json", new TypeReference<>() {});
+        log.info("Knowledge base loaded: topics={} patterns={} flows={} questions={} diagrams={} evidence={} aiGlossary={}",
                 topics.size(), patterns.size(), flows.size(), interviewQuestions.size(),
-                diagrams.size(), evidence.size());
+                diagrams.size(), evidence.size(), aiGlossary.size());
     }
 
     private <T> List<T> read(String fileName, TypeReference<List<T>> type) {
@@ -118,5 +121,10 @@ public class JsonKnowledgeBaseAdapter implements KnowledgeBasePort {
     @Override
     public List<Evidence> evidence() {
         return evidence;
+    }
+
+    @Override
+    public List<GlossaryEntry> aiGlossary() {
+        return aiGlossary;
     }
 }
