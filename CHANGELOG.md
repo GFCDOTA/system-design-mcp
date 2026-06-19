@@ -5,6 +5,12 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
 ## [Unreleased]
 
+### Added
+- `docs/deep-dive-dedup-kafka.md` — análise de deduplicação ponta a ponta num pipeline Kafka
+  ~1M TPS (DynamoDB write side + CDC/CQRS pra PostgreSQL), preservada do `main` pré-existente.
+- Pergunta de entrevista **q31** integrando esse deep-dive ao lab (sourced: workbook p.494/p.308,
+  microservices.io idempotent-consumer, RFC 8785, PostgreSQL ON CONFLICT, Morling). Total: 31 perguntas.
+
 ## [0.1.0] — 2026-06-19
 
 ### Added

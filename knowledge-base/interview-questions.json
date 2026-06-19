@@ -2253,5 +2253,94 @@
         "note": "limites operacionais (TPS sustentável, L-alvo, latência, erro) amplamente conhecidos entre stakeholders"
       }
     ]
+  },
+  {
+    "id": "q31",
+    "question": "Como deduplicar mensagens ponta a ponta num pipeline de eventos financeiros de ~1M TPS (Kafka → DynamoDB no write side, CDC → PostgreSQL no read side)?",
+    "difficulty": "staff",
+    "shortAnswer": "Duplicata é o estado NORMAL: Kafka é at-least-once, e o EOS (exactly-once) só cobre Kafka↔Kafka, não o sink externo. A defesa é uma **chave de idempotência única e estável** (UUIDv7/ULID gerada na origem, no envelope) ancorando 4 pontos com a MESMA chave: (1) idempotent producer, (2) dedup com estado no Flink + pré-filtro Redis, (3) conditional write no DynamoDB (`attribute_not_exists(pk)`), (4) `INSERT ... ON CONFLICT DO UPDATE WHERE version < EXCLUDED.version` no Postgres. Fecha com reconciliação ponta a ponta.",
+    "detailedAnswer": "**Por que não tem bala de prata.** Cada salto entre componentes tem semântica de entrega diferente, e a duplicata nasce nas costuras — por isso defesa em profundidade, não uma camada só.\n\n**A chave é a decisão central.** Ordem de preferência: (1) idempotency key na origem (UUIDv7/ULID — ordenáveis no tempo, evitam hot-partition no Dynamo e melhoram o índice do Postgres); (2) chave de negócio natural (`transaction_id`); (3) hash canônico (RFC 8785 + SHA-256) só se não houver id confiável. **Anti-pattern clássico:** hash cego dos 40 atributos — gera falso-positivo (dois saques legítimos de R$100 no mesmo segundo viram o mesmo hash → descarta evento real) e falso-negativo (um campo volátil entra no hash → duplicata passa). Separe **campos de identidade** (na chave, imutáveis) de **campos voláteis** (fora).\n\n**As 4 camadas (mesma chave):** producer idempotente (`enable.idempotence=true`, custo zero, pré-requisito); Flink com janela curta de dedup + Redis `SET NX` como pré-filtro barato pra abater write no Dynamo; DynamoDB `PutItem` com `ConditionExpression attribute_not_exists(pk)` (gate forte que o EOS não cobre — trate `ConditionalCheckFailedException` como duplicata e descarte); Postgres `ON CONFLICT ... DO UPDATE WHERE version <` (o **version guard** barra evento fora de ordem regredir o estado).\n\n**O olhar de banco.** O custo mora no WCU do DynamoDB (a 1M TPS pode passar de US$150k/dia — Redis pré-filtro + guardar só a chave + TTL derrubam isso). O Postgres NÃO é 1:1 com o evento: o read model é projeção (estado atual por entidade), então o volume real é entidades únicas/s, ordens de magnitude menor.\n\n**Portão inviolável:** \"a soma fechar\" não é validação. Prove que não duplicou E não perdeu: reconciliação por janela (COUNT Kafka vs Dynamo vs Postgres, tolerância zero), tabela de auditoria append-only por `event_id`, e checksum verificado na escrita do read model (divergência → DLQ).",
+    "mentalModel": "Desenhe dois lados: COMMAND (producer → Kafka → Flink/Redis → DynamoDB) e QUERY (DynamoDB Streams → Kinesis → consumer → Postgres). Marque os 4 pontos de dedup — todos na MESMA chave. O insight do quadro: a duplicata nasce nas costuras entre componentes, então cada fronteira precisa da sua defesa.",
+    "patterns": [
+      "idempotent-consumer",
+      "cqrs",
+      "transactional-outbox"
+    ],
+    "risks": [
+      "Hash cego dos 40 campos → falso-positivo (descarta evento legítimo = perda/fraude) ou falso-negativo (duplicata passa).",
+      "Chaves diferentes entre camadas → a dedup do Kafka não cobre a duplicata que chega no Postgres.",
+      "Achar que EOS/Kafka Transactions cobre o sink externo (Dynamo/Postgres) — não cobre.",
+      "Custo do conditional write no DynamoDB a 1M TPS estourar o orçamento sem pré-filtro."
+    ],
+    "tradeOffs": [
+      {
+        "dimension": "Conditional write (Dynamo) vs pré-filtro (Redis)",
+        "pro": "Dynamo é gate forte e durável",
+        "con": "caro a 1M TPS; Redis abate custo mas não é durável (cai = perde a janela)"
+      },
+      {
+        "dimension": "Janela de estado no Flink",
+        "pro": "dedup stateful robusto nesse throughput",
+        "con": "estado cresce com a janela (1M TPS × 10 min ≈ 600M chaves) → janela curta + backend em disco"
+      },
+      {
+        "dimension": "Consistência do read model",
+        "pro": "version guard barra regressão por evento fora de ordem",
+        "con": "exige carregar/comparar versão em cada upsert"
+      }
+    ],
+    "repoExample": "O event-source-distributed-ledger já aplica a ideia em menor escala: `movimentacao_id` único + LWT no Scylla e dedup por erro 11000 no Mongo (idempotência em consumidor). Este deep-dive (docs/deep-dive-dedup-kafka.md) escala o mesmo princípio pra ~1M TPS com Dynamo + CDC. Irmão da q02.",
+    "howToAnswerInInterview": "Abra dizendo que duplicata é o normal e que EOS não cobre sink externo — isso já te separa do júnior. Aí desenhe a defesa em profundidade (4 pontos, mesma chave), explique a escolha da chave (e o anti-pattern do hash cego), e feche no portão de reconciliação. Cite o trade-off de custo do Dynamo pra mostrar olhar de produção/FinOps.",
+    "relatedTopics": [
+      "messaging-streaming",
+      "cqrs",
+      "event-sourcing",
+      "data-replication"
+    ],
+    "diagrams": [],
+    "sourceRefs": [
+      {
+        "kind": "pdf",
+        "source": "System Design Workbook",
+        "locator": "p.494",
+        "note": "Idempotência em Domínios Complexos"
+      },
+      {
+        "kind": "pdf",
+        "source": "System Design Workbook",
+        "locator": "p.308",
+        "note": "Kafka e Event Streaming"
+      },
+      {
+        "kind": "reference",
+        "source": "microservices.io",
+        "locator": "patterns/communication-style/idempotent-consumer.html",
+        "url": "https://microservices.io/patterns/communication-style/idempotent-consumer.html"
+      },
+      {
+        "kind": "reference",
+        "source": "RFC 8785 — JSON Canonicalization Scheme",
+        "locator": "datatracker.ietf.org/doc/html/rfc8785",
+        "url": "https://datatracker.ietf.org/doc/html/rfc8785"
+      },
+      {
+        "kind": "reference",
+        "source": "PostgreSQL — INSERT ON CONFLICT",
+        "locator": "postgresql.org/docs/current/sql-insert.html",
+        "url": "https://postgresql.org/docs/current/sql-insert.html"
+      },
+      {
+        "kind": "reference",
+        "source": "Gunnar Morling — On Idempotency Keys",
+        "locator": "morling.dev/blog/on-idempotency-keys/",
+        "url": "https://morling.dev/blog/on-idempotency-keys/"
+      },
+      {
+        "kind": "repo",
+        "source": "event-source-distributed-ledger",
+        "locator": "statement/consumer.go",
+        "url": "https://github.com/msfidelis/event-source-distributed-ledger"
+      }
+    ]
   }
 ]
