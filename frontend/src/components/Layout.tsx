@@ -8,6 +8,7 @@ const NAV: { to: string; label: string }[] = [
   { to: "/diagrams", label: "Diagramas" },
   { to: "/databases", label: "Bancos de Dados" },
   { to: "/interview", label: "Modo Entrevista" },
+  { to: "/labs", label: "Labs" },
   { to: "/compare", label: "Comparar" },
   { to: "/evidence", label: "Evidências" },
   { to: "/ai-agents", label: "IA & Agentes" },

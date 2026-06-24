@@ -1,0 +1,603 @@
+[
+  {
+    "id": "lab-payment-processing",
+    "title": "Projetar um sistema de processamento de pagamentos",
+    "summary": "Autorizar, capturar e estornar movimentações de dinheiro em escala, exactly-once, auditável e resiliente a falha parcial.",
+    "companies": "Amazon · Stripe · Nubank · fintech",
+    "difficulty": "staff",
+    "prompt": "Projete um serviço que autoriza e liquida pagamentos / movimentações financeiras em alta escala, sem perder nem duplicar dinheiro, com trilha de auditoria completa e tolerante a falha parcial.",
+    "functionalRequirements": [
+      "Autorizar, capturar e estornar um pagamento",
+      "Submissão idempotente (retry do cliente não pode cobrar duas vezes)",
+      "Ledger auditável de toda mudança de estado",
+      "Consultar saldo e extrato por conta"
+    ],
+    "nonFunctionalRequirements": [
+      "Consistência forte dentro da conta; zero dinheiro perdido ou duplicado",
+      "Alta disponibilidade sob falha parcial",
+      "p99 baixo no caminho de autorização",
+      "Escala horizontal particionando por conta"
+    ],
+    "clarifyingQuestions": [
+      "Qual garantia de movimentação — exactly-once?",
+      "Autorização síncrona e liquidação assíncrona?",
+      "Razão leitura:escrita de saldo/extrato?",
+      "Multi-moeda? Requisito regulatório de retenção/auditoria?",
+      "TPS de pico esperado e crescimento?"
+    ],
+    "estimations": [
+      "Do TPS de pico, dimensione o caminho de escrita e o nº de partições do Kafka",
+      "Crescimento de storage do ledger/dia = eventos/dia × tamanho do evento",
+      "QPS de leitura de saldo vs escrita para dimensionar o read model"
+    ],
+    "apiSketch": [
+      "POST /payments (header Idempotency-Key)",
+      "POST /payments/{id}/capture",
+      "POST /payments/{id}/refund",
+      "GET /accounts/{id}/balance",
+      "GET /accounts/{id}/statement"
+    ],
+    "dataNotes": [
+      "Event store append-only como fonte de verdade; UNIQUE(account_id, version) para ordem por conta",
+      "Saldo e extrato como read models separados, reconstruíveis por replay",
+      "Tabela de idempotency-key para deduplicar retries"
+    ],
+    "deepDives": [
+      "Como garantir que não há cobrança dupla no retry do cliente? (idempotency-key + dedupe)",
+      "Dual-write em DB + Kafka — como evitar perder/duplicar o evento? (transactional outbox / publish pós-commit)",
+      "Transferência entre contas que precisa ser atômica entre serviços? (SAGA + compensação)",
+      "Como o saldo fica consistente com o ledger? (derivar dos eventos, nunca sobrescrever; eventual nos read models)",
+      "Replay/rebuild de um read model após um bug"
+    ],
+    "rubric": [
+      "Nomeia exactly-once = idempotent producer + dedupe no consumidor, não mágica",
+      "Trata saldo como derivado, não como fonte de verdade",
+      "Levanta o problema do dual-write e o outbox antes de ser perguntado",
+      "Escolhe SAGA em vez de 2PC para cross-aggregate e explica compensação",
+      "Discute auditoria/retenção + replay"
+    ],
+    "commonFollowUps": [
+      "E se o Kafka estiver fora no momento do publish?",
+      "Como reconciliar um read model divergente?",
+      "Conta quente (merchant celebridade) — como evitar hot partition?"
+    ],
+    "tradeOffs": [
+      {
+        "dimension": "Consistência",
+        "pro": "Forte dentro da conta via append ACID no event store",
+        "con": "Eventual entre ledger e read models — saldo pode atrasar alguns ms"
+      },
+      {
+        "dimension": "Auditabilidade",
+        "pro": "História imutável completa; qualquer estado passado é reconstruível",
+        "con": "Crescimento ilimitado de dados; exige snapshot/tiering"
+      }
+    ],
+    "referenceApproach": "**Esqueleto:** event store append-only (Postgres, `UNIQUE(account_id, version)`) como fonte de verdade → commit atômico do evento → publish **pós-commit** no Kafka (ou transactional outbox) → read models de saldo (store rápida) e extrato (doc store) consomem e podem ser reconstruídos por replay. Idempotency-key deduplica retries. Transferência entre contas = SAGA com passos de débito/crédito e compensação; nunca 2PC. Saldo é **derivado**, nunca sobrescrito.",
+    "relatedPatterns": [
+      "event-sourcing",
+      "cqrs",
+      "transactional-outbox",
+      "idempotent-consumer",
+      "saga",
+      "circuit-breaker"
+    ],
+    "sourceRefs": [
+      {
+        "kind": "repo",
+        "source": "event-source-distributed-ledger",
+        "locator": "ledger/main.go",
+        "note": "event store Postgres + publish pós-commit no Kafka; saldo/extrato como read models",
+        "url": "https://github.com/msfidelis/event-source-distributed-ledger"
+      },
+      {
+        "kind": "repo",
+        "source": "msc-transactions-api",
+        "locator": "README.md",
+        "note": "API transacional com consistência forte (Postgres + Redis)",
+        "url": "https://github.com/msfidelis/msc-transactions-api"
+      },
+      {
+        "kind": "reference",
+        "source": "microservices.io",
+        "locator": "patterns/data/saga.html",
+        "url": "https://microservices.io/patterns/data/saga.html"
+      },
+      {
+        "kind": "reference",
+        "source": "microservices.io",
+        "locator": "patterns/communication-style/idempotent-consumer.html",
+        "url": "https://microservices.io/patterns/communication-style/idempotent-consumer.html"
+      }
+    ]
+  },
+  {
+    "id": "lab-distributed-message-queue",
+    "title": "Projetar uma fila/log distribuído (estilo Kafka)",
+    "summary": "Um pub/sub distribuído com alto throughput, durabilidade, ordering por partição e semânticas de entrega configuráveis.",
+    "companies": "Meta · Uber · times de infraestrutura",
+    "difficulty": "staff",
+    "prompt": "Projete um sistema de mensageria pub/sub distribuído (estilo Kafka) que aguente throughput massivo, entregue mensagens de forma confiável e suporte at-most-once, at-least-once e exactly-once.",
+    "functionalRequirements": [
+      "Produtores publicam em tópicos; consumidores leem por offset",
+      "Múltiplos consumer groups lendo o mesmo tópico de forma independente",
+      "Retenção configurável das mensagens",
+      "Ordering preservado dentro de uma partição"
+    ],
+    "nonFunctionalRequirements": [
+      "Alto throughput de escrita e leitura",
+      "Durabilidade via replicação (sem perda ao cair um broker)",
+      "Escala horizontal por partições",
+      "Baixa latência fim-a-fim"
+    ],
+    "clarifyingQuestions": [
+      "Qual garantia de entrega: at-most, at-least ou exactly-once?",
+      "Ordering importa por tópico ou por partição?",
+      "Quanto tempo reter as mensagens? Compaction?",
+      "Tamanho médio da mensagem e pico de throughput?"
+    ],
+    "estimations": [
+      "Throughput (MB/s) = msgs/s × tamanho; derive nº de partições e brokers",
+      "Storage = throughput × janela de retenção × fator de replicação",
+      "Nº de consumidores por group ≤ nº de partições (paralelismo)"
+    ],
+    "apiSketch": [
+      "produce(topic, key, value)",
+      "subscribe(topic, group)",
+      "poll() / commit(offset)",
+      "admin: createTopic(name, partitions, replicationFactor)"
+    ],
+    "dataNotes": [
+      "Cada partição é um log append-only ordenado em disco",
+      "Particionamento por key (hash) → mensagens relacionadas na mesma partição",
+      "Offset por (group, partition); commit controla o progresso"
+    ],
+    "deepDives": [
+      "Como garantir ordering? (somente dentro da partição; key define a partição)",
+      "Exactly-once de verdade: idempotent producer + transactions + dedupe no consumidor",
+      "O que acontece no rebalance de um consumer group e qual o custo?",
+      "Durabilidade: replicação, ISR e acks; broker caindo",
+      "Poison message e backpressure/consumer lag"
+    ],
+    "rubric": [
+      "Deixa claro que ordering é por partição, não global",
+      "Não promete exactly-once 'de graça' — explica o mecanismo",
+      "Relaciona paralelismo de consumo ao nº de partições",
+      "Fala de replicação/ISR/acks para durabilidade",
+      "Trata poison message (DLQ) e consumer lag"
+    ],
+    "commonFollowUps": [
+      "Como reparticionar sem quebrar o ordering?",
+      "Hot partition: uma key concentra o tráfego — o que fazer?",
+      "Como detectar e tratar consumidor lento?"
+    ],
+    "tradeOffs": [
+      {
+        "dimension": "Ordering vs paralelismo",
+        "pro": "Mais partições = mais throughput/paralelismo",
+        "con": "Ordering só dentro da partição; mais partições = mais overhead"
+      },
+      {
+        "dimension": "Entrega",
+        "pro": "At-least-once é simples e durável",
+        "con": "Exige idempotência no consumidor para não processar duplicado"
+      }
+    ],
+    "referenceApproach": "**Esqueleto:** tópicos divididos em partições (logs append-only ordenados), distribuídas entre brokers e replicadas (líder + ISR). Produtor escolhe a partição por hash da key (ordering por key). Consumer groups leem em paralelo (1 consumidor por partição); offset commitado controla o progresso. Durabilidade por replicação + acks; exactly-once = idempotent producer + transactions + dedupe. Poison message → DLQ.",
+    "relatedPatterns": [
+      "domain-event",
+      "event-sourcing",
+      "idempotent-consumer",
+      "consistent-hashing"
+    ],
+    "sourceRefs": [
+      {
+        "kind": "repo",
+        "source": "event-source-distributed-ledger",
+        "locator": "ledger/main.go",
+        "note": "uso real de Kafka como event bus pós-commit, com tópicos de comando e confirmação",
+        "url": "https://github.com/msfidelis/event-source-distributed-ledger"
+      },
+      {
+        "kind": "reference",
+        "source": "microservices.io",
+        "locator": "patterns/data/event-sourcing.html",
+        "url": "https://microservices.io/patterns/data/event-sourcing.html"
+      },
+      {
+        "kind": "reference",
+        "source": "microservices.io",
+        "locator": "patterns/communication-style/idempotent-consumer.html",
+        "url": "https://microservices.io/patterns/communication-style/idempotent-consumer.html"
+      }
+    ]
+  },
+  {
+    "id": "lab-rate-limiter",
+    "title": "Projetar um rate limiter distribuído",
+    "summary": "Limitar requisições por cliente/rota em múltiplas instâncias, com baixo overhead e degradação graciosa.",
+    "companies": "universal · times de API Gateway",
+    "difficulty": "senior",
+    "prompt": "Projete um rate limiter distribuído que limite requisições por cliente/API key em uma frota de instâncias, com baixa latência e comportamento previsível sob carga.",
+    "functionalRequirements": [
+      "Limitar N requisições por janela por cliente/rota",
+      "Responder 429 com Retry-After quando estourar",
+      "Funcionar consistente entre várias instâncias do gateway"
+    ],
+    "nonFunctionalRequirements": [
+      "Overhead mínimo no caminho quente (sub-ms)",
+      "Degradação graciosa se o store de contagem cair (fail-open vs fail-closed)",
+      "Escala horizontal sem hot key"
+    ],
+    "clarifyingQuestions": [
+      "Limite por usuário, por IP, por API key ou por rota?",
+      "Algoritmo: fixed window, sliding window ou token bucket?",
+      "Fail-open ou fail-closed quando o store de contagem estiver indisponível?",
+      "Limites globais ou por região?"
+    ],
+    "estimations": [
+      "QPS de pico × nº de chaves distintas = pressão no store de contagem",
+      "Tamanho do estado por chave (contador/timestamps) × chaves ativas",
+      "Custo de 1 round-trip ao store no p99 do caminho quente"
+    ],
+    "apiSketch": [
+      "allow(key) -> {allowed: bool, retryAfter?: seconds}",
+      "middleware no gateway aplicando allow() antes de rotear"
+    ],
+    "dataNotes": [
+      "Contador por chave em store rápido (ex.: Redis) com TTL = janela",
+      "Token bucket: tokens + last-refill timestamp por chave",
+      "Sharding das chaves por consistent hashing para espalhar carga"
+    ],
+    "deepDives": [
+      "Fixed window vs sliding window vs token bucket — qual e por quê?",
+      "Como manter contagem consistente entre instâncias sem virar gargalo?",
+      "Hot key (um cliente gigante) — como evitar concentrar no mesmo shard?",
+      "Fail-open vs fail-closed quando o store cai",
+      "Como isolar a falha do rate limiter do resto (bulkhead/circuit breaker)?"
+    ],
+    "rubric": [
+      "Escolhe o algoritmo conscientemente (sliding/token bucket vs fixed window e seu burst)",
+      "Resolve a contagem distribuída (store central rápido vs local + sync)",
+      "Decide fail-open vs fail-closed e justifica",
+      "Trata hot key com sharding/consistent hashing",
+      "Isola a falha (bulkhead/circuit breaker) para não derrubar o gateway"
+    ],
+    "commonFollowUps": [
+      "E se o Redis tiver latência alta no pico?",
+      "Como dar limites diferentes por tier de cliente?",
+      "Como testar o comportamento de burst?"
+    ],
+    "tradeOffs": [
+      {
+        "dimension": "Precisão vs custo",
+        "pro": "Store central dá contagem precisa",
+        "con": "Adiciona um round-trip no caminho quente"
+      },
+      {
+        "dimension": "Disponibilidade",
+        "pro": "Fail-open mantém o tráfego em caso de falha do store",
+        "con": "Pode deixar passar acima do limite durante o incidente"
+      }
+    ],
+    "referenceApproach": "**Esqueleto:** middleware no API gateway chama `allow(key)` antes de rotear. Estado por chave (token bucket: tokens + last-refill) num store rápido (Redis) com TTL = janela; chaves espalhadas por consistent hashing para evitar hot shard. 429 + Retry-After ao estourar. O rate limiter roda atrás de bulkhead/circuit breaker e tem política explícita de fail-open/closed se o store cair. Métricas (allow/deny por chave) para observar abuso.",
+    "relatedPatterns": [
+      "bulkhead",
+      "circuit-breaker",
+      "application-metrics",
+      "consistent-hashing",
+      "api-gateway"
+    ],
+    "sourceRefs": [
+      {
+        "kind": "repo",
+        "source": "msc-shard-router",
+        "locator": "pkg/hashring/",
+        "note": "consistent hashing + bulkhead/circuit breaker por shard — base para espalhar chaves quentes",
+        "url": "https://github.com/msfidelis/msc-shard-router"
+      },
+      {
+        "kind": "reference",
+        "source": "microservices.io",
+        "locator": "patterns/reliability/circuit-breaker.html",
+        "url": "https://microservices.io/patterns/reliability/circuit-breaker.html"
+      },
+      {
+        "kind": "reference",
+        "source": "microservices.io",
+        "locator": "patterns/observability/application-metrics.html",
+        "url": "https://microservices.io/patterns/observability/application-metrics.html"
+      }
+    ]
+  },
+  {
+    "id": "lab-notification-service",
+    "title": "Projetar um serviço de notificações (fan-out)",
+    "summary": "Entregar notificações (push/e-mail/SMS) de forma confiável, idempotente e resiliente a falha de provedores externos.",
+    "companies": "universal",
+    "difficulty": "senior",
+    "prompt": "Projete um serviço que recebe eventos de domínio e entrega notificações (push, e-mail, SMS) a milhões de usuários, sem duplicar e tolerante à falha dos provedores externos.",
+    "functionalRequirements": [
+      "Consumir eventos e gerar notificações por canal",
+      "Entregar via provedores externos (push/e-mail/SMS)",
+      "Respeitar preferências/opt-out do usuário",
+      "Não duplicar a mesma notificação"
+    ],
+    "nonFunctionalRequirements": [
+      "At-least-once com idempotência (sem duplicar)",
+      "Resiliência a provedor externo lento/fora",
+      "Escala de fan-out para milhões",
+      "Retry com backoff e DLQ"
+    ],
+    "clarifyingQuestions": [
+      "Quais canais e prioridades?",
+      "Garantia: pode duplicar (at-least-once) ou exactly-once?",
+      "Há janela de quiet hours / rate por usuário?",
+      "Volume de pico e tamanho do fan-out por evento?"
+    ],
+    "estimations": [
+      "Notificações/s = eventos/s × fan-out médio por canal",
+      "Fila por canal dimensionada pelo throughput do provedor",
+      "Estado de dedupe = chave (user, event, channel) por janela"
+    ],
+    "apiSketch": [
+      "consume(domainEvent)",
+      "POST /notifications (envio direto)",
+      "GET /users/{id}/preferences",
+      "worker por canal consumindo a fila"
+    ],
+    "dataNotes": [
+      "Outbox no produtor do evento para não perder a notificação no dual-write",
+      "Chave de idempotência (user+event+channel) para dedupe",
+      "Fila por canal; DLQ para falhas após N retries"
+    ],
+    "deepDives": [
+      "Dual-write (gravar + enfileirar) — como não perder a notificação? (transactional outbox)",
+      "Como deduplicar quando o broker é at-least-once? (idempotent consumer)",
+      "Provedor externo fora: retry com backoff, circuit breaker, DLQ",
+      "Quiet hours / rate por usuário sem perder a notificação",
+      "Fan-out gigante (broadcast) — como não estourar a fila?"
+    ],
+    "rubric": [
+      "Usa outbox para não perder a notificação no dual-write",
+      "Deduplica explicitamente (chave de idempotência)",
+      "Isola o provedor externo (circuit breaker + retry/backoff + DLQ)",
+      "Separa fila por canal e dimensiona pelo throughput do provedor",
+      "Respeita preferências/opt-out"
+    ],
+    "commonFollowUps": [
+      "Como garantir ordem (ex.: 'pedido enviado' antes de 'entregue')?",
+      "E se o provedor confirmar e cair antes do ack?",
+      "Como medir taxa de entrega e bounce?"
+    ],
+    "tradeOffs": [
+      {
+        "dimension": "Entrega",
+        "pro": "At-least-once garante que chega",
+        "con": "Pode duplicar sem dedupe idempotente"
+      },
+      {
+        "dimension": "Acoplamento ao provedor",
+        "pro": "Circuit breaker isola a falha externa",
+        "con": "Notificações podem atrasar enquanto o breaker está aberto"
+      }
+    ],
+    "referenceApproach": "**Esqueleto:** evento de domínio publicado via **transactional outbox** (não perde no dual-write) → fila por canal → workers chamam os provedores externos atrás de **circuit breaker** + retry com backoff, com **DLQ** para falhas persistentes. **Idempotent consumer** com chave (user+event+channel) deduplica. Preferências/opt-out consultados antes do envio. Métricas de entrega/bounce por canal.",
+    "relatedPatterns": [
+      "domain-event",
+      "idempotent-consumer",
+      "transactional-outbox",
+      "circuit-breaker"
+    ],
+    "sourceRefs": [
+      {
+        "kind": "repo",
+        "source": "event-source-distributed-ledger",
+        "locator": "ledger/main.go",
+        "note": "publicação de eventos pós-commit e consumo por read models — mesmo padrão de fan-out por evento",
+        "url": "https://github.com/msfidelis/event-source-distributed-ledger"
+      },
+      {
+        "kind": "reference",
+        "source": "microservices.io",
+        "locator": "patterns/data/transactional-outbox.html",
+        "url": "https://microservices.io/patterns/data/transactional-outbox.html"
+      },
+      {
+        "kind": "reference",
+        "source": "microservices.io",
+        "locator": "patterns/communication-style/idempotent-consumer.html",
+        "url": "https://microservices.io/patterns/communication-style/idempotent-consumer.html"
+      }
+    ]
+  },
+  {
+    "id": "lab-news-feed",
+    "title": "Projetar um feed/timeline (fan-out on write vs read)",
+    "summary": "Montar a timeline de cada usuário em escala, escolhendo entre pré-computar na escrita ou montar na leitura.",
+    "companies": "Meta · redes sociais",
+    "difficulty": "staff",
+    "prompt": "Projete um feed de notícias/timeline que mostra posts de quem o usuário segue, em escala de milhões de usuários, com leitura rápida.",
+    "functionalRequirements": [
+      "Publicar um post",
+      "Montar a timeline de um usuário (quem ele segue)",
+      "Paginação / scroll infinito",
+      "Ranqueamento básico (recência)"
+    ],
+    "nonFunctionalRequirements": [
+      "Leitura rápida (timeline é read-heavy)",
+      "Escala para milhões de usuários e seguidores",
+      "Consistência eventual aceitável no feed",
+      "Lidar com usuários de altíssimo fan-out (celebridades)"
+    ],
+    "clarifyingQuestions": [
+      "Razão leitura:escrita? (feed costuma ser muito read-heavy)",
+      "Fan-out on write (push) ou fan-out on read (pull) — ou híbrido?",
+      "Quão fresco o feed precisa ser?",
+      "Há contas com milhões de seguidores (hot fan-out)?"
+    ],
+    "estimations": [
+      "Leituras de feed/s vs posts/s para decidir push vs pull",
+      "Custo de fan-out on write = posts/s × seguidores médios (gravações no timeline cache)",
+      "Tamanho do timeline cache por usuário (N posts recentes)"
+    ],
+    "apiSketch": [
+      "POST /posts",
+      "GET /feed?cursor=...",
+      "follow(userId) / unfollow(userId)"
+    ],
+    "dataNotes": [
+      "Fan-out on write: ao postar, escreve nas timelines (cache) dos seguidores (CQRS: read model pré-computado)",
+      "Fan-out on read: monta o feed em query agregando posts de quem segue (API composition)",
+      "Híbrido: push para usuários comuns, pull para celebridades; sharding por usuário"
+    ],
+    "deepDives": [
+      "Push vs pull vs híbrido — qual o trade-off de cada um?",
+      "Celebridade com 50M seguidores: por que fan-out on write quebra e como o híbrido resolve",
+      "Como o read model (timeline) é mantido e invalidado? (CQRS)",
+      "Sharding por usuário e hot shard",
+      "Paginação estável com cursor (não offset)"
+    ],
+    "rubric": [
+      "Decide push/pull/híbrido a partir da razão leitura:escrita e do fan-out",
+      "Identifica o problema da celebridade e resolve com híbrido",
+      "Modela a timeline como read model (CQRS), não query cara a cada scroll",
+      "Trata sharding por usuário e hot shard",
+      "Usa cursor para paginação, não offset"
+    ],
+    "commonFollowUps": [
+      "Como inserir ranking além de recência sem matar a latência?",
+      "Como lidar com unfollow/bloqueio já refletido no cache?",
+      "Como reconstruir o timeline cache após perda?"
+    ],
+    "tradeOffs": [
+      {
+        "dimension": "Push (fan-out on write)",
+        "pro": "Leitura O(1): timeline já pronta",
+        "con": "Escrita cara; explode com celebridades"
+      },
+      {
+        "dimension": "Pull (fan-out on read)",
+        "pro": "Escrita barata",
+        "con": "Leitura cara; agrega na hora a cada scroll"
+      }
+    ],
+    "referenceApproach": "**Esqueleto:** híbrido. Usuários comuns: **fan-out on write** — ao postar, gravo nas timelines (read model em cache, CQRS) dos seguidores; leitura é O(1). Celebridades: **fan-out on read** — não replico para milhões; agrego os posts deles na montagem (API composition). Sharding por usuário; cursor para paginação estável; consistência eventual aceitável.",
+    "relatedPatterns": [
+      "cqrs",
+      "api-composition",
+      "cell-based-architecture"
+    ],
+    "sourceRefs": [
+      {
+        "kind": "reference",
+        "source": "microservices.io",
+        "locator": "patterns/data/cqrs.html",
+        "url": "https://microservices.io/patterns/data/cqrs.html"
+      },
+      {
+        "kind": "repo",
+        "source": "msc-shard-router",
+        "locator": "pkg/sharding/",
+        "note": "sharding por chave (usuário) com hashing consistente — base para particionar timelines",
+        "url": "https://github.com/msfidelis/msc-shard-router"
+      }
+    ]
+  },
+  {
+    "id": "lab-realtime-dispatch",
+    "title": "Projetar dispatch e localização em tempo real (estilo Uber)",
+    "summary": "Casar oferta e demanda em tempo real com ingestão de localização em alta frequência e particionamento geográfico.",
+    "companies": "Uber · marketplaces em tempo real",
+    "difficulty": "staff",
+    "prompt": "Projete o núcleo de dispatch de um app de mobilidade: ingestão de localização de motoristas em tempo real e matching com pedidos de corrida por região, em alta escala.",
+    "functionalRequirements": [
+      "Ingerir localização de motoristas em alta frequência",
+      "Encontrar motoristas próximos a um pedido",
+      "Fazer o matching pedido↔motorista",
+      "Atualizar estado da corrida em tempo real"
+    ],
+    "nonFunctionalRequirements": [
+      "Baixa latência no matching",
+      "Escala por região (particionamento geográfico)",
+      "Resiliência: falha de uma região não derruba as outras",
+      "Tolerância a picos (surge) localizados"
+    ],
+    "clarifyingQuestions": [
+      "Frequência de update de localização e nº de motoristas ativos?",
+      "Raio/estratégia de matching (mais próximo, ETA, surge)?",
+      "Particionar por geo-célula? Qual tamanho de célula?",
+      "O que acontece se uma região fica sobrecarregada?"
+    ],
+    "estimations": [
+      "Updates de localização/s = motoristas ativos × frequência → pressão de ingestão",
+      "Pedidos/s por região no pico (surge) para dimensionar células",
+      "Estado quente por célula (motoristas disponíveis) em store em memória"
+    ],
+    "apiSketch": [
+      "updateLocation(driverId, lat, lng)",
+      "requestRide(riderId, origin, destination)",
+      "nearbyDrivers(cell) -> [driverId]",
+      "stream de updates de estado da corrida"
+    ],
+    "dataNotes": [
+      "Particionamento por geo-célula (ex.: grid/geohash); roteamento por consistent hashing",
+      "Índice espacial em memória por célula (motoristas disponíveis)",
+      "Cell-based architecture: cada célula é isolada (bulkhead) e tem seu circuit breaker"
+    ],
+    "deepDives": [
+      "Como particionar geograficamente e rotear a requisição para a célula certa? (consistent hashing / cell-based)",
+      "Hot cell (centro da cidade em horário de pico) — como isolar e escalar?",
+      "Ingestão de alta frequência sem derrubar o sistema (backpressure)",
+      "Falha de uma célula não pode propagar (bulkhead + circuit breaker)",
+      "Observabilidade: métricas por célula para detectar surge"
+    ],
+    "rubric": [
+      "Particiona por geo-célula e roteia deterministicamente",
+      "Isola falha por célula (bulkhead/circuit breaker) — cell-based architecture",
+      "Trata hot cell com sub-particionamento/escala",
+      "Resolve ingestão de alta frequência (backpressure, store em memória)",
+      "Expõe métricas por célula para surge/observabilidade"
+    ],
+    "commonFollowUps": [
+      "Como lidar com motorista na borda entre duas células?",
+      "Como rebalancear células quando a demanda muda?",
+      "Como garantir que um motoristas não é oferecido a dois pedidos?"
+    ],
+    "tradeOffs": [
+      {
+        "dimension": "Tamanho da célula",
+        "pro": "Célula menor = menos contenção, mais isolamento",
+        "con": "Mais bordas e overhead de roteamento/rebalance"
+      },
+      {
+        "dimension": "Isolamento (cell-based)",
+        "pro": "Falha não propaga entre células",
+        "con": "Mais complexidade operacional e de roteamento"
+      }
+    ],
+    "referenceApproach": "**Esqueleto:** particionar o mapa em **geo-células**; roteador com **consistent hashing** envia cada update/pedido para a célula responsável. Cada célula é uma **cell-based architecture** isolada (bulkhead + circuit breaker) com índice espacial em memória dos motoristas disponíveis. Matching roda dentro da célula (baixa latência). Hot cell (surge) é sub-particionada/escalada; métricas por célula detectam o surge. Falha de uma célula não derruba as outras.",
+    "relatedPatterns": [
+      "consistent-hashing",
+      "cell-based-architecture",
+      "bulkhead",
+      "circuit-breaker",
+      "application-metrics"
+    ],
+    "sourceRefs": [
+      {
+        "kind": "repo",
+        "source": "msc-shard-router",
+        "locator": "pkg/hashring/",
+        "note": "roteamento por hashing consistente, bulkhead e circuit breaker por shard — base do particionamento por célula",
+        "url": "https://github.com/msfidelis/msc-shard-router"
+      },
+      {
+        "kind": "reference",
+        "source": "microservices.io",
+        "locator": "patterns/observability/application-metrics.html",
+        "url": "https://microservices.io/patterns/observability/application-metrics.html"
+      }
+    ]
+  }
+]

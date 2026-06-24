@@ -21,6 +21,7 @@ PLAN = {
     "interview-questions.json": ("InterviewQuestion", ["interview.part1.json", "interview.part2.json"]),
     "diagrams.json": ("Diagram", ["diagrams.json"]),
     "evidence.json": ("Evidence", ["evidence.json"]),
+    "labs.json": ("Lab", ["labs.json"]),
 }
 
 

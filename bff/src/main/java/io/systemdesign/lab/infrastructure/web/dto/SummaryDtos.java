@@ -4,6 +4,7 @@ import io.systemdesign.lab.domain.model.Database;
 import io.systemdesign.lab.domain.model.Diagram;
 import io.systemdesign.lab.domain.model.Flow;
 import io.systemdesign.lab.domain.model.InterviewQuestion;
+import io.systemdesign.lab.domain.model.Lab;
 import io.systemdesign.lab.domain.model.Pattern;
 import io.systemdesign.lab.domain.model.Topic;
 
@@ -37,6 +38,12 @@ public final class SummaryDtos {
     public record QuestionSummary(String id, String question, String difficulty) {
         public static QuestionSummary from(InterviewQuestion q) {
             return new QuestionSummary(q.id(), q.question(), q.difficulty());
+        }
+    }
+
+    public record LabSummary(String id, String title, String summary, String companies, String difficulty) {
+        public static LabSummary from(Lab lab) {
+            return new LabSummary(lab.id(), lab.title(), lab.summary(), lab.companies(), lab.difficulty());
         }
     }
 

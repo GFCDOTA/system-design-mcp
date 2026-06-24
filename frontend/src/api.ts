@@ -126,6 +126,31 @@ export interface InterviewQuestion extends QuestionSummary {
   sourceRefs: SourceRef[];
 }
 
+export interface LabSummary {
+  id: string;
+  title: string;
+  summary: string;
+  companies: string;
+  difficulty: string;
+}
+
+export interface Lab extends LabSummary {
+  prompt: string;
+  functionalRequirements: string[];
+  nonFunctionalRequirements: string[];
+  clarifyingQuestions: string[];
+  estimations: string[];
+  apiSketch: string[];
+  dataNotes: string[];
+  deepDives: string[];
+  rubric: string[];
+  commonFollowUps: string[];
+  tradeOffs: TradeOff[];
+  referenceApproach: string;
+  relatedPatterns: string[];
+  sourceRefs: SourceRef[];
+}
+
 export interface DiagramSummary {
   id: string;
   title: string;
@@ -164,6 +189,7 @@ export interface Stats {
   patterns: number;
   flows: number;
   interviewQuestions: number;
+  labs: number;
   diagrams: number;
   evidence: number;
   aiGlossary: number;
@@ -188,6 +214,8 @@ export const api = {
   flow: (id: string) => get<Flow>(`/api/flows/${id}`),
   questions: () => get<QuestionSummary[]>("/api/interview/questions"),
   question: (id: string) => get<InterviewQuestion>(`/api/interview/questions/${id}`),
+  labs: () => get<LabSummary[]>("/api/labs"),
+  lab: (id: string) => get<Lab>(`/api/labs/${id}`),
   diagrams: () => get<DiagramSummary[]>("/api/diagrams"),
   diagram: (id: string) => get<Diagram>(`/api/diagrams/${id}`),
   evidence: () => get<Evidence[]>("/api/evidence"),

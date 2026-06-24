@@ -5,6 +5,7 @@ import io.systemdesign.lab.domain.model.Evidence;
 import io.systemdesign.lab.domain.model.Flow;
 import io.systemdesign.lab.domain.model.GlossaryEntry;
 import io.systemdesign.lab.domain.model.InterviewQuestion;
+import io.systemdesign.lab.domain.model.Lab;
 import io.systemdesign.lab.domain.model.Pattern;
 import io.systemdesign.lab.domain.model.SourceRef;
 import io.systemdesign.lab.domain.model.Topic;
@@ -41,6 +42,11 @@ class KnowledgeServiceTest {
 
         @Override
         public List<InterviewQuestion> interviewQuestions() {
+            return List.of();
+        }
+
+        @Override
+        public List<Lab> labs() {
             return List.of();
         }
 

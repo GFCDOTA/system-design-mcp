@@ -6,6 +6,7 @@ import io.systemdesign.lab.domain.model.Evidence;
 import io.systemdesign.lab.domain.model.Flow;
 import io.systemdesign.lab.domain.model.GlossaryEntry;
 import io.systemdesign.lab.domain.model.InterviewQuestion;
+import io.systemdesign.lab.domain.model.Lab;
 import io.systemdesign.lab.domain.model.Pattern;
 import io.systemdesign.lab.domain.model.Topic;
 
@@ -25,6 +26,8 @@ public interface KnowledgeBasePort {
     List<Flow> flows();
 
     List<InterviewQuestion> interviewQuestions();
+
+    List<Lab> labs();
 
     List<Diagram> diagrams();
 

@@ -12,6 +12,8 @@ import { FlowDetail } from "./pages/FlowDetail";
 import { Diagrams } from "./pages/Diagrams";
 import { DiagramDetail } from "./pages/DiagramDetail";
 import { Interview } from "./pages/Interview";
+import { Labs } from "./pages/Labs";
+import { LabDetail } from "./pages/LabDetail";
 import { Compare } from "./pages/Compare";
 import { EvidencePage } from "./pages/Evidence";
 import { AiGlossary } from "./pages/AiGlossary";
@@ -35,6 +37,8 @@ const router = createBrowserRouter([
       { path: "diagrams", element: <Diagrams /> },
       { path: "diagrams/:id", element: <DiagramDetail /> },
       { path: "interview", element: <Interview /> },
+      { path: "labs", element: <Labs /> },
+      { path: "labs/:id", element: <LabDetail /> },
       { path: "compare", element: <Compare /> },
       { path: "evidence", element: <EvidencePage /> },
       { path: "ai-agents", element: <AiGlossary /> },

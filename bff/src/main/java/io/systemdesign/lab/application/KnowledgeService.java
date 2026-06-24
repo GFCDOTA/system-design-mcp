@@ -6,6 +6,7 @@ import io.systemdesign.lab.domain.model.Evidence;
 import io.systemdesign.lab.domain.model.Flow;
 import io.systemdesign.lab.domain.model.GlossaryEntry;
 import io.systemdesign.lab.domain.model.InterviewQuestion;
+import io.systemdesign.lab.domain.model.Lab;
 import io.systemdesign.lab.domain.model.Pattern;
 import io.systemdesign.lab.domain.model.Topic;
 import io.systemdesign.lab.domain.port.KnowledgeBasePort;
@@ -64,6 +65,15 @@ public class KnowledgeService {
         return findById(knowledgeBase.interviewQuestions(), InterviewQuestion::id, id, "InterviewQuestion");
     }
 
+    // ---- Labs ----
+    public List<Lab> listLabs() {
+        return knowledgeBase.labs();
+    }
+
+    public Lab getLab(String id) {
+        return findById(knowledgeBase.labs(), Lab::id, id, "Lab");
+    }
+
     // ---- Diagrams ----
     public List<Diagram> listDiagrams() {
         return knowledgeBase.diagrams();
@@ -99,6 +109,7 @@ public class KnowledgeService {
                 knowledgeBase.patterns().size(),
                 knowledgeBase.flows().size(),
                 knowledgeBase.interviewQuestions().size(),
+                knowledgeBase.labs().size(),
                 knowledgeBase.diagrams().size(),
                 knowledgeBase.evidence().size(),
                 knowledgeBase.aiGlossary().size(),
@@ -112,6 +123,6 @@ public class KnowledgeService {
 
     /** Aggregate counts of the knowledge base. */
     public record KnowledgeStats(int topics, int patterns, int flows, int interviewQuestions,
-                                 int diagrams, int evidence, int aiGlossary, int databases) {
+                                 int labs, int diagrams, int evidence, int aiGlossary, int databases) {
     }
 }

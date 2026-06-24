@@ -8,6 +8,7 @@ import io.systemdesign.lab.domain.model.Evidence;
 import io.systemdesign.lab.domain.model.Flow;
 import io.systemdesign.lab.domain.model.GlossaryEntry;
 import io.systemdesign.lab.domain.model.InterviewQuestion;
+import io.systemdesign.lab.domain.model.Lab;
 import io.systemdesign.lab.domain.model.Pattern;
 import io.systemdesign.lab.domain.model.Topic;
 import io.systemdesign.lab.domain.port.KnowledgeBasePort;
@@ -49,6 +50,7 @@ public class JsonKnowledgeBaseAdapter implements KnowledgeBasePort {
     private List<Pattern> patterns = List.of();
     private List<Flow> flows = List.of();
     private List<InterviewQuestion> interviewQuestions = List.of();
+    private List<Lab> labs = List.of();
     private List<Diagram> diagrams = List.of();
     private List<Evidence> evidence = List.of();
     private List<GlossaryEntry> aiGlossary = List.of();
@@ -70,12 +72,13 @@ public class JsonKnowledgeBaseAdapter implements KnowledgeBasePort {
         patterns = read("patterns.json", new TypeReference<>() {});
         flows = read("flows.json", new TypeReference<>() {});
         interviewQuestions = read("interview-questions.json", new TypeReference<>() {});
+        labs = read("labs.json", new TypeReference<>() {});
         diagrams = read("diagrams.json", new TypeReference<>() {});
         evidence = read("evidence.json", new TypeReference<>() {});
         aiGlossary = read("ai-agents-glossary.json", new TypeReference<>() {});
         databases = read("databases.json", new TypeReference<>() {});
-        log.info("Knowledge base loaded: topics={} patterns={} flows={} questions={} diagrams={} evidence={} aiGlossary={} databases={}",
-                topics.size(), patterns.size(), flows.size(), interviewQuestions.size(),
+        log.info("Knowledge base loaded: topics={} patterns={} flows={} questions={} labs={} diagrams={} evidence={} aiGlossary={} databases={}",
+                topics.size(), patterns.size(), flows.size(), interviewQuestions.size(), labs.size(),
                 diagrams.size(), evidence.size(), aiGlossary.size(), databases.size());
     }
 
@@ -114,6 +117,11 @@ public class JsonKnowledgeBaseAdapter implements KnowledgeBasePort {
     @Override
     public List<InterviewQuestion> interviewQuestions() {
         return interviewQuestions;
+    }
+
+    @Override
+    public List<Lab> labs() {
+        return labs;
     }
 
     @Override

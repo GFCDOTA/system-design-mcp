@@ -6,6 +6,7 @@ import io.systemdesign.lab.domain.model.Diagram;
 import io.systemdesign.lab.domain.model.Evidence;
 import io.systemdesign.lab.domain.model.Flow;
 import io.systemdesign.lab.domain.model.InterviewQuestion;
+import io.systemdesign.lab.domain.model.Lab;
 import io.systemdesign.lab.domain.model.Pattern;
 import io.systemdesign.lab.domain.model.SourceRef;
 import io.systemdesign.lab.domain.model.Topic;
@@ -50,6 +51,7 @@ class KnowledgeBaseIntegrityTest {
         assertThat(kb.patterns()).as("patterns").isNotEmpty();
         assertThat(kb.flows()).as("flows").isNotEmpty();
         assertThat(kb.interviewQuestions()).as("interview questions").isNotEmpty();
+        assertThat(kb.labs()).as("labs").isNotEmpty();
         assertThat(kb.diagrams()).as("diagrams").isNotEmpty();
         assertThat(kb.evidence()).as("evidence").isNotEmpty();
         assertThat(kb.databases()).as("databases").isNotEmpty();
@@ -61,6 +63,7 @@ class KnowledgeBaseIntegrityTest {
         kb.patterns().forEach(p -> assertHasSource("pattern:" + p.id(), p.sourceRefs()));
         kb.flows().forEach(f -> assertHasSource("flow:" + f.id(), f.sourceRefs()));
         kb.interviewQuestions().forEach(q -> assertHasSource("question:" + q.id(), q.sourceRefs()));
+        kb.labs().forEach(l -> assertHasSource("lab:" + l.id(), l.sourceRefs()));
         kb.diagrams().forEach(d -> assertHasSource("diagram:" + d.id(), d.sourceRefs()));
         kb.evidence().forEach(e -> assertHasSource("evidence:" + e.id(), e.sourceRefs()));
         kb.databases().forEach(d -> assertHasSource("database:" + d.id(), d.sourceRefs()));
@@ -90,6 +93,7 @@ class KnowledgeBaseIntegrityTest {
         assertUniqueIds("patterns", kb.patterns().stream().map(Pattern::id).toList());
         assertUniqueIds("flows", kb.flows().stream().map(Flow::id).toList());
         assertUniqueIds("questions", kb.interviewQuestions().stream().map(InterviewQuestion::id).toList());
+        assertUniqueIds("labs", kb.labs().stream().map(Lab::id).toList());
         assertUniqueIds("diagrams", kb.diagrams().stream().map(Diagram::id).toList());
         assertUniqueIds("evidence", kb.evidence().stream().map(Evidence::id).toList());
         assertUniqueIds("ai-glossary", kb.aiGlossary().stream().map(g -> g.id()).toList());
@@ -122,6 +126,9 @@ class KnowledgeBaseIntegrityTest {
             assertSubset("question:" + q.id() + ".patterns", q.patterns(), patternIds);
             assertSubset("question:" + q.id() + ".relatedTopics", q.relatedTopics(), topicIds);
             assertSubset("question:" + q.id() + ".diagrams", q.diagrams(), diagramIds);
+        }
+        for (Lab lab : kb.labs()) {
+            assertSubset("lab:" + lab.id() + ".relatedPatterns", lab.relatedPatterns(), patternIds);
         }
         for (Diagram d : kb.diagrams()) {
             assertThat(d.mermaid()).as("diagram:" + d.id() + ".mermaid").isNotBlank();
