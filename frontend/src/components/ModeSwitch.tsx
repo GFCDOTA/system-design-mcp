@@ -1,19 +1,20 @@
 import { Link, useLocation } from "react-router-dom";
 
 /**
- * Alterna entre os dois "mundos" do app: a Base de Conhecimento de System Design
- * e o Modo Entrevista. Fica no topo de cada sidebar — é o que mantém os dois
- * produtos visualmente separados dentro do mesmo app.
+ * Seletor de WORKSPACE no topo de cada sidebar: a Base de Conhecimento de System
+ * Design e o Modo Entrevista. Não é uma aba qualquer — é troca de "mundo".
  */
 export function ModeSwitch() {
   const inInterview = useLocation().pathname.startsWith("/entrevista");
   return (
-    <div className="mode-switch" role="tablist" aria-label="Modo do app">
+    <div className="mode-switch" role="tablist" aria-label="Workspace">
       <Link to="/" className={inInterview ? "" : "active"} aria-selected={!inInterview}>
-        Base de Conhecimento
+        <span className="ms-label">Base de Conhecimento</span>
+        <span className="ms-sub">Tópicos · padrões · diagramas</span>
       </Link>
       <Link to="/entrevista" className={inInterview ? "active" : ""} aria-selected={inInterview}>
-        Modo Entrevista
+        <span className="ms-label">Modo Entrevista</span>
+        <span className="ms-sub">System Design · DSA · comportamental</span>
       </Link>
     </div>
   );

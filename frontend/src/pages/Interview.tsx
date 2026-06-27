@@ -92,6 +92,24 @@ export function InterviewOverview() {
         (roadmap e dicas — você pratica no LeetCode) e <strong>comportamental + como chegar preparado</strong>. Use o
         menu à esquerda ou os atalhos abaixo.
       </p>
+      <div className="hero-card">
+        <h2>Sessão recomendada de hoje</h2>
+        <div className="hero-step">
+          <span className="n">1</span>
+          <span className="t">Revise o <strong>framework de System Design</strong></span>
+          <span className="d">~10 min</span>
+        </div>
+        <div className="hero-step">
+          <span className="n">2</span>
+          <span className="t">Pratique <strong>1 pergunta medium</strong> no banco</span>
+          <span className="d">~35 min</span>
+        </div>
+        <div className="hero-step">
+          <span className="n">3</span>
+          <span className="t">Anote <strong>1 ponto fraco</strong> pra revisar depois</span>
+          <span className="d">~5 min</span>
+        </div>
+      </div>
       <div className="prep-pillars">
         {cards.map((c) => (
           <Link key={c.to} to={c.to} className="list-card prep-pillar">
