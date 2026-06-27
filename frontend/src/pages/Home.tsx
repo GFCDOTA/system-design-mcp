@@ -28,6 +28,14 @@ export function Home() {
         </p>
       </header>
 
+      <Link to="/interview" className="interview-cta">
+        <div>
+          <strong>Modo Entrevista</strong>
+          <span>System Design · DSA · Comportamental — framework, banco de perguntas e dicas pra chegar preparado.</span>
+        </div>
+        <span className="interview-cta-go">Entrar →</span>
+      </Link>
+
       <Async state={stats}>
         {(s) => (
           <div className="stat-grid">

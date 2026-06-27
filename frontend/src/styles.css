@@ -240,3 +240,43 @@ ol.steps .note { color: var(--muted); }
   .builder { grid-template-columns: 1fr; }
   .builder-result { position: static; }
 }
+
+/* Home CTA — Modo Entrevista */
+.interview-cta {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  margin: 18px 0; padding: 16px 20px; border-radius: var(--radius); color: var(--text);
+  background: linear-gradient(135deg, rgba(91, 157, 255, 0.14), rgba(126, 224, 192, 0.10));
+  border: 1px solid var(--accent);
+}
+.interview-cta:hover { text-decoration: none; border-color: var(--accent-2); transform: translateY(-1px); }
+.interview-cta strong { display: block; font-size: 17px; }
+.interview-cta span { color: var(--muted); font-size: 14px; }
+.interview-cta-go { color: var(--accent); font-weight: 700; white-space: nowrap; }
+
+/* Modo Entrevista — abas e prep */
+.prep-tabs { margin: 18px 0 6px; }
+.prep-filter { margin: 14px 0 4px; }
+.prep-tabpanel { margin-top: 8px; }
+
+.prep-pillars { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin: 18px 0; }
+.prep-pillar { font: inherit; text-align: left; width: 100%; cursor: pointer; }
+.prep-pillar-go { display: inline-block; margin-top: 10px; color: var(--accent); font-weight: 600; font-size: 13px; }
+
+.prep-section .lede { margin-bottom: 6px; }
+.prep-block {
+  background: var(--bg-elev); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 12px 18px 16px; margin: 14px 0;
+}
+.prep-block h3 { color: var(--accent-2); margin: 4px 0 4px; }
+.prep-note { margin: 0 0 8px; font-size: 13px; }
+
+.prep-tips { margin: 8px 0 0; padding-left: 20px; }
+.prep-tips li { margin: 7px 0; }
+.checklist { list-style: none; margin: 8px 0 0; padding-left: 4px; }
+.checklist li { position: relative; padding-left: 26px; margin: 8px 0; }
+.checklist li::before { content: "✓"; position: absolute; left: 2px; top: 0; color: var(--accent-2); font-weight: 800; }
+ol.steps.roadmap li { padding-top: 9px; padding-bottom: 9px; }
+
+.prep-resources .chips-row { margin: 6px 0 10px; }
+.res-notes { margin-top: 4px; }
+.res-notes li { color: var(--muted); }
