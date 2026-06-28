@@ -512,6 +512,50 @@ table.compare-table tbody tr:hover td:not(.dim) { background: rgba(255, 255, 255
 @keyframes modal-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes modal-pop { from { opacity: 0; transform: translateY(10px) scale(0.97); } to { opacity: 1; transform: none; } }
 
+/* ===================== Estruturas & Big-O ===================== */
+.bigo-hier { display: flex; flex-direction: column; gap: 6px; margin: 12px 0 22px; }
+.bigo-class {
+  display: flex; align-items: center; gap: 14px; padding: 9px 14px;
+  background: var(--surface-1); border: 1px solid var(--border-subtle); border-radius: var(--radius-md);
+}
+.bigo-notation { font-family: var(--font-mono); font-size: 14px; font-weight: 600; color: var(--brand-hover); min-width: 82px; background: none; padding: 0; }
+.bigo-meta { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.bigo-name { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }
+.bigo-ex { color: var(--text-secondary); font-size: 13.5px; }
+.bigo-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+.ds-grid { display: grid; grid-template-columns: 1fr; gap: 18px; }
+.ds-card {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.015), transparent 50%), var(--surface-1);
+  border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 18px 20px; box-shadow: var(--shadow-sm);
+}
+.ds-card > h3 { margin: 0 0 6px; font-size: 17px; color: var(--text-primary); }
+.ds-what { margin: 0 0 14px; line-height: 1.6; font-size: 14px; }
+table.ds-ops { border-collapse: collapse; width: 100%; margin: 0 0 14px; font-size: 13px; }
+table.ds-ops th, table.ds-ops td { padding: 7px 10px; text-align: left; border-bottom: 1px solid var(--border-subtle); }
+table.ds-ops th { color: var(--text-muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
+table.ds-ops tbody tr:last-child td { border-bottom: none; }
+table.ds-ops td:first-child { color: var(--text-secondary); }
+table.ds-ops code { font-size: 12px; }
+.ds-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 6px; }
+.ds-cols h4 { margin: 0 0 4px; }
+.ds-cols ul { margin: 0; padding-left: 18px; }
+.ds-cols li { margin: 5px 0; color: var(--text-secondary); font-size: 13.5px; }
+.ds-pitfall { font-size: 13.5px; }
+.ds-exercises { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.ds-ex {
+  display: inline-flex; align-items: center; gap: 9px; padding: 7px 12px; border-radius: var(--radius-md);
+  background: var(--surface-2); border: 1px solid var(--border-subtle); color: var(--text-primary); font-size: 13px;
+  transition: transform 140ms var(--ease-out), border-color 140ms;
+}
+.ds-ex:hover { border-color: var(--border-strong); text-decoration: none; transform: translateY(-1px); }
+.ds-ex-diff { font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: 99px; }
+.diff-easy .ds-ex-diff { color: var(--success); background: rgba(74, 222, 128, 0.13); }
+.diff-medium .ds-ex-diff { color: var(--amber); background: rgba(246, 199, 107, 0.14); }
+.diff-hard .ds-ex-diff { color: var(--danger); background: rgba(251, 113, 133, 0.14); }
+
+@media (max-width: 760px) { .bigo-cols, .ds-cols { grid-template-columns: 1fr; } }
+
 /* CAP / PACELC */
 .cap-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .cap-col { background: var(--surface-1); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 16px 18px; }

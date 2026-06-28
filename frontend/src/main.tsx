@@ -23,6 +23,7 @@ import {
   InterviewSystemDesign,
   InterviewDsa,
   InterviewBehavioral,
+  InterviewFundamentos,
 } from "./pages/Interview";
 import "./styles.css";
 
@@ -59,6 +60,7 @@ const router = createBrowserRouter([
       { index: true, element: <InterviewOverview /> },
       { path: "system-design", element: <InterviewSystemDesign /> },
       { path: "dsa", element: <InterviewDsa /> },
+      { path: "fundamentos", element: <InterviewFundamentos /> },
       { path: "comportamental", element: <InterviewBehavioral /> },
     ],
   },

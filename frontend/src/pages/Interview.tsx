@@ -9,6 +9,7 @@ import { TradeOffTable } from "../components/TradeOffTable";
 import { LinkChips, TagChips } from "../components/Chips";
 import { PrepSection } from "../components/PrepSection";
 import { dsaPrep, systemDesignPrep, behavioralPrep } from "../data/interviewPrep";
+import { complexityGuide, structures, type DataStructure } from "../data/dsaFundamentals";
 
 function QuestionCard({ q }: { q: QuestionSummary }) {
   const [open, setOpen] = useState(false);
@@ -186,6 +187,176 @@ export function InterviewBehavioral() {
     <div>
       <h1>Comportamental &amp; Estratégia</h1>
       <PrepSection pillar={behavioralPrep} />
+    </div>
+  );
+}
+
+/** Renderiza **negrito** e `code` inline. */
+function MD({ text }: { text: string }) {
+  const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g).filter((p) => p !== "");
+  return (
+    <>
+      {parts.map((p, i) => {
+        if (p.startsWith("**") && p.endsWith("**")) return <strong key={i}>{p.slice(2, -2)}</strong>;
+        if (p.startsWith("`") && p.endsWith("`")) return <code key={i}>{p.slice(1, -1)}</code>;
+        return <span key={i}>{p}</span>;
+      })}
+    </>
+  );
+}
+
+function BigOGuide() {
+  const g = complexityGuide;
+  return (
+    <>
+      <p className="lede">
+        <MD text={g.intro} />
+      </p>
+      <h3>A hierarquia (do mais rápido ao mais lento)</h3>
+      <div className="bigo-hier">
+        {g.hierarchy.map((h) => (
+          <div className="bigo-class" key={h.notation}>
+            <code className="bigo-notation">{h.notation}</code>
+            <div className="bigo-meta">
+              <span className="bigo-name">{h.name}</span>
+              <span className="bigo-ex">
+                <MD text={h.example} />
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="bigo-cols">
+        <div className="prep-block">
+          <h3>Como contar lendo o código</h3>
+          <ul className="prep-tips">
+            {g.howToCount.map((x, i) => (
+              <li key={i}>
+                <MD text={x} />
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div className="prep-block">
+          <h3>Tempo × espaço</h3>
+          <ul className="prep-tips">
+            {g.timeVsSpace.map((x, i) => (
+              <li key={i}>
+                <MD text={x} />
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+      <div className="prep-block">
+        <h3>Estimar o alvo pelas constraints</h3>
+        <ul className="prep-tips">
+          {g.fromConstraints.map((x, i) => (
+            <li key={i}>
+              <MD text={x} />
+            </li>
+          ))}
+        </ul>
+      </div>
+    </>
+  );
+}
+
+function StructureCard({ s }: { s: DataStructure }) {
+  return (
+    <div className="ds-card">
+      <h3>{s.name}</h3>
+      <p className="muted ds-what">
+        <MD text={s.what} />
+      </p>
+      <table className="ds-ops">
+        <thead>
+          <tr>
+            <th>Operação</th>
+            <th>Tempo</th>
+            <th>Espaço</th>
+          </tr>
+        </thead>
+        <tbody>
+          {s.operations.map((o, i) => (
+            <tr key={i}>
+              <td>{o.op}</td>
+              <td>
+                <code>{o.time}</code>
+              </td>
+              <td>
+                <code>{o.space}</code>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div className="ds-cols">
+        <div>
+          <h4>Quando usar</h4>
+          <ul>
+            {s.whenToUse.map((w, i) => (
+              <li key={i}>
+                <MD text={w} />
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div>
+          <h4>Padrões que habilita</h4>
+          <ul>
+            {s.patterns.map((p, i) => (
+              <li key={i}>
+                <MD text={p} />
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+      <div className="callout ds-pitfall">
+        <strong>Pegadinha.</strong> <MD text={s.pitfall} />
+      </div>
+      <h4>Desafios pra praticar</h4>
+      <div className="ds-exercises">
+        {s.exercises.map((e, i) => (
+          <a
+            key={i}
+            href={e.url}
+            target="_blank"
+            rel="noreferrer"
+            className={`ds-ex diff-${e.difficulty.toLowerCase()}`}
+          >
+            <span className="ds-ex-name">{e.name}</span>
+            <span className="ds-ex-diff">{e.difficulty}</span>
+          </a>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** /entrevista/fundamentos — revisão de estruturas de dados + Big-O + desafios. */
+export function InterviewFundamentos() {
+  return (
+    <div>
+      <h1>Estruturas &amp; Big-O</h1>
+      <p className="lede">
+        Sala de revisão das estruturas de dados pra entrevista — o que é cada uma, o custo de cada operação, quando
+        usar, a pegadinha, e os desafios do LeetCode pra ir fazendo. No topo, um guia pra reaprender a calcular Big-O
+        (tempo e espaço).
+      </p>
+      <section id="bigo">
+        <h2>Big-O em 5 minutos</h2>
+        <BigOGuide />
+      </section>
+      <section id="estruturas">
+        <h2>As estruturas</h2>
+        <div className="ds-grid">
+          {structures.map((s) => (
+            <StructureCard key={s.id} s={s} />
+          ))}
+        </div>
+      </section>
     </div>
   );
 }

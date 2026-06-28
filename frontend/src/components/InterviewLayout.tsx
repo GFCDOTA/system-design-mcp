@@ -5,6 +5,7 @@ const NAV: { to: string; label: string; end?: boolean }[] = [
   { to: "/entrevista", label: "Visão geral", end: true },
   { to: "/entrevista/system-design", label: "System Design" },
   { to: "/entrevista/dsa", label: "DSA" },
+  { to: "/entrevista/fundamentos", label: "Estruturas & Big-O" },
   { to: "/entrevista/comportamental", label: "Comportamental & Estratégia" },
 ];
 
