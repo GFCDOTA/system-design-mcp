@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { Link } from "react-router-dom";
 import { dbRows, dbDr, dbScenarios, COMPARE_DIMS, DR_DIMS, type DbRow, type DbScenario } from "../data/dbStudy";
 
@@ -26,11 +26,84 @@ function Stars({ n }: { n: number }) {
   );
 }
 
-function Tip({ text }: { text: string }) {
+// Explicação de teoria de cada característica das tabelas — abre no modal do "?".
+const CONCEPT: Record<string, string> = {
+  modeloDados:
+    "Como os dados são organizados. Relacional (SQL): tabelas com schema fixo e relações por chaves — forte em integridade e JOINs. NoSQL: chave-valor (acesso por chave, escala horizontal) ou documento (JSON aninhado, schema flexível). A escolha define como você modela e consulta.",
+  consistencia:
+    "ACID forte garante que toda leitura vê a última escrita confirmada (transações atômicas) — essencial pra saldo/ledger. BASE/eventual relaxa isso: as réplicas convergem 'em algum momento', trocando consistência imediata por disponibilidade e menor latência.",
+  joins:
+    "Capacidade de combinar dados de várias tabelas/coleções numa só consulta. Relacionais fazem JOIN nativo; NoSQL geralmente não (você desnormaliza ou junta na aplicação). A falta de JOIN força modelar por access patterns conhecidos.",
+  transacoes:
+    "Garante que um conjunto de operações acontece tudo-ou-nada (atomicidade). Relacionais suportam transação multi-tabela com MVCC; DynamoDB limita (até ~25-100 itens); documentos têm transação multi-doc nas versões recentes. Sem transação forte, você precisa de Saga e idempotência.",
+  isolation:
+    "Quanto uma transação enxerga das outras em andamento. Read Committed (só vê dados confirmados) é o padrão; Repeatable Read evita leituras fantasma; níveis mais altos custam mais lock. É o trade-off entre correção e concorrência.",
+  escala:
+    "Como o banco cresce com a carga. Vertical (scale-up): instância maior — simples, mas tem teto. Horizontal: mais nós (sharding/réplicas) — escala quase infinita, mais complexo. Auto/Serverless: ajusta sozinho conforme a demanda.",
+  multiAzCusto:
+    "Custo de manter cópias em múltiplas Zonas de Disponibilidade (AZs) pra alta disponibilidade. No Aurora as réplicas já vêm inclusas no storage; no RDS Multi-AZ você paga ~2× (standby ocioso). É o que dá failover automático sem perder dado.",
+  failover:
+    "Tempo até o banco se recuperar quando a instância primária cai. Aurora promove uma réplica em <30s; RDS Multi-AZ leva 60-120s; DynamoDB é transparente (sem failover visível). É o seu RTO efetivo no dia a dia.",
+  indice:
+    "Estrutura que acelera buscas. B-Tree: ótimo pra leitura ordenada e ranges (relacionais). LSM-Tree: otimizado pra escrita intensa, com leitura um pouco mais cara (DynamoDB, Cassandra). O índice errado vira gargalo.",
+  storage:
+    "Como o armazenamento é replicado pra durabilidade. Aurora mantém 6 cópias em 3 AZs (perde 2 sem perder escrita); RDS replica pra 1 standby; DynamoDB replica automaticamente em 3 AZs. Mais cópias = mais durável e disponível.",
+  concorrencia:
+    "Como o banco lida com escritas simultâneas no mesmo dado. MVCC (versionamento): leitores não bloqueiam escritores, cada um vê uma versão — alta concorrência. Optimistic lock: assume conflito raro, valida na hora de gravar e re-tenta se colidir.",
+  cap:
+    "Sob uma partição de rede (nós sem se falar), você só consegue 2 de 3: Consistência, Disponibilidade e Tolerância a Partição. Como partição é inevitável, a escolha real é CP (recusa a escrita pra não divergir — ledger) vs AP (sempre responde, converge depois — carrinho).",
+  pacelc:
+    "Estende o CAP: se há Partição (P), escolha A ou C; senão (Else, E), escolha Latência (L) ou Consistência (C). Mostra que mesmo SEM falha de rede há trade-off — replicar síncrono (consistente, mais lento) vs assíncrono (rápido, pode ler dado velho).",
+  patterns:
+    "Padrões de design (DDD/microsserviços) que combinam com este banco. Ex.: relacional + Transactional Outbox pra publicar eventos com segurança; DynamoDB + Single-Table Design; read models via CQRS. O banco certo destrava o pattern certo.",
+  rpo:
+    "Recovery Point Objective — quanto de dado você aceita perder numa falha, medido em tempo. RPO ~0 (standby síncrono) = não perde nada; RPO ~5min = pode perder os últimos minutos. Define o quão 'fresco' é o ponto de restauração.",
+  rto:
+    "Recovery Time Objective — quanto tempo até voltar a operar após uma falha. <30s (failover automático) vs 60-120s (Multi-AZ) vs horas (restore manual de backup). É a sua janela de indisponibilidade aceitável.",
+  backtrackPitr:
+    "PITR (Point-in-Time Recovery): restaurar o banco a qualquer instante dentro de uma janela (ex.: 35 dias) — salva de um DELETE acidental. Backtrack (Aurora): 'rebobina' o cluster pra um instante em segundos, sem restaurar uma cópia nova.",
+  snapshots:
+    "Backups pontuais. Automáticos: o banco tira sozinho na janela configurada e expiram após N dias. Manuais/On-Demand: você dispara e ficam até apagar. Snapshot é a base pra clonar ambientes e pra DR.",
+  crossRegion:
+    "Replicação/DR entre regiões AWS (geografias distintas). Aurora Global Database replica com RPO ~1s; DynamoDB Global Tables é ativo-ativo (escreve em qualquer região). Protege contra a queda de uma região inteira e aproxima o dado do usuário.",
+  destaque:
+    "O diferencial de resiliência deste banco — o que ele faz de melhor em backup/DR comparado aos outros.",
+};
+
+function ConceptTip({ label, explain, topic }: { label: string; explain: string; topic?: string }) {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
   return (
-    <span className="tip" title={text} aria-label={text}>
-      ?
-    </span>
+    <>
+      <button type="button" className="tip" onClick={() => setOpen(true)} aria-label={`O que é ${label}?`}>
+        ?
+      </button>
+      {open ? (
+        <div className="modal-overlay" onClick={() => setOpen(false)} role="dialog" aria-modal="true">
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-head">
+              <h3>{label}</h3>
+              <button type="button" className="modal-close" onClick={() => setOpen(false)} aria-label="Fechar">
+                ×
+              </button>
+            </div>
+            <p className="modal-body">{explain}</p>
+            {topic ? (
+              <Link to={`/topics/${topic}`} className="modal-link" onClick={() => setOpen(false)}>
+                Aprofundar na teoria →
+              </Link>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+    </>
   );
 }
 
@@ -135,7 +208,11 @@ function CompareTable<T extends { id: string; name: string; color: string }>({
                 ) : (
                   dim.label
                 )}{" "}
-                <Tip text={dim.tip} />
+                <ConceptTip
+                  label={dim.label}
+                  explain={CONCEPT[String(dim.key)] ?? dim.tip}
+                  topic={topicFor ? topicFor(dim.key) : undefined}
+                />
               </td>
               {rows.map((d) => (
                 <td key={d.id}>{String(d[dim.key])}</td>
@@ -189,13 +266,14 @@ export function Databases() {
 
       <section id="comparativo">
         <h2>Comparativo Técnico (6 opções)</h2>
-        <p className="muted">Característica com link abre a teoria que a explica; passe o mouse no “?” pra um resumo.</p>
+        <p className="muted">Clique no “?” pra a explicação de cada conceito; a característica com link abre a teoria completa.</p>
         <CompareTable rows={dbRows} dims={COMPARE_DIMS} topicFor={(k) => TOPIC_FOR_DIM[k]} />
       </section>
 
       <section id="dr">
         <h2>Backup, DR e Resiliência</h2>
-        <CompareTable rows={dbDr} dims={DR_DIMS} />
+        <p className="muted">Clique no “?” de cada linha pra entender o conceito (RPO, RTO, PITR…).</p>
+        <CompareTable rows={dbDr} dims={DR_DIMS} topicFor={() => "spof-dr"} />
       </section>
 
       <section id="cap">

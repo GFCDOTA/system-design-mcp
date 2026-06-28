@@ -464,13 +464,31 @@ table.compare-table td.dim { color: var(--text-secondary); font-weight: 600; whi
 table.compare-table td:not(.dim) { font-family: var(--font-mono); font-size: 12px; color: var(--text-primary); }
 table.compare-table tbody tr:hover td:not(.dim) { background: rgba(255, 255, 255, 0.02); }
 
-/* Tooltip "?" */
+/* Botão "?" que abre o modal de conceito */
 .tip {
-  display: inline-grid; place-items: center; width: 15px; height: 15px; border-radius: 50%;
-  border: 1px solid var(--border-default); color: var(--text-muted); font-size: 10px; font-weight: 700;
-  cursor: help; vertical-align: middle; font-family: var(--font-sans);
+  display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 50%;
+  border: 1px solid var(--border-default); background: none; color: var(--text-muted);
+  font-size: 10px; font-weight: 700; line-height: 1; padding: 0; cursor: pointer;
+  vertical-align: middle; font-family: var(--font-sans);
 }
-.tip:hover { color: var(--brand-hover); border-color: var(--brand-border); }
+.tip:hover { color: var(--brand-hover); border-color: var(--brand-border); background: var(--brand-soft); }
+
+/* Modal de conceito */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 20px;
+  background: rgba(4, 5, 8, 0.66); backdrop-filter: blur(2px); animation: modal-in 140ms var(--ease-out);
+}
+.modal {
+  width: min(540px, 100%); background: var(--surface-2); border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg); padding: 20px 22px; box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55);
+}
+.modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.modal-head h3 { margin: 0; font-size: 17px; color: var(--text-primary); }
+.modal-close { background: none; border: none; color: var(--text-muted); font-size: 24px; line-height: 1; cursor: pointer; padding: 0 2px; }
+.modal-close:hover { color: var(--text-primary); }
+.modal-body { color: var(--text-secondary); line-height: 1.65; margin: 0 0 14px; font-size: 14.5px; }
+.modal-link { font-weight: 600; font-size: 14px; }
+@keyframes modal-in { from { opacity: 0; } to { opacity: 1; } }
 
 /* CAP / PACELC */
 .cap-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
