@@ -28,6 +28,16 @@ export function Home() {
         </p>
       </header>
 
+      <div className="hero-card">
+        <h2>Comece por aqui</h2>
+        <p className="lede">Escolha por onde estudar agora — aprofunde a base de System Design ou prepare a entrevista.</p>
+        <div className="hero-actions">
+          <Link to="/entrevista" className="btn btn-primary">Modo Entrevista →</Link>
+          <Link to="/topics" className="btn btn-secondary">Aprender fundamentos</Link>
+          <Link to="/patterns" className="btn btn-secondary">Explorar padrões</Link>
+        </div>
+      </div>
+
       <Async state={stats}>
         {(s) => (
           <div className="stat-grid">
