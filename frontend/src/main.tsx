@@ -26,6 +26,7 @@ import {
   InterviewFundamentos,
   InterviewRelatos,
 } from "./pages/Interview";
+import { RouteError, NotFound } from "./pages/RouteError";
 import "./styles.css";
 
 const router = createBrowserRouter([
@@ -33,6 +34,7 @@ const router = createBrowserRouter([
     // Base de Conhecimento — o System Design Specialist Lab (produto original)
     path: "/",
     element: <Layout />,
+    errorElement: <RouteError />,
     children: [
       { index: true, element: <Home /> },
       { path: "topics", element: <Topics /> },
@@ -49,6 +51,7 @@ const router = createBrowserRouter([
       { path: "databases", element: <Databases /> },
       { path: "databases/builder", element: <DatabaseBuilder /> },
       { path: "databases/:id", element: <DatabaseDetail /> },
+      { path: "*", element: <NotFound /> },
     ],
   },
   // back-compat: o Modo Entrevista era /interview antes de virar área própria
@@ -57,6 +60,7 @@ const router = createBrowserRouter([
     // Modo Entrevista — área própria, layout próprio
     path: "/entrevista",
     element: <InterviewLayout />,
+    errorElement: <RouteError />,
     children: [
       { index: true, element: <InterviewOverview /> },
       { path: "system-design", element: <InterviewSystemDesign /> },
