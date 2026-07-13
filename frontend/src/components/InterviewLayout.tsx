@@ -6,7 +6,9 @@ import { TrackVisit } from "./Progress";
 const NAV: { to: string; label: string; end?: boolean }[] = [
   { to: "/entrevista", label: "Visão geral", end: true },
   { to: "/entrevista/system-design", label: "System Design" },
+  { to: "/entrevista/java", label: "Java Core" },
   { to: "/entrevista/dsa", label: "DSA" },
+  { to: "/entrevista/roadmap", label: "Roadmap do curso" },
   { to: "/entrevista/fundamentos", label: "Estruturas & Big-O" },
   { to: "/entrevista/comportamental", label: "Comportamental & Estratégia" },
   { to: "/entrevista/relatos", label: "Relatos de Entrevista" },

@@ -93,10 +93,22 @@ export function InterviewOverview() {
       desc: "Framework de resposta, estimativa (Lei de Little, Scale Cube), as 16 mais cobradas nas big techs e o banco de perguntas filtrável por dificuldade.",
     },
     {
+      to: "/entrevista/java",
+      title: "Java Core",
+      badge: "teoria",
+      desc: "O banco de perguntas teóricas de Java: fundamentos, JVM, collections, concorrência, streams e Java 8→21.",
+    },
+    {
       to: "/entrevista/dsa",
       title: "DSA",
       badge: "roadmap",
       desc: "Os 12 padrões na ordem certa, as 16 questões mais cobradas, o método de ataque e como treinar. Sem editor aqui — você resolve no LeetCode.",
+    },
+    {
+      to: "/entrevista/roadmap",
+      title: "Roadmap do curso",
+      badge: "seu material",
+      desc: "O Complete Interview Preparation organizado por faixa de experiência, com progresso por passo.",
     },
     {
       to: "/entrevista/comportamental",

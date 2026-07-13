@@ -59,6 +59,8 @@ const SECTION_LABEL: Record<string, string> = {
 
 const INTERVIEW_LABEL: Record<string, string> = {
   "system-design": "System Design",
+  java: "Java Core",
+  roadmap: "Roadmap do curso",
   dsa: "DSA",
   fundamentos: "Estruturas & Big-O",
   comportamental: "Comportamental",

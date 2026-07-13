@@ -26,6 +26,8 @@ import {
   InterviewFundamentos,
   InterviewRelatos,
 } from "./pages/Interview";
+import { JavaCore } from "./pages/JavaCore";
+import { CourseRoadmap } from "./pages/CourseRoadmap";
 import { RouteError, NotFound } from "./pages/RouteError";
 import { InstallHint } from "./components/InstallHint";
 import "./styles.css";
@@ -65,6 +67,8 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <InterviewOverview /> },
       { path: "system-design", element: <InterviewSystemDesign /> },
+      { path: "java", element: <JavaCore /> },
+      { path: "roadmap", element: <CourseRoadmap /> },
       { path: "dsa", element: <InterviewDsa /> },
       { path: "fundamentos", element: <InterviewFundamentos /> },
       { path: "comportamental", element: <InterviewBehavioral /> },
