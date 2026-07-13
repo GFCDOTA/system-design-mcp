@@ -1,8 +1,10 @@
 import { useMemo } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
 import { useAsync } from "../hooks";
 import { Async } from "../components/States";
 import { coursePdfBase, readingEntry } from "../data/courseRoadmap";
+import { studyReadingEntry } from "../data/studySyllabus";
+import { isDone, toggleDone, useProgress } from "../progress";
 
 interface PageBlockText {
   n: number;
@@ -51,10 +53,51 @@ function PageView({ page, base }: { page: ReaderPage; base: string }) {
   );
 }
 
-/** /entrevista/curso/:file — lê o material do curso extraído dos PDFs, dentro do app. */
+interface NavLink {
+  to: string;
+  label: string;
+}
+interface ReaderNav {
+  title: string;
+  sub?: string;
+  back: NavLink;
+  prev?: NavLink;
+  next?: NavLink;
+  pdf: string;
+}
+
+/** Resolve rótulos/navegação conforme o workspace (estudos ou entrevista). */
+function useReaderNav(file: string, study: boolean): ReaderNav {
+  return useMemo(() => {
+    if (study) {
+      const { entry, prev, next } = studyReadingEntry(file);
+      return {
+        title: entry?.material.label ?? file,
+        sub: entry?.subject.title,
+        back: { to: entry ? `/estudos/${entry.subject.id}` : "/estudos", label: entry?.subject.title ?? "Estudos" },
+        prev: prev ? { to: `/estudos/ler/${prev.material.stem}`, label: prev.material.label } : undefined,
+        next: next ? { to: `/estudos/ler/${next.material.stem}`, label: next.material.label } : undefined,
+        pdf: `${file}.pdf`,
+      };
+    }
+    const { entry, prev, next } = readingEntry(file);
+    return {
+      title: entry?.contentLabel ?? file,
+      sub: entry?.moduleTitle,
+      back: { to: "/entrevista/roadmap", label: "Roadmap" },
+      prev: prev ? { to: `/entrevista/curso/${prev.stem}`, label: prev.contentLabel } : undefined,
+      next: next ? { to: `/entrevista/curso/${next.stem}`, label: next.contentLabel } : undefined,
+      pdf: entry?.pdf ?? `${file}.pdf`,
+    };
+  }, [file, study]);
+}
+
+/** Leitor do material do curso, dentro do app. Serve ao Modo Estudos e ao Modo Entrevista. */
 export function CourseReader() {
   const { file = "" } = useParams();
-  const nav = useMemo(() => readingEntry(file), [file]);
+  const study = useLocation().pathname.startsWith("/estudos");
+  useProgress();
+  const nav = useReaderNav(file, study);
   const state = useAsync<ExtractedDoc>(
     () =>
       fetch(`${coursePdfBase}extracted/${encodeURIComponent(file)}.json`).then((r) => {
@@ -64,21 +107,31 @@ export function CourseReader() {
     [file],
   );
 
-  const { entry, prev, next } = nav;
+  const read = isDone(`read:${file}`);
 
   return (
     <div className="reader">
       <div className="reader-bar">
-        <Link to="/entrevista/roadmap" className="chip">
-          ← Roadmap
+        <Link to={nav.back.to} className="chip">
+          ← {nav.back.label}
         </Link>
-        <a href={`${coursePdfBase}${entry?.pdf ?? file + ".pdf"}`} target="_blank" rel="noreferrer" className="chip link">
+        <a href={`${coursePdfBase}${nav.pdf}`} target="_blank" rel="noreferrer" className="chip link">
           PDF original ↗
         </a>
+        {study && (
+          <button
+            type="button"
+            className={`mark-done ${read ? "done" : ""}`}
+            onClick={() => toggleDone(`read:${file}`)}
+            aria-pressed={read}
+          >
+            {read ? "✓ Lido" : "Marcar como lido"}
+          </button>
+        )}
       </div>
 
-      <h1>{entry?.contentLabel ?? file}</h1>
-      {entry && <p className="muted reader-sub">{entry.moduleTitle}</p>}
+      <h1>{nav.title}</h1>
+      {nav.sub && <p className="muted reader-sub">{nav.sub}</p>}
 
       <Async state={state}>
         {(doc) => (
@@ -96,18 +149,18 @@ export function CourseReader() {
       </Async>
 
       <nav className="reader-nav">
-        {prev ? (
-          <Link to={`/entrevista/curso/${prev.stem}`} className="reader-navlink prev">
+        {nav.prev ? (
+          <Link to={nav.prev.to} className="reader-navlink prev">
             <span className="reader-navdir">← Anterior</span>
-            <span className="reader-navlabel">{prev.contentLabel}</span>
+            <span className="reader-navlabel">{nav.prev.label}</span>
           </Link>
         ) : (
           <span />
         )}
-        {next ? (
-          <Link to={`/entrevista/curso/${next.stem}`} className="reader-navlink next">
+        {nav.next ? (
+          <Link to={nav.next.to} className="reader-navlink next">
             <span className="reader-navdir">Próximo →</span>
-            <span className="reader-navlabel">{next.contentLabel}</span>
+            <span className="reader-navlabel">{nav.next.label}</span>
           </Link>
         ) : (
           <span />

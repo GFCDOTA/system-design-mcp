@@ -55,6 +55,7 @@ const SECTION_LABEL: Record<string, string> = {
   evidence: "Evidências",
   "ai-agents": "IA & Agentes",
   entrevista: "Modo Entrevista",
+  estudos: "Modo Estudos",
 };
 
 const INTERVIEW_LABEL: Record<string, string> = {
@@ -75,7 +76,8 @@ export function TrackVisit() {
     const [seg1, seg2] = pathname.replace(/^\//, "").split("/");
     let label = SECTION_LABEL[seg1] ?? seg1;
     if (seg1 === "entrevista" && seg2) label += ` · ${INTERVIEW_LABEL[seg2] ?? seg2}`;
-    else if (seg2) label += ` · ${seg2}`;
+    else if (seg1 === "estudos" && seg2 && seg2 !== "ler") label += ` · ${seg2}`;
+    else if (seg1 !== "estudos" && seg2) label += ` · ${seg2}`;
     rememberVisit(pathname, label);
   }, [pathname]);
   return null;
