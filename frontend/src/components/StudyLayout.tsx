@@ -41,6 +41,9 @@ export function StudyLayout() {
           <NavLink to="/estudos/curriculo" className={({ isActive }) => (isActive ? "active" : "")}>
             📄 Currículo & ATS
           </NavLink>
+          <NavLink to="/estudos/validador" className={({ isActive }) => (isActive ? "active" : "")}>
+            ✅ Validador de ATS
+          </NavLink>
           {subjects.map((s) => (
             <NavLink key={s.id} to={`/estudos/${s.id}`} className={({ isActive }) => (isActive ? "active" : "")}>
               {s.icon} {s.title}
