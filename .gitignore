@@ -31,3 +31,6 @@ Thumbs.db
 # Local build toolchain (downloaded, not committed)
 .tools/
 knowledge-base/_parts/
+
+# Material do curso comprado (Complete Interview Preparation) — LOCAL, nunca versionar
+frontend/public/course/
