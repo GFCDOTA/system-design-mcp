@@ -8,6 +8,7 @@ import { TradeOffTable } from "../components/TradeOffTable";
 import { LinkChips } from "../components/Chips";
 import { DiagramEmbeds } from "../components/DiagramEmbeds";
 import { DbRecommendation } from "../components/DbRecommendation";
+import { MarkDoneButton } from "../components/Progress";
 
 function Bullets({ title, items, kind }: { title: string; items: string[]; kind: string }) {
   if (!items?.length) return null;
@@ -32,6 +33,7 @@ export function PatternDetail() {
         <article className="detail">
           <span className="badge">{p.category}</span>
           <h1>{p.name}</h1>
+          <MarkDoneButton id={`pattern:${p.id}`} />
 
           <section>
             <h2>Problema</h2>

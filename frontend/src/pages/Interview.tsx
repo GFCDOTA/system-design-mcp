@@ -9,15 +9,32 @@ import { TradeOffTable } from "../components/TradeOffTable";
 import { LinkChips, TagChips } from "../components/Chips";
 import { PrepSection } from "../components/PrepSection";
 import { dsaPrep, systemDesignPrep, behavioralPrep } from "../data/interviewPrep";
+import { ProgressBar } from "../components/Progress";
+import { isDone, toggleDone, doneCount, useProgress } from "../progress";
 import { complexityGuide, structures, type DataStructure } from "../data/dsaFundamentals";
 import { reports, crossLessons, pitfalls, resourceStack, type InterviewReport } from "../data/interviewReports";
 
 function QuestionCard({ q }: { q: QuestionSummary }) {
   const [open, setOpen] = useState(false);
   const detail = useAsync(() => api.question(q.id), [open ? q.id : ""]);
+  useProgress();
+  const studied = isDone(`q:${q.id}`);
   return (
-    <div className={`qa ${open ? "open" : ""}`}>
+    <div className={`qa ${open ? "open" : ""} ${studied ? "studied" : ""}`}>
       <button className="qa-head" onClick={() => setOpen((v) => !v)}>
+        <span
+          className={`qa-done ${studied ? "done" : ""}`}
+          role="checkbox"
+          aria-checked={studied}
+          aria-label={studied ? "Estudada — clique para desmarcar" : "Marcar como estudada"}
+          title={studied ? "Estudada" : "Marcar como estudada"}
+          onClick={(e) => {
+            e.stopPropagation();
+            toggleDone(`q:${q.id}`);
+          }}
+        >
+          ✓
+        </span>
         <span className="qa-id">{q.id}</span>
         <span className="qa-q">{q.question}</span>
         {q.difficulty ? <span className="badge small">{q.difficulty}</span> : null}
@@ -66,6 +83,8 @@ function QuestionCard({ q }: { q: QuestionSummary }) {
 
 /** /entrevista — landing do Modo Entrevista. */
 export function InterviewOverview() {
+  const stats = useAsync(() => api.stats(), []);
+  useProgress();
   const cards = [
     {
       to: "/entrevista/system-design",
@@ -101,6 +120,14 @@ export function InterviewOverview() {
         <Link to="/entrevista/dsa">16 questões de DSA</Link> e os{" "}
         <Link to="/entrevista/system-design">16 designs mais cobrados</Link> cobre o grosso do que cai.
       </div>
+      <Async state={stats}>
+        {(s) => (
+          <div className="prep-block">
+            <h3>Seu progresso no banco de perguntas</h3>
+            <ProgressBar done={Math.min(doneCount("q:"), s.interviewQuestions)} total={s.interviewQuestions} />
+          </div>
+        )}
+      </Async>
       <div className="hero-card">
         <h2>Sessão recomendada de hoje</h2>
         <div className="hero-step">
