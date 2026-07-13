@@ -486,7 +486,18 @@ ol.steps.roadmap li { padding-top: 9px; padding-bottom: 9px; }
 .qbank-count { margin: 4px 0 8px; font-size: 13px; }
 
 /* ===================== Trilhas de estudo ===================== */
-.study-feature-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 18px 0 8px; }
+.study-feature-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin: 18px 0 8px; }
+
+/* Estrutura de currículo (guia ATS) */
+.ats-structure { list-style: none; counter-reset: none; padding: 0; margin: 12px 0 0; }
+.ats-structure-item { display: flex; gap: 12px; align-items: flex-start; padding: 9px 0; border-top: 1px solid var(--border-subtle); }
+.ats-structure-item:first-child { border-top: none; }
+.ats-structure-n {
+  flex-shrink: 0; width: 24px; height: 24px; display: grid; place-items: center; border-radius: 50%;
+  background: var(--brand-soft); color: var(--brand); font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums;
+}
+.ats-structure-item > div { display: flex; flex-direction: column; gap: 1px; }
+.ats-structure-hint { color: var(--text-secondary); font-size: 13.5px; line-height: 1.5; }
 .study-feature {
   display: flex; gap: 14px; align-items: flex-start; padding: 16px 18px; color: var(--text-primary);
   background: linear-gradient(135deg, var(--brand-soft), var(--cyan-soft));

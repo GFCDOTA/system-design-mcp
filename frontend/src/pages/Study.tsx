@@ -89,6 +89,13 @@ export function StudyOverview() {
             <p>408 perguntas dos PDFs, na página — com selo das empresas que mais cobram cada tema.</p>
           </div>
         </Link>
+        <Link to="/estudos/curriculo" className="study-feature">
+          <span className="trail-icon" aria-hidden>📄</span>
+          <div>
+            <h3>Currículo & ATS</h3>
+            <p>Como montar um currículo que passa no filtro automático e impressiona o recrutador.</p>
+          </div>
+        </Link>
       </div>
 
       <h2>Assuntos</h2>
