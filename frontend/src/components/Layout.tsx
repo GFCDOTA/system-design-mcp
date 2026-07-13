@@ -2,6 +2,7 @@ import { useState } from "react";
 import { NavLink, Outlet, Link } from "react-router-dom";
 import { ModeSwitch } from "./ModeSwitch";
 import { TrackVisit } from "./Progress";
+import { ThemeToggle } from "./ThemeToggle";
 
 const NAV: { to: string; label: string }[] = [
   { to: "/", label: "Início" },
@@ -47,7 +48,10 @@ export function Layout() {
           ))}
         </nav>
         <div className="sidebar-foot">
-          Conteúdo ancorado no <em>System Design Workbook</em> + repos de referência. Sem LLM em runtime.
+          <ThemeToggle />
+          <p>
+            Conteúdo ancorado no <em>System Design Workbook</em> + repos de referência. Sem LLM em runtime.
+          </p>
         </div>
       </aside>
       <main className="content">

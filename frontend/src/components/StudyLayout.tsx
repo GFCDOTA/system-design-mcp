@@ -2,6 +2,7 @@ import { useState } from "react";
 import { NavLink, Outlet, Link } from "react-router-dom";
 import { ModeSwitch } from "./ModeSwitch";
 import { TrackVisit } from "./Progress";
+import { ThemeToggle } from "./ThemeToggle";
 import { subjects } from "../data/studySyllabus";
 
 /** Layout próprio do Modo Estudos — aprender o material do curso por assunto. */
@@ -51,7 +52,8 @@ export function StudyLayout() {
           ))}
         </nav>
         <div className="sidebar-foot">
-          Material do curso Complete Interview Preparation, organizado por assunto pra estudar a fundo.
+          <ThemeToggle />
+          <p>Material do curso Complete Interview Preparation, organizado por assunto pra estudar a fundo.</p>
         </div>
       </aside>
       <main className="content">

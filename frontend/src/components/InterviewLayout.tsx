@@ -2,6 +2,7 @@ import { useState } from "react";
 import { NavLink, Outlet, Link } from "react-router-dom";
 import { ModeSwitch } from "./ModeSwitch";
 import { TrackVisit } from "./Progress";
+import { ThemeToggle } from "./ThemeToggle";
 
 const NAV: { to: string; label: string; end?: boolean }[] = [
   { to: "/entrevista", label: "Visão geral", end: true },
@@ -46,7 +47,8 @@ export function InterviewLayout() {
           ))}
         </nav>
         <div className="sidebar-foot">
-          Preparação para entrevista de SWE. As perguntas de System Design vêm da base de conhecimento (com fontes).
+          <ThemeToggle />
+          <p>Preparação para entrevista de SWE. As perguntas de System Design vêm da base de conhecimento (com fontes).</p>
         </div>
       </aside>
       <main className="content">
