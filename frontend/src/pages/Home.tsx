@@ -2,6 +2,8 @@ import { Link } from "react-router-dom";
 import { api, type TopicSummary } from "../api";
 import { useAsync } from "../hooks";
 import { Async } from "../components/States";
+import { DoneMark, ProgressBar } from "../components/Progress";
+import { doneCount, lastVisit, useProgress } from "../progress";
 
 function groupByCategory(topics: TopicSummary[]): [string, TopicSummary[]][] {
   const map = new Map<string, TopicSummary[]>();
@@ -13,43 +15,131 @@ function groupByCategory(topics: TopicSummary[]): [string, TopicSummary[]][] {
   return [...map.entries()];
 }
 
+interface Trail {
+  to: string;
+  icon: string;
+  title: string;
+  desc: string;
+  /** prefixo do progresso (progress.ts) — sem prefixo, a trilha mostra só a contagem */
+  prefix?: string;
+  total?: number;
+  meta?: string;
+}
+
 export function Home() {
   const stats = useAsync(() => api.stats(), []);
   const topics = useAsync(() => api.topics(), []);
+  useProgress();
+  const last = lastVisit();
 
   return (
     <div>
-      <header className="page-head">
-        <h1>System Design Specialist Lab</h1>
+      <section className="home-hero">
+        <span className="home-kicker">Plataforma de estudo</span>
+        <h1>Aprenda System Design do jeito que cai na entrevista</h1>
         <p className="lede">
-          Base de conhecimento interativa de System Design, ancorada no <em>System Design Workbook</em>{" "}
-          (Matheus Scarpato Fidelis) e em três implementações de referência. Cada explicação aponta para a
-          sua fonte — nada é inventado.
+          Trilhas de fundamentos, padrões de arquitetura, bancos de dados e um Modo Entrevista completo (System
+          Design + DSA + comportamental). Todo o conteúdo aponta para a fonte — nada é inventado.
         </p>
-      </header>
-
-      <div className="hero-card">
-        <h2>Comece por aqui</h2>
-        <p className="lede">Escolha por onde estudar agora — aprofunde a base de System Design ou prepare a entrevista.</p>
         <div className="hero-actions">
-          <Link to="/entrevista" className="btn btn-primary">Modo Entrevista →</Link>
-          <Link to="/topics" className="btn btn-secondary">Aprender fundamentos</Link>
-          <Link to="/patterns" className="btn btn-secondary">Explorar padrões</Link>
+          {last ? (
+            <Link to={last.path} className="btn btn-primary">
+              Continuar: {last.label} →
+            </Link>
+          ) : (
+            <Link to="/topics" className="btn btn-primary">Começar pelos fundamentos →</Link>
+          )}
+          <Link to="/entrevista" className="btn btn-secondary">Modo Entrevista</Link>
+          <Link to="/patterns" className="btn btn-secondary">Padrões</Link>
         </div>
-      </div>
+        {last && (
+          <p className="home-continue">
+            Seu progresso fica salvo neste dispositivo — marque tópicos e perguntas como concluídos pra ver as
+            barras andarem.
+          </p>
+        )}
+      </section>
+
+      <h2>Trilhas de estudo</h2>
+      <Async state={stats}>
+        {(s) => {
+          const trails: Trail[] = [
+            {
+              to: "/topics",
+              icon: "📚",
+              title: "Fundamentos de System Design",
+              desc: "Os capítulos do workbook como tópicos navegáveis — consistência, escala, resiliência, mensageria.",
+              prefix: "topic:",
+              total: s.topics,
+            },
+            {
+              to: "/patterns",
+              icon: "🧩",
+              title: "Padrões de arquitetura",
+              desc: "Event Sourcing, CQRS, Saga, Outbox e companhia — quando usar, quando evitar, trade-offs.",
+              prefix: "pattern:",
+              total: s.patterns,
+            },
+            {
+              to: "/entrevista",
+              icon: "🎯",
+              title: "Modo Entrevista",
+              desc: "Framework de resposta, banco de perguntas, as 16 mais cobradas de DSA e de System Design.",
+              prefix: "q:",
+              total: s.interviewQuestions,
+            },
+            {
+              to: "/databases",
+              icon: "🗄️",
+              title: "Bancos de Dados",
+              desc: "Estudo comparativo AWS + decisor interativo: ACID, workload, latência e custo lado a lado.",
+              meta: `${s.databases} bancos · comparativo + decisor`,
+            },
+            {
+              to: "/entrevista/fundamentos",
+              icon: "⏱️",
+              title: "Estruturas & Big-O",
+              desc: "Revisão das estruturas de dados com custo de cada operação e desafios do LeetCode.",
+              meta: "9 estruturas · guia de complexidade",
+            },
+            {
+              to: "/ai-agents",
+              icon: "🤖",
+              title: "IA & Agentes",
+              desc: "O vocabulário de IA pra quem vem do backend — LLM, harness, agente, RAG, embeddings.",
+              meta: `${s.aiGlossary} termos`,
+            },
+          ];
+          return (
+            <div className="trail-grid">
+              {trails.map((t) => (
+                <Link key={t.to} to={t.to} className="trail-card">
+                  <span className="trail-icon" aria-hidden>{t.icon}</span>
+                  <h3>{t.title}</h3>
+                  <p>{t.desc}</p>
+                  {t.prefix && t.total ? (
+                    <ProgressBar done={Math.min(doneCount(t.prefix), t.total)} total={t.total} />
+                  ) : (
+                    <span className="trail-meta">{t.meta}</span>
+                  )}
+                </Link>
+              ))}
+            </div>
+          );
+        }}
+      </Async>
 
       <Async state={stats}>
         {(s) => (
-          <div className="stat-grid">
-            <Stat to="/topics" n={s.topics} label="Tópicos" />
-            <Stat to="/patterns" n={s.patterns} label="Padrões" />
-            <Stat to="/flows" n={s.flows} label="Fluxos" />
-            <Stat to="/interview" n={s.interviewQuestions} label="Perguntas" />
-            <Stat to="/diagrams" n={s.diagrams} label="Diagramas" />
-            <Stat to="/databases" n={s.databases} label="Bancos" />
-            <Stat to="/evidence" n={s.evidence} label="Evidências" />
-            <Stat to="/ai-agents" n={s.aiGlossary} label="IA & Agentes" />
-          </div>
+          <p className="inventory">
+            <span><b>{s.topics}</b> tópicos</span>
+            <span><b>{s.patterns}</b> padrões</span>
+            <span><b>{s.flows}</b> fluxos</span>
+            <span><b>{s.interviewQuestions}</b> perguntas</span>
+            <span><b>{s.diagrams}</b> diagramas</span>
+            <span><b>{s.databases}</b> bancos</span>
+            <span><b>{s.evidence}</b> evidências</span>
+          </p>
         )}
       </Async>
 
@@ -63,7 +153,7 @@ export function Home() {
                 <ul>
                   {ts.map((t) => (
                     <li key={t.id}>
-                      <Link to={`/topics/${t.id}`}>{t.title}</Link>
+                      <DoneMark id={`topic:${t.id}`} /> <Link to={`/topics/${t.id}`}>{t.title}</Link>
                       <span className="muted"> — {t.summary}</span>
                     </li>
                   ))}
@@ -74,14 +164,5 @@ export function Home() {
         )}
       </Async>
     </div>
-  );
-}
-
-function Stat({ to, n, label }: { to: string; n: number; label: string }) {
-  return (
-    <Link to={to} className="stat">
-      <span className="stat-n">{n}</span>
-      <span className="stat-l">{label}</span>
-    </Link>
   );
 }

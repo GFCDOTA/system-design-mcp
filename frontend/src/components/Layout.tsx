@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { NavLink, Outlet, Link } from "react-router-dom";
 import { ModeSwitch } from "./ModeSwitch";
+import { TrackVisit } from "./Progress";
 
 const NAV: { to: string; label: string }[] = [
   { to: "/", label: "Início" },
@@ -20,6 +21,7 @@ export function Layout() {
   const close = () => setOpen(false);
   return (
     <div className="app">
+      <TrackVisit />
       <header className="mobile-bar">
         <button className="hamburger" onClick={() => setOpen(true)} aria-label="Abrir menu">
           ☰

@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { api } from "../api";
 import { useAsync } from "../hooks";
 import { Async } from "../components/States";
+import { DoneMark } from "../components/Progress";
 
 export function Patterns() {
   const state = useAsync(() => api.patterns(), []);
@@ -20,6 +21,7 @@ export function Patterns() {
                 <div className="list-card-head">
                   <span className="badge">{p.category}</span>
                   <h3>{p.name}</h3>
+                  <DoneMark id={`pattern:${p.id}`} />
                 </div>
                 <p>{p.problem}</p>
               </Link>

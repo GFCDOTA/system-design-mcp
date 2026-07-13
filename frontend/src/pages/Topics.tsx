@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { api } from "../api";
 import { useAsync } from "../hooks";
 import { Async } from "../components/States";
+import { DoneMark } from "../components/Progress";
 
 export function Topics() {
   const state = useAsync(() => api.topics(), []);
@@ -17,6 +18,7 @@ export function Topics() {
                 <div className="list-card-head">
                   <span className="badge">{t.category}</span>
                   <h3>{t.title}</h3>
+                  <DoneMark id={`topic:${t.id}`} />
                 </div>
                 <p>{t.summary}</p>
               </Link>

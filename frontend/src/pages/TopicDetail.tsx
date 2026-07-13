@@ -8,6 +8,7 @@ import { TradeOffTable } from "../components/TradeOffTable";
 import { LinkChips } from "../components/Chips";
 import { DiagramEmbeds } from "../components/DiagramEmbeds";
 import { DbRecommendation } from "../components/DbRecommendation";
+import { MarkDoneButton } from "../components/Progress";
 
 export function TopicDetail() {
   const { id = "" } = useParams();
@@ -19,6 +20,7 @@ export function TopicDetail() {
           <span className="badge">{t.category}</span>
           <h1>{t.title}</h1>
           <p className="lede">{t.summary}</p>
+          <MarkDoneButton id={`topic:${t.id}`} />
 
           <Markdown>{t.detailedExplanation}</Markdown>
 
