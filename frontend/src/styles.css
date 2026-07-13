@@ -5,51 +5,52 @@
   --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
 
-  /* Nomes antigos remapeados pra paleta CLARA (plataforma de aprendizado) —
-     a maioria das regras de componente herda isto automaticamente. */
-  --bg: #F6F7FA;
-  --bg-elev: #FFFFFF;
-  --bg-elev2: #F3F4F8;
-  --border: rgba(17, 24, 39, 0.10);
-  --text: #14161F;
-  --muted: #6A7085;
-  --accent: #6D5AE6;     /* violeta = marca */
-  --accent-2: #0D9488;   /* teal (legível no claro) */
-  --pro: #16A34A;
-  --con: #E11D48;
+  /* ===== TEMA ESCURO (padrão) — slate/graphite suave, não preto puro ===== */
+  --bg: #0E1116;
+  --bg-elev: #171C23;
+  --bg-elev2: #1F252E;
+  --border: rgba(255, 255, 255, 0.10);
+  --text: #E9EDF4;
+  --muted: #A6AFBC;
+  --accent: #8F7DFF;     /* violeta = marca */
+  --accent-2: #3AD8C2;   /* teal/ciano */
+  --pro: #46D17F;
+  --con: #FB7185;
   --radius: 12px;
   --maxw: 1180px;
 
-  /* Superfícies (fundo cinza-azulado suave, cards brancos) */
-  --bg-app: #F6F7FA;
-  --bg-sidebar: #FFFFFF;
-  --surface-1: #FFFFFF;
-  --surface-2: #F3F4F8;
-  --surface-3: #EAECF3;
-  --surface-raised: #FFFFFF;
+  /* Superfícies (4 níveis) */
+  --bg-app: #0E1116;
+  --bg-sidebar: #12161C;
+  --surface-1: #171C23;
+  --surface-2: #1F252E;
+  --surface-3: #272E38;
+  --surface-raised: #1F252E;
 
-  /* Bordas — neutras, definidas por contraste leve no claro */
-  --border-subtle: rgba(17, 24, 39, 0.08);
-  --border-default: rgba(17, 24, 39, 0.12);
-  --border-strong: rgba(17, 24, 39, 0.20);
+  /* Bordas — sutis, pegam luz de leve */
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-default: rgba(255, 255, 255, 0.11);
+  --border-strong: rgba(255, 255, 255, 0.18);
 
   /* Texto */
-  --text-primary: #14161F;
-  --text-secondary: #4A5064;
-  --text-muted: #8A90A3;
+  --text-primary: #E9EDF4;
+  --text-secondary: #AAB3C0;
+  --text-muted: #737D8C;
+  --code-fg: #C9D6F0;
+  --stars-off: rgba(255, 255, 255, 0.16);
 
   /* Marca + acentos */
-  --brand: #6D5AE6;
-  --brand-hover: #5847C9;
-  --brand-soft: rgba(109, 90, 230, 0.10);
-  --brand-border: rgba(109, 90, 230, 0.35);
-  --cyan: #0D9488;
-  --cyan-soft: rgba(13, 148, 136, 0.10);
-  --amber: #D97706;
-  --info: #2563EB;
-  --info-soft: rgba(37, 99, 235, 0.09);
-  --success: #16A34A;
-  --danger: #E11D48;
+  --brand: #8F7DFF;
+  --brand-hover: #A99BFF;
+  --brand-soft: rgba(143, 125, 255, 0.16);
+  --brand-border: rgba(143, 125, 255, 0.40);
+  --cyan: #3AD8C2;
+  --cyan-soft: rgba(58, 216, 194, 0.14);
+  --amber: #F6B64B;
+  --info: #6AA8FF;
+  --info-soft: rgba(106, 168, 255, 0.14);
+  --success: #46D17F;
+  --danger: #FB7185;
 
   /* Tipografia */
   --fs-xs: 12px; --fs-sm: 14px; --fs-md: 16px; --fs-lg: 18px;
@@ -65,12 +66,59 @@
   --article-width: 720px;
   --right-rail-width: 260px;
 
-  /* Sombras — leves, de site claro */
+  /* Sombras — fundas, de tema escuro */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.40);
+  --shadow-md: 0 14px 34px rgba(0, 0, 0, 0.45);
+  --shadow-brand: 0 0 0 1px rgba(143, 125, 255, 0.22), 0 16px 40px rgba(143, 125, 255, 0.16);
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ===== TEMA CLARO (opcional, via toggle) ===== */
+:root[data-theme="light"] {
+  --bg: #F6F7FA;
+  --bg-elev: #FFFFFF;
+  --bg-elev2: #F3F4F8;
+  --border: rgba(17, 24, 39, 0.10);
+  --text: #14161F;
+  --muted: #6A7085;
+  --accent: #6D5AE6;
+  --accent-2: #0D9488;
+  --pro: #16A34A;
+  --con: #E11D48;
+
+  --bg-app: #F6F7FA;
+  --bg-sidebar: #FFFFFF;
+  --surface-1: #FFFFFF;
+  --surface-2: #F3F4F8;
+  --surface-3: #EAECF3;
+  --surface-raised: #FFFFFF;
+
+  --border-subtle: rgba(17, 24, 39, 0.08);
+  --border-default: rgba(17, 24, 39, 0.12);
+  --border-strong: rgba(17, 24, 39, 0.20);
+
+  --text-primary: #14161F;
+  --text-secondary: #4A5064;
+  --text-muted: #8A90A3;
+  --code-fg: #3E4258;
+  --stars-off: #D4D7E1;
+
+  --brand: #6D5AE6;
+  --brand-hover: #5847C9;
+  --brand-soft: rgba(109, 90, 230, 0.10);
+  --brand-border: rgba(109, 90, 230, 0.35);
+  --cyan: #0D9488;
+  --cyan-soft: rgba(13, 148, 136, 0.10);
+  --amber: #D97706;
+  --info: #2563EB;
+  --info-soft: rgba(37, 99, 235, 0.09);
+  --success: #16A34A;
+  --danger: #E11D48;
+
   --shadow-sm: 0 1px 2px rgba(17, 24, 39, 0.06);
   --shadow-md: 0 10px 30px rgba(17, 24, 39, 0.08);
   --shadow-brand: 0 0 0 1px rgba(109, 90, 230, 0.18), 0 10px 28px rgba(109, 90, 230, 0.16);
-
-  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 * { box-sizing: border-box; }
@@ -86,7 +134,7 @@ body {
 }
 a { color: var(--brand); text-decoration: none; }
 a:hover { text-decoration: underline; }
-code { background: var(--surface-2); padding: 1px 6px; border-radius: 6px; font-family: var(--font-mono); font-size: 0.86em; color: #3E4258; }
+code { background: var(--surface-2); padding: 1px 6px; border-radius: 6px; font-family: var(--font-mono); font-size: 0.86em; color: var(--code-fg); }
 pre { background: var(--surface-2); padding: 12px; border-radius: 8px; overflow: auto; font-family: var(--font-mono); }
 :focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; }
 ::selection { background: var(--brand-soft); }
@@ -115,6 +163,15 @@ pre { background: var(--surface-2); padding: 12px; border-radius: 8px; overflow:
 .sidebar nav a:hover { background: var(--surface-2); color: var(--text-primary); text-decoration: none; }
 .sidebar nav a.active { background: var(--brand-soft); color: var(--brand-hover); font-weight: var(--fw-semibold); }
 .sidebar-foot { margin-top: auto; color: var(--muted); font-size: 12px; padding: 10px; }
+.sidebar-foot p { margin: 10px 0 0; }
+.theme-toggle {
+  display: inline-flex; align-items: center; gap: 8px; width: 100%; justify-content: center;
+  padding: 8px 12px; border-radius: var(--radius-md); cursor: pointer;
+  border: 1px solid var(--border-default); background: var(--surface-2); color: var(--text-secondary);
+  font-family: var(--font-sans); font-size: 12.5px; font-weight: var(--fw-semibold);
+  transition: border-color 140ms, color 140ms, background 140ms;
+}
+.theme-toggle:hover { border-color: var(--brand-border); color: var(--text-primary); background: var(--surface-3); }
 
 /* Content */
 .content { padding: 40px 44px; max-width: var(--content-max); width: 100%; margin: 0 auto; }
@@ -750,7 +807,7 @@ ol.steps.roadmap li { padding-top: 9px; padding-bottom: 9px; }
 
 /* Estrelas */
 .stars { color: #F59E0B; font-size: 13px; letter-spacing: 1px; white-space: nowrap; }
-.stars-off { color: #D4D7E1; }
+.stars-off { color: var(--stars-off); }
 
 /* Cards de cenário */
 .scenario-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }

@@ -37,7 +37,11 @@ import { Ats } from "./pages/Ats";
 import { AtsChecker } from "./pages/AtsChecker";
 import { RouteError, NotFound } from "./pages/RouteError";
 import { InstallHint } from "./components/InstallHint";
+import { applyTheme, getTheme } from "./theme";
 import "./styles.css";
+
+// aplica o tema salvo antes do render (evita flash de tela clara)
+applyTheme(getTheme());
 
 const router = createBrowserRouter([
   {
