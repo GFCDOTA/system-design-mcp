@@ -8,6 +8,12 @@
 
 export const courseUrl = "https://courses.genzcareer.org/complete-interview-prepration-id23242555de32f5/";
 
+/** Base local dos PDFs baixados (frontend/public/course/ — gitignored, só nesta máquina). */
+export const coursePdfBase = "/course/";
+
+/** Guia bônus de orientação (currículo etc.). */
+export const bonusGuidePdf = "Complete-Guidance.pdf";
+
 export interface CourseContent {
   label: string;
   optional?: boolean;
@@ -59,6 +65,12 @@ export interface RoadmapModule {
   common: string[];
   /** Passos sequenciais (ids de `contents`). */
   steps: string[];
+  /**
+   * PDF(s) locais DESTE módulo por passo — cada módulo tem a própria versão
+   * do material (só o de SQL é idêntico entre módulos). Nomes de arquivo em
+   * `coursePdfBase`; o conteúdo fica fora do git.
+   */
+  files: Record<string, string[]>;
 }
 
 export const modules: RoadmapModule[] = [
@@ -69,6 +81,11 @@ export const modules: RoadmapModule[] = [
     desc: "Materiais de referência pra quem já tem estrada e quer só revisar antes de atacar o módulo da sua faixa.",
     common: [],
     steps: ["rev-sql", "rev-spring", "rev-java"],
+    files: {
+      "rev-sql": ["SQL-PDF-Notes.pdf", "SQL-Hand-written-notes.pdf"],
+      "rev-spring": ["Spring-Framework-Notes.pdf", "Spring-Boot-PDF-Notes.pdf", "Spring-ALL-Hand-written-notes.pdf"],
+      "rev-java": ["Java-PDF-Notes.pdf", "Java-Hand-written-notes.pdf"],
+    },
   },
   {
     id: "m1",
@@ -87,6 +104,19 @@ export const modules: RoadmapModule[] = [
       "micro-1",
       "maven-git-1",
     ],
+    files: {
+      "java-coding": ["Common-Step-Java-Coding-Questions.pdf"],
+      "stream-1": ["Common-Step-Stream-API-Coding-Questions-Level-I.pdf"],
+      "core-java-1": ["Step-1-Core-Java-Level-I.pdf"],
+      "core-java-2": ["Step-2-Core-Java-Level-II.pdf"],
+      "spring-fw-1": ["Step-3-Spring-Framework-Level-I.pdf"],
+      "spring-boot-1": ["Step-4-Spring-Boot-Level-I.pdf"],
+      "spring-mvc-1": ["Step-5-Spring-MVC-Level-I-Optional.pdf"],
+      "spring-data-jpa": ["Step-6-Spring-Data-JPA-and-Other-DB-Level-I.pdf"],
+      sql: ["Step-7-SQL.pdf"],
+      "micro-1": ["Step-8-Microservices-Level-I.pdf"],
+      "maven-git-1": ["Step-9-Maven-and-Git-Level-I.pdf"],
+    },
   },
   {
     id: "m2",
@@ -113,6 +143,28 @@ export const modules: RoadmapModule[] = [
       "maven-git-2",
       "junit-mockito",
     ],
+    files: {
+      "java-coding": ["Common-Step-Java-Coding.pdf"],
+      "stream-1": ["Common-Step-Stream-API-Coding-Level-I.pdf"],
+      "stream-2": ["Common-Step-Stream-API-Coding-Level-II.pdf"],
+      "core-java-1": ["Step-1-Core-Java-Level-I-1.pdf"],
+      "core-java-2": ["Step-2-Core-Java-Level-II-1.pdf"],
+      "core-java-3": ["Step-3-Core-Java-Level-III.pdf"],
+      "spring-fw-1": ["Step-4-Spring-Framework-Level-I.pdf"],
+      "spring-fw-2": ["Step-5-Spring-framework-Level-II.pdf"],
+      "spring-boot-1": ["Step-6-Spring-Boot-Level-I.pdf"],
+      "spring-boot-2": ["Step-7-Spring-Boot-Level-II.pdf"],
+      "spring-boot-3": ["Step-8-Spring-Boot-Level-III-Scenario-Based.pdf"],
+      "spring-sec-1": ["Step-9-Spring-Security-Level-I.pdf"],
+      "spring-mvc-1": ["Step-10-Spring-MVC-Level-I-Optional.pdf"],
+      sql: ["Step-11-SQL.pdf"],
+      "spring-data-jpa": ["Step-12-Spring-Data-JPA-and-Other-DB-Level-I.pdf"],
+      kafka: ["Step-13-Kafka-Optional.pdf"],
+      "micro-1": ["Step-14-Microservices-Level-I.pdf"],
+      "maven-git-1": ["Step-15-Maven-and-Git-Level-I.pdf"],
+      "maven-git-2": ["Step-16-Maven-and-Git-Gradle-and-Deployments-Level-II.pdf"],
+      "junit-mockito": ["Step-17-Junit-and-Mockito.pdf"],
+    },
   },
   {
     id: "m3",
@@ -144,6 +196,33 @@ export const modules: RoadmapModule[] = [
       "maven-git-2",
       "junit-mockito",
     ],
+    files: {
+      "java-coding": ["Common-Step-Java-Coding-1.pdf"],
+      "stream-1": ["Common-Step-Stream-API-Coding-Level-I-1.pdf"],
+      "stream-2": ["Common-Step-Stream-API-Coding-Level-II-1.pdf"],
+      "core-java-1": ["Step-1-Core-Java-Level-I-2.pdf"],
+      "core-java-2": ["Step-2-Core-Java-Level-II-2.pdf"],
+      "core-java-3": ["Step-3-Core-Java-Level-III-1.pdf"],
+      "core-java-4": ["Step-4-Core-Java-Level-IV-Advance-Level.pdf"],
+      "design-patterns": ["Step-5-Java-Design-Patterns.pdf"],
+      "spring-fw-1": ["Step-6-Spring-Framework-Level-I.pdf"],
+      "spring-fw-2": ["Step-7-Spring-framework-Level-II.pdf"],
+      "spring-boot-1": ["Step-8-Spring-Boot-Level-I.pdf"],
+      "spring-boot-3": ["Step-10-Spring-Boot-Level-III-Scenario-Based.pdf"],
+      "spring-boot-4": ["Step-11-Spring-Boot-level-IV-Advance.pdf"],
+      "spring-sec-1": ["Step-12-Spring-Security-Level-I.pdf"],
+      "spring-sec-2": ["Step-9-Spring-Security-Level-II.pdf", "Step-13-Spring-Security-Level-II.pdf"],
+      "spring-mvc-1": ["Step-14-Spring-MVC-Level-I-Optional.pdf"],
+      sql: ["Step-15-SQL.pdf"],
+      "spring-data-jpa": ["Step-16-Spring-Data-JPA-and-Other-DB-Level-I.pdf"],
+      kafka: ["Step-17-Kafka-Optional.pdf"],
+      "micro-1": ["Step-18-Microservices-Level-I.pdf"],
+      "micro-2": ["Step-19-Microservices-Level-II.pdf"],
+      "micro-patterns": ["Step-20-Microservices-Design-Patterns.pdf"],
+      "maven-git-1": ["Step-21-Maven-and-Git-Level-I.pdf"],
+      "maven-git-2": ["Step-22-Maven-and-Git-Gradle-and-Deployments-Level-II.pdf"],
+      "junit-mockito": ["Step-23-Junit-and-Mockito.pdf"],
+    },
   },
   {
     id: "m4",
@@ -179,5 +258,36 @@ export const modules: RoadmapModule[] = [
       "junit-mockito",
       "lead-questions",
     ],
+    files: {
+      "java-coding": ["Common-Step-Java-Coding-2.pdf"],
+      "stream-1": ["Common-Step-Stream-API-Coding-Level-I-2.pdf"],
+      "stream-2": ["Common-Step-Stream-API-Coding-Level-II-1.pdf"],
+      "core-java-1": ["Step-1-Core-Java-Level-I-2.pdf"],
+      "core-java-2": ["Step-2-Core-Java-Level-II-2.pdf"],
+      "core-java-3": ["Step-3-Core-Java-Level-III-1.pdf"],
+      "core-java-4": ["Step-4-Core-Java-Level-IV-Advance-Level.pdf"],
+      "core-java-5": ["Step-5-Core-Java-Level-V-Expert.pdf"],
+      "design-patterns": ["Step-6-Java-Design-Patterns.pdf"],
+      "spring-fw-1": ["Step-7-Spring-Framework-Level-I.pdf"],
+      "spring-fw-2": ["Step-8-Spring-framework-Level-II.pdf"],
+      "spring-boot-1": ["Step-9-Spring-Boot-Level-I.pdf"],
+      "spring-boot-2": ["Step-10-Spring-Boot-Level-II.pdf"],
+      "spring-boot-3": ["Step-11-Spring-Boot-Level-III-Scenario-Based.pdf"],
+      "spring-boot-4": ["Step-12-Spring-Boot-level-IV-Advance.pdf"],
+      "spring-boot-5": ["Step-13-Spring-Boot-Level-V-Expert.pdf"],
+      "spring-sec-1": ["Step-14-Spring-Security-Level-I.pdf"],
+      "spring-sec-2": ["Step-15-Spring-Security-Level-II.pdf"],
+      "spring-mvc-1": ["Step-16-Spring-MVC-Level-I-Optional.pdf"],
+      sql: ["Step-17-SQL.pdf"],
+      "spring-data-jpa": ["Step-18-Spring-Data-JPA-and-Other-DB-Level-I.pdf"],
+      kafka: ["Step-19-Kafka-Optional.pdf"],
+      "micro-1": ["Step-20-Microservices-Level-I.pdf"],
+      "micro-2": ["Step-21-Microservices-Level-II.pdf"],
+      "micro-patterns": ["Step-22-Microservices-Design-Patterns.pdf"],
+      "maven-git-1": ["Step-23-Maven-and-Git-Level-I.pdf"],
+      "maven-git-2": ["Step-24-Maven-and-Git-Gradle-and-Deployments-Level-II.pdf"],
+      "junit-mockito": ["Step-25-Junit-and-Mockito.pdf"],
+      "lead-questions": ["Step-26-Non-Techincal-Lead-level-Questions.pdf"],
+    },
   },
 ];

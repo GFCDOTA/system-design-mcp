@@ -1,9 +1,9 @@
 import { Link } from "react-router-dom";
-import { courseUrl, contents, modules, type RoadmapModule } from "../data/courseRoadmap";
+import { courseUrl, coursePdfBase, bonusGuidePdf, contents, modules, type RoadmapModule } from "../data/courseRoadmap";
 import { ProgressBar } from "../components/Progress";
 import { isDone, toggleDone, useProgress } from "../progress";
 
-function StepRow({ contentId, seq }: { contentId: string; seq?: string }) {
+function StepRow({ contentId, seq, files }: { contentId: string; seq?: string; files?: string[] }) {
   const c = contents[contentId];
   const done = isDone(`course:${contentId}`);
   return (
@@ -21,9 +21,14 @@ function StepRow({ contentId, seq }: { contentId: string; seq?: string }) {
       {seq && <span className="rm-seq">{seq}</span>}
       <span className="rm-label">{c.label}</span>
       {c.optional && <span className="badge small">opcional</span>}
+      {files?.map((f, i) => (
+        <a key={f} href={`${coursePdfBase}${f}`} target="_blank" rel="noreferrer" className="chip link rm-inapp">
+          {files.length > 1 ? `PDF ${i + 1}` : "PDF"} ↗
+        </a>
+      ))}
       {c.inApp && (
-        <Link to={c.inApp.to} className="chip link rm-inapp">
-          treinar no app: {c.inApp.label}
+        <Link to={c.inApp.to} className="chip rm-inapp">
+          treinar: {c.inApp.label}
         </Link>
       )}
     </div>
@@ -46,7 +51,7 @@ function ModuleCard({ m }: { m: RoadmapModule }) {
           <h4>Passos comuns (em paralelo)</h4>
           <div className="rm-steps">
             {m.common.map((id) => (
-              <StepRow key={id} contentId={id} />
+              <StepRow key={id} contentId={id} files={m.files[id]} />
             ))}
           </div>
         </>
@@ -54,7 +59,7 @@ function ModuleCard({ m }: { m: RoadmapModule }) {
       <h4>{m.common.length > 0 ? "Sequência" : "Materiais"}</h4>
       <div className="rm-steps">
         {m.steps.map((id, i) => (
-          <StepRow key={id} contentId={id} seq={String(i + 1)} />
+          <StepRow key={id} contentId={id} seq={String(i + 1)} files={m.files[id]} />
         ))}
       </div>
     </section>
@@ -73,12 +78,18 @@ export function CourseRoadmap() {
         estudado: um passo concluído (ex.: Core Java — Level I) conta em <em>todos</em> os módulos que o incluem.
       </p>
       <div className="callout">
-        <strong>Como usar.</strong> O conteúdo (PDFs e anotações) fica no{" "}
+        <strong>Como usar.</strong> Os PDFs do curso estão baixados NESTA máquina (pasta local, fora do git —
+        material pago não vai pro repositório público): clique em <span className="chip link">PDF ↗</span> pra
+        abrir o material do passo, direto do app. Cada módulo tem a própria versão dos PDFs. Original no{" "}
         <a href={courseUrl} target="_blank" rel="noreferrer">
           curso ↗
+        </a>{" "}
+        · bônus:{" "}
+        <a href={`${coursePdfBase}${bonusGuidePdf}`} target="_blank" rel="noreferrer">
+          Guia completo de orientação (PDF) ↗
         </a>
-        ; aqui você acompanha o progresso e cruza cada tema com o que dá pra treinar dentro do app — Core Java na
-        aba <Link to="/entrevista/java">Java Core</Link>, coding em <Link to="/entrevista/dsa">DSA</Link>,
+        . E cruze cada tema com o que dá pra treinar no app — Core Java na aba{" "}
+        <Link to="/entrevista/java">Java Core</Link>, coding em <Link to="/entrevista/dsa">DSA</Link>,
         microserviços e padrões na <Link to="/topics">Base de Conhecimento</Link>.
       </div>
       {modules.map((m) => (
