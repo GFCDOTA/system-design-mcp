@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { courseUrl, coursePdfBase, bonusGuidePdf, contents, modules, type RoadmapModule } from "../data/courseRoadmap";
+import { courseUrl, bonusGuidePdf, contents, modules, pdfStem, type RoadmapModule } from "../data/courseRoadmap";
 import { ProgressBar } from "../components/Progress";
 import { isDone, toggleDone, useProgress } from "../progress";
 
@@ -22,9 +22,9 @@ function StepRow({ contentId, seq, files }: { contentId: string; seq?: string; f
       <span className="rm-label">{c.label}</span>
       {c.optional && <span className="badge small">opcional</span>}
       {files?.map((f, i) => (
-        <a key={f} href={`${coursePdfBase}${f}`} target="_blank" rel="noreferrer" className="chip link rm-inapp">
-          {files.length > 1 ? `PDF ${i + 1}` : "PDF"} ↗
-        </a>
+        <Link key={f} to={`/entrevista/curso/${pdfStem(f)}`} className="chip link rm-inapp">
+          {files.length > 1 ? `Ler ${i + 1}` : "Ler"} →
+        </Link>
       ))}
       {c.inApp && (
         <Link to={c.inApp.to} className="chip rm-inapp">
@@ -78,15 +78,13 @@ export function CourseRoadmap() {
         estudado: um passo concluído (ex.: Core Java — Level I) conta em <em>todos</em> os módulos que o incluem.
       </p>
       <div className="callout">
-        <strong>Como usar.</strong> Os PDFs do curso estão baixados NESTA máquina (pasta local, fora do git —
-        material pago não vai pro repositório público): clique em <span className="chip link">PDF ↗</span> pra
-        abrir o material do passo, direto do app. Cada módulo tem a própria versão dos PDFs. Original no{" "}
+        <strong>Como usar.</strong> Todo o material do curso está aqui dentro: clique em{" "}
+        <span className="chip link">Ler →</span> e o conteúdo do passo abre na própria página — sem abrir PDF,
+        tudo com a mesma leitura, e com <em>Próximo →</em> pra emendar um material no outro. Fica tudo NESTA
+        máquina (privado, fora do git). Bônus:{" "}
+        <Link to={`/entrevista/curso/${pdfStem(bonusGuidePdf)}`}>Guia completo de orientação</Link> · original no{" "}
         <a href={courseUrl} target="_blank" rel="noreferrer">
           curso ↗
-        </a>{" "}
-        · bônus:{" "}
-        <a href={`${coursePdfBase}${bonusGuidePdf}`} target="_blank" rel="noreferrer">
-          Guia completo de orientação (PDF) ↗
         </a>
         . E cruze cada tema com o que dá pra treinar no app — Core Java na aba{" "}
         <Link to="/entrevista/java">Java Core</Link>, coding em <Link to="/entrevista/dsa">DSA</Link>,

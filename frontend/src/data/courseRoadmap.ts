@@ -291,3 +291,57 @@ export const modules: RoadmapModule[] = [
     },
   },
 ];
+
+/** PDF ("Step-1-....pdf") → stem ("Step-1-....") usado como id do leitor in-app. */
+export function pdfStem(pdf: string): string {
+  return pdf.replace(/\.pdf$/i, "");
+}
+
+export interface ReadingEntry {
+  stem: string;
+  pdf: string;
+  contentLabel: string;
+  moduleTitle: string;
+  moduleId: string;
+}
+
+/**
+ * Índice de leitura linear de TODO o material, na ordem do roadmap
+ * (módulo 0 → 4, passos comuns antes da sequência). Deduplicado por stem
+ * (cada PDF físico aparece uma vez) — é o que o leitor usa pra "próximo/anterior".
+ */
+export const readingList: ReadingEntry[] = (() => {
+  const seen = new Set<string>();
+  const out: ReadingEntry[] = [];
+  for (const m of modules) {
+    for (const id of [...m.common, ...m.steps]) {
+      for (const pdf of m.files[id] ?? []) {
+        const stem = pdfStem(pdf);
+        if (seen.has(stem)) continue;
+        seen.add(stem);
+        out.push({
+          stem,
+          pdf,
+          contentLabel: contents[id]?.label ?? id,
+          moduleTitle: m.title,
+          moduleId: m.id,
+        });
+      }
+    }
+  }
+  // guia bônus fecha a lista
+  const bonusStem = pdfStem(bonusGuidePdf);
+  if (!seen.has(bonusStem)) {
+    out.push({ stem: bonusStem, pdf: bonusGuidePdf, contentLabel: "Guia completo de orientação", moduleTitle: "Bônus", moduleId: "bonus" });
+  }
+  return out;
+})();
+
+const readingByStem = new Map(readingList.map((e, i) => [e.stem, i]));
+
+/** Metadados de leitura de um stem + vizinhos pra navegação. */
+export function readingEntry(stem: string): { entry?: ReadingEntry; prev?: ReadingEntry; next?: ReadingEntry } {
+  const i = readingByStem.get(stem);
+  if (i === undefined) return {};
+  return { entry: readingList[i], prev: readingList[i - 1], next: readingList[i + 1] };
+}
