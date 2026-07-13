@@ -258,6 +258,13 @@ ol.steps .note { color: var(--muted); }
 .state { padding: 20px; color: var(--muted); }
 .state.error { color: var(--con); background: rgba(225, 29, 72, 0.05); border: 1px solid rgba(225, 29, 72, 0.30); border-radius: 8px; }
 .state .hint { color: var(--muted); font-size: 13px; }
+.btn-retry {
+  margin-top: 6px; padding: 7px 16px; border-radius: var(--radius-full);
+  border: 1px solid rgba(225, 29, 72, 0.35); background: var(--surface-1); color: var(--con);
+  font-family: var(--font-sans); font-size: 13px; font-weight: var(--fw-semibold); cursor: pointer;
+  transition: all 140ms;
+}
+.btn-retry:hover { background: rgba(225, 29, 72, 0.08); border-color: var(--con); }
 
 @media (max-width: 720px) {
   .app { grid-template-columns: 1fr; }

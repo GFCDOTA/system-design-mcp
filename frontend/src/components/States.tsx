@@ -9,6 +9,11 @@ export function Async<T>({ state, children }: { state: AsyncState<T>; children: 
       <div className="state error">
         <strong>Erro:</strong> {state.error}
         <p className="hint">O BFF está rodando em :8080? (ver docs/runbook.md)</p>
+        {state.retry && (
+          <button type="button" className="btn-retry" onClick={state.retry}>
+            Tentar novamente
+          </button>
+        )}
       </div>
     );
   if (state.data === undefined) return <div className="state">Sem dados.</div>;
