@@ -4,6 +4,7 @@ import { useAsync } from "../hooks";
 import { Async } from "../components/States";
 import { DoneMark, ProgressBar } from "../components/Progress";
 import { doneCount, lastVisit, useProgress } from "../progress";
+import { javaQuestionCount } from "../data/javaCore";
 
 function groupByCategory(topics: TopicSummary[]): [string, TopicSummary[]][] {
   const map = new Map<string, TopicSummary[]>();
@@ -87,6 +88,14 @@ export function Home() {
               desc: "Framework de resposta, banco de perguntas, as 16 mais cobradas de DSA e de System Design.",
               prefix: "q:",
               total: s.interviewQuestions,
+            },
+            {
+              to: "/entrevista/java",
+              icon: "☕",
+              title: "Java Core — teoria",
+              desc: "As perguntas teóricas de Java que caem em toda faixa de experiência: JVM, collections, concorrência, streams.",
+              prefix: "jq:",
+              total: javaQuestionCount,
             },
             {
               to: "/databases",

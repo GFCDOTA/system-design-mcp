@@ -441,6 +441,29 @@ ol.steps.roadmap li { padding-top: 9px; padding-bottom: 9px; }
 .qa-done:hover { border-color: var(--success); color: rgba(22, 163, 74, 0.45); }
 .qa-done.done { background: rgba(22, 163, 74, 0.12); border-color: var(--success); color: var(--success); }
 
+/* ===================== Java Core & Roadmap do curso ===================== */
+.java-cat { margin-top: 30px; }
+.java-cat > .muted { margin: 4px 0 0; font-size: 14px; }
+.java-answer { margin: 8px 0; line-height: 1.7; }
+
+.rm-module {
+  background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--radius-lg);
+  padding: 18px 20px; margin: 18px 0; box-shadow: var(--shadow-sm);
+}
+.rm-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.rm-head h2 { border: none; margin: 0; padding: 0; }
+.rm-module > .muted { margin: 6px 0 10px; font-size: 14px; }
+.rm-steps { display: flex; flex-direction: column; gap: 2px; margin-top: 6px; }
+.rm-step {
+  display: flex; align-items: center; gap: 10px; padding: 7px 8px; border-radius: var(--radius-sm);
+  font-size: 14px; flex-wrap: wrap;
+}
+.rm-step:hover { background: var(--surface-2); }
+.rm-step.done .rm-label { color: var(--text-muted); text-decoration: line-through; text-decoration-color: rgba(22, 163, 74, 0.45); }
+.rm-seq { font-family: var(--font-mono); font-size: 12px; color: var(--text-muted); min-width: 20px; text-align: right; }
+.rm-label { color: var(--text-secondary); flex: 1; min-width: 200px; }
+.rm-inapp { margin: 0; }
+
 /* ===================== Camada premium (redesign) ===================== */
 
 /* Hero card — "comece por aqui" / "sessão recomendada" */
