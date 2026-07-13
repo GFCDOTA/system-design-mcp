@@ -5,6 +5,12 @@
 //
 // Roda: npm test  (node --test). Lê main.tsx + as páginas/componentes como TEXTO e cruza
 // todo destino de link com o registro de rotas. Não importa componentes (sem mermaid/jsdom).
+//
+// Resolução de rota: o router tem objetos de topo com path ABSOLUTO ("/", "/entrevista") e
+// filhos com path relativo ("dsa" → "/entrevista/dsa"). Um path absoluto só vale como destino
+// se for folha (sem filhos) ou tiver `index: true` — linkar num layout sem index é a tela
+// branca que este guard existe pra pegar. Segmento ":param" casa qualquer valor. O catch-all
+// "*" (404) não conta como destino válido.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync, statSync } from "node:fs";
@@ -27,20 +33,63 @@ function listSourceFiles(dir) {
   return out;
 }
 
-/** Padrões de rota registrados no router de main.tsx. "/" representa a raiz/index. */
+/**
+ * Rotas COMPLETAS registradas no router de main.tsx (ex.: "/topics/:id", "/entrevista/dsa").
+ * Varre `path:`/`index:` em ordem textual: um path absoluto abre um bloco; os relativos
+ * seguintes pertencem a ele. Absoluto sem filhos = folha (destino válido); com filhos, só
+ * `index: true` registra o próprio path do pai.
+ */
 function registeredPaths() {
   const text = readFileSync(join(SRC, "main.tsx"), "utf8");
   const set = new Set();
-  for (const m of text.matchAll(/\bpath:\s*"([^"]*)"/g)) set.add(m[1]);
-  if (/\bindex:\s*true\b/.test(text)) set.add("/");
+  let base = null; // path absoluto corrente, "" para a raiz "/"
+  let baseIsLeaf = false; // ainda não vimos filho/index sob o absoluto corrente
+  const closeBase = () => {
+    if (base !== null && baseIsLeaf) set.add(base === "" ? "/" : base);
+  };
+  for (const m of text.matchAll(/\bpath:\s*"([^"]*)"|\bindex:\s*true\b/g)) {
+    if (m[0].startsWith("index")) {
+      if (base !== null) set.add(base === "" ? "/" : base);
+      baseIsLeaf = false;
+      continue;
+    }
+    const p = m[1];
+    if (p.startsWith("/")) {
+      closeBase();
+      base = p === "/" ? "" : p.replace(/\/+$/, "");
+      baseIsLeaf = true;
+    } else {
+      baseIsLeaf = false;
+      if (p === "*") continue; // catch-all 404 não é destino de link válido
+      set.add(`${base ?? ""}/${p}`);
+    }
+  }
+  closeBase();
   return set;
 }
 
-/** Existe rota cujo 1º segmento é `seg` e o 2º é um :param? (ex.: "topics" -> "topics/:id") */
-function hasParamRoute(registered, seg) {
+/** Existe rota registrada = base + exatamente um segmento :param? (ex.: "/topics" -> "/topics/:id") */
+function hasParamRoute(registered, base) {
+  const bparts = base.replace(/^\//, "").split("/");
   for (const p of registered) {
-    const parts = p.split("/");
-    if (parts.length >= 2 && parts[0] === seg && parts[1].startsWith(":")) return true;
+    const parts = p.replace(/^\//, "").split("/");
+    if (
+      parts.length === bparts.length + 1 &&
+      bparts.every((seg, i) => seg === parts[i]) &&
+      parts[bparts.length].startsWith(":")
+    )
+      return true;
+  }
+  return false;
+}
+
+/** O destino estático casa com alguma rota registrada? Segmento ":param" é curinga. */
+function matchesRegistered(registered, target) {
+  const tparts = target.replace(/^\//, "").split("/");
+  for (const p of registered) {
+    const parts = p.replace(/^\//, "").split("/");
+    if (parts.length !== tparts.length) continue;
+    if (parts.every((seg, i) => seg.startsWith(":") || seg === tparts[i])) return true;
   }
   return false;
 }
@@ -80,34 +129,30 @@ const registered = registeredPaths();
 const { dynamicBases, staticTargets, chipBases } = collectLinks(listSourceFiles(SRC));
 
 test("o registro de rotas é não-trivial (sanidade)", () => {
-  assert.ok(registered.has("topics/:id"), "esperava rota topics/:id");
-  assert.ok(registered.has("diagrams/:id"), "esperava rota diagrams/:id");
+  assert.ok(registered.has("/topics/:id"), "esperava rota /topics/:id");
+  assert.ok(registered.has("/diagrams/:id"), "esperava rota /diagrams/:id");
+  assert.ok(registered.has("/entrevista"), "esperava rota /entrevista (index do Modo Entrevista)");
   assert.ok(dynamicBases.length > 0, "esperava ao menos um link dinâmico");
 });
 
 test("toda base dinâmica de <Link to> tem rota :param correspondente", () => {
   const v = dynamicBases
-    .filter(({ base }) => !hasParamRoute(registered, base.replace(/^\//, "")))
-    .map(({ base, use }) => `${use.file}: ${use.raw} -> falta rota "${base.replace(/^\//, "")}/:id"`);
+    .filter(({ base }) => !hasParamRoute(registered, base))
+    .map(({ base, use }) => `${use.file}: ${use.raw} -> falta rota "${base}/:id"`);
   assert.deepEqual(v, [], "\n" + v.join("\n"));
 });
 
 test("toda base de LinkChips tem rota :param correspondente", () => {
   const v = chipBases
-    .filter(({ base }) => !hasParamRoute(registered, base.replace(/^\//, "")))
-    .map(({ base, use }) => `${use.file}: base="${base}" -> falta rota "${base.replace(/^\//, "")}/:id"`);
+    .filter(({ base }) => !hasParamRoute(registered, base))
+    .map(({ base, use }) => `${use.file}: base="${base}" -> falta rota "${base}/:id"`);
   assert.deepEqual(v, [], "\n" + v.join("\n"));
 });
 
 test("todo destino estático de <Link to>/NAV resolve para uma rota registrada", () => {
   const v = [];
   for (const { target, use } of staticTargets) {
-    if (target === "/") {
-      if (!registered.has("/")) v.push(`${use.file}: ${use.raw} -> sem rota index`);
-      continue;
-    }
-    const seg = target.replace(/^\//, "");
-    if (!registered.has(seg)) v.push(`${use.file}: ${use.raw} -> falta rota "${seg}"`);
+    if (!matchesRegistered(registered, target)) v.push(`${use.file}: ${use.raw} -> falta rota "${target}"`);
   }
   assert.deepEqual(v, [], "\n" + v.join("\n"));
 });
