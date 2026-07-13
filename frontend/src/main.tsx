@@ -34,6 +34,7 @@ import { StudyOverview, StudySubjectPage } from "./pages/Study";
 import { JavaQuestions } from "./pages/JavaQuestions";
 import { StudyTrails } from "./pages/StudyTrails";
 import { Ats } from "./pages/Ats";
+import { AtsChecker } from "./pages/AtsChecker";
 import { RouteError, NotFound } from "./pages/RouteError";
 import { InstallHint } from "./components/InstallHint";
 import "./styles.css";
@@ -73,6 +74,7 @@ const router = createBrowserRouter([
       { path: "perguntas", element: <JavaQuestions /> },
       { path: "trilhas", element: <StudyTrails /> },
       { path: "curriculo", element: <Ats /> },
+      { path: "validador", element: <AtsChecker /> },
       { path: "ler/:file", element: <CourseReader /> },
       { path: ":subject", element: <StudySubjectPage /> },
     ],

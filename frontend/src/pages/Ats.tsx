@@ -16,6 +16,13 @@ export function Ats() {
         Antes da entrevista vem o currículo — e antes do recrutador vem o <strong>ATS</strong>, o software que
         filtra candidatos. Aqui está como montar um currículo que passa no parser e impressiona o humano depois.
       </p>
+      <Link to="/estudos/validador" className="interview-cta">
+        <span>
+          <strong>✅ Validador de ATS</strong>
+          <span>Cole seu currículo e receba o score por categoria + o conserto de cada problema, na hora.</span>
+        </span>
+        <span className="interview-cta-go">Abrir →</span>
+      </Link>
 
       <PrepSection pillar={atsGuide} />
 
