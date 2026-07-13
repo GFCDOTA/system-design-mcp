@@ -498,6 +498,16 @@ ol.steps.roadmap li { padding-top: 9px; padding-bottom: 9px; }
 }
 .ats-structure-item > div { display: flex; flex-direction: column; gap: 1px; }
 .ats-structure-hint { color: var(--text-secondary); font-size: 13.5px; line-height: 1.5; }
+
+/* Banco de verbos de ação */
+.verb-bank { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin: 14px 0; }
+.verb-group {
+  background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--radius-md);
+  padding: 12px 14px; box-shadow: var(--shadow-sm);
+}
+.verb-group h4 { margin: 0 0 8px; color: var(--brand); }
+.verb-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.verb-chips .chip { font-family: var(--font-mono); font-size: 12px; }
 .study-feature {
   display: flex; gap: 14px; align-items: flex-start; padding: 16px 18px; color: var(--text-primary);
   background: linear-gradient(135deg, var(--brand-soft), var(--cyan-soft));

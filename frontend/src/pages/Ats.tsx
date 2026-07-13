@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { PrepSection } from "../components/PrepSection";
-import { atsGuide, resumeStructure } from "../data/atsGuide";
+import { atsGuide, resumeStructure, actionVerbs } from "../data/atsGuide";
 
 /** /estudos/curriculo — guia de currículo & ATS (formatação que passa no parser). */
 export function Ats() {
@@ -32,6 +32,26 @@ export function Ats() {
           </li>
         ))}
       </ol>
+
+      <h2>Banco de verbos de ação</h2>
+      <p className="muted">
+        Não comece dois bullets com o mesmo verbo — é um dos motivos mais comuns de perder pontos. Troque os
+        repetidos por um destes, agrupados por intenção.
+      </p>
+      <div className="verb-bank">
+        {actionVerbs.map((g) => (
+          <div key={g.group} className="verb-group">
+            <h4>{g.group}</h4>
+            <div className="verb-chips">
+              {g.verbs.map((v) => (
+                <span key={v} className="chip">
+                  {v}
+                </span>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
 
       <div className="callout">
         <strong>Próximo passo.</strong> Com o currículo pronto, treine as respostas que ele vai gerar — histórias

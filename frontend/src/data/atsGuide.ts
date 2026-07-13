@@ -4,6 +4,18 @@
 
 import type { PrepPillar } from "./interviewPrep";
 
+/** Banco de verbos de ação por categoria — pra não repetir o mesmo verbo. */
+export const actionVerbs: { group: string; verbs: string[] }[] = [
+  { group: "Liderar", verbs: ["Led", "Directed", "Coordinated", "Mentored", "Spearheaded", "Drove", "Owned", "Oversaw"] },
+  { group: "Construir", verbs: ["Built", "Developed", "Engineered", "Implemented", "Created", "Programmed", "Shipped", "Prototyped"] },
+  { group: "Projetar / arquitetar", verbs: ["Designed", "Architected", "Modeled", "Structured", "Defined", "Standardized"] },
+  { group: "Melhorar", verbs: ["Improved", "Optimized", "Refactored", "Streamlined", "Enhanced", "Accelerated", "Hardened"] },
+  { group: "Reduzir", verbs: ["Reduced", "Cut", "Decreased", "Eliminated", "Minimized", "Consolidated"] },
+  { group: "Aumentar", verbs: ["Increased", "Boosted", "Grew", "Scaled", "Doubled", "Maximized"] },
+  { group: "Entregar / integrar", verbs: ["Delivered", "Launched", "Deployed", "Released", "Automated", "Integrated", "Migrated"] },
+  { group: "Colaborar", verbs: ["Collaborated", "Partnered", "Facilitated", "Aligned", "Championed", "Advocated"] },
+];
+
 /** Estrutura recomendada de currículo (ordem das seções). */
 export const resumeStructure: { section: string; hint: string }[] = [
   { section: "Cabeçalho", hint: "Nome + e-mail, telefone, LinkedIn e GitHub — tudo em TEXTO (nunca dentro de imagem)." },
@@ -68,6 +80,19 @@ export const atsGuide: PrepPillar = {
         "**Títulos de seção criativos** que o ATS não mapeia pra 'experiência', 'formação' etc.",
         "**Datas ausentes ou inconsistentes** — confunde o cálculo de tempo de experiência.",
         "**Fonte < 10pt ou decorativa**, e excesso de negrito/itálico que atrapalha o parser.",
+      ],
+    },
+    {
+      title: "Recebeu um score baixo? Conserte por aqui",
+      kind: "tips",
+      note: "Os checkers costumam apontar estes mesmos problemas — cada um tem um conserto direto. Ataque os de maior peso primeiro (Experience e a categoria 'diversos'/miscellaneous costumam concentrar os pontos perdidos).",
+      items: [
+        "**Datas inconsistentes** → padronize TODAS no mesmo formato (`Jan 2020 - Dec 2021`, `Jun 2019 - Present`). Ponto fácil e rápido.",
+        "**Verbos de ação repetidos** → não comece dois bullets com o mesmo verbo. Troque pelos sinônimos do banco abaixo (ex.: `built` demais → engineered/developed/shipped).",
+        "**Experience com nota baixa** → quase sempre é bullet SEM número. Garanta que toda linha tem impacto quantificado (%, tempo, escala) e começa com verbo forte.",
+        "**Word count / bullets demais** → corte para 3–5 bullets por cargo (os mais fortes) e mantenha cada bullet em 1–2 linhas. Resume enxuto pontua melhor.",
+        "**Seções faltando** → adicione Certifications, Awards e Languages se você tiver — completa o currículo e ajuda o recrutador.",
+        "**Prioridade**: número > adjetivo, verbo diverso > repetido, layout simples > bonito. Rechecar depois de cada lote de correções mostra o que mais moveu.",
       ],
     },
     {
