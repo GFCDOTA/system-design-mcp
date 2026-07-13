@@ -29,6 +29,8 @@ import {
 import { JavaCore } from "./pages/JavaCore";
 import { CourseRoadmap } from "./pages/CourseRoadmap";
 import { CourseReader } from "./pages/CourseReader";
+import { StudyLayout } from "./components/StudyLayout";
+import { StudyOverview, StudySubjectPage } from "./pages/Study";
 import { RouteError, NotFound } from "./pages/RouteError";
 import { InstallHint } from "./components/InstallHint";
 import "./styles.css";
@@ -56,6 +58,17 @@ const router = createBrowserRouter([
       { path: "databases/builder", element: <DatabaseBuilder /> },
       { path: "databases/:id", element: <DatabaseDetail /> },
       { path: "*", element: <NotFound /> },
+    ],
+  },
+  {
+    // Modo Estudos — aprender o material do curso por assunto
+    path: "/estudos",
+    element: <StudyLayout />,
+    errorElement: <RouteError />,
+    children: [
+      { index: true, element: <StudyOverview /> },
+      { path: "ler/:file", element: <CourseReader /> },
+      { path: ":subject", element: <StudySubjectPage /> },
     ],
   },
   // back-compat: o Modo Entrevista era /interview antes de virar área própria

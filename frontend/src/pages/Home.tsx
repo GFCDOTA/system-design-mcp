@@ -50,8 +50,8 @@ export function Home() {
           ) : (
             <Link to="/topics" className="btn btn-primary">Começar pelos fundamentos →</Link>
           )}
+          <Link to="/estudos" className="btn btn-secondary">Modo Estudos</Link>
           <Link to="/entrevista" className="btn btn-secondary">Modo Entrevista</Link>
-          <Link to="/patterns" className="btn btn-secondary">Padrões</Link>
         </div>
         {last && (
           <p className="home-continue">
