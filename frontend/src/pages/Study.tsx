@@ -74,6 +74,24 @@ export function StudyOverview() {
         </div>
       </section>
 
+      <div className="study-feature-row">
+        <Link to="/estudos/trilhas" className="study-feature">
+          <span className="trail-icon" aria-hidden>🧭</span>
+          <div>
+            <h3>Trilhas de estudo</h3>
+            <p>Caminhos prontos, na ordem certa pra chegar treinado na entrevista.</p>
+          </div>
+        </Link>
+        <Link to="/estudos/perguntas" className="study-feature">
+          <span className="trail-icon" aria-hidden>❓</span>
+          <div>
+            <h3>Perguntas de Java (do curso)</h3>
+            <p>408 perguntas dos PDFs, na página — com selo das empresas que mais cobram cada tema.</p>
+          </div>
+        </Link>
+      </div>
+
+      <h2>Assuntos</h2>
       <div className="trail-grid">
         {subjects.map((s) => {
           const read = subjectRead(s);
@@ -125,6 +143,15 @@ export function StudySubjectPage() {
       </h1>
       <p className="lede">{s.blurb}</p>
       <ProgressBar done={read} total={s.materials.length} />
+      {s.id === "java" && (
+        <Link to="/estudos/perguntas" className="interview-cta">
+          <span>
+            <strong>Banco de perguntas de Java</strong>
+            <span>408 perguntas dos PDFs do curso, na página — com selo das empresas que mais cobram.</span>
+          </span>
+          <span className="interview-cta-go">Abrir →</span>
+        </Link>
+      )}
       <div className="study-mats">
         {s.materials.map((m) => (
           <MaterialRow key={m.stem} m={m} pages={map?.[`${m.stem}.pdf`]?.pages} />

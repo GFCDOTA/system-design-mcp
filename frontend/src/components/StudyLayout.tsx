@@ -32,6 +32,12 @@ export function StudyLayout() {
           <NavLink to="/estudos" end className={({ isActive }) => (isActive ? "active" : "")}>
             Visão geral
           </NavLink>
+          <NavLink to="/estudos/trilhas" className={({ isActive }) => (isActive ? "active" : "")}>
+            🧭 Trilhas de estudo
+          </NavLink>
+          <NavLink to="/estudos/perguntas" className={({ isActive }) => (isActive ? "active" : "")}>
+            ❓ Perguntas de Java
+          </NavLink>
           {subjects.map((s) => (
             <NavLink key={s.id} to={`/estudos/${s.id}`} className={({ isActive }) => (isActive ? "active" : "")}>
               {s.icon} {s.title}

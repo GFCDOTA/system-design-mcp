@@ -31,6 +31,8 @@ import { CourseRoadmap } from "./pages/CourseRoadmap";
 import { CourseReader } from "./pages/CourseReader";
 import { StudyLayout } from "./components/StudyLayout";
 import { StudyOverview, StudySubjectPage } from "./pages/Study";
+import { JavaQuestions } from "./pages/JavaQuestions";
+import { StudyTrails } from "./pages/StudyTrails";
 import { RouteError, NotFound } from "./pages/RouteError";
 import { InstallHint } from "./components/InstallHint";
 import "./styles.css";
@@ -67,6 +69,8 @@ const router = createBrowserRouter([
     errorElement: <RouteError />,
     children: [
       { index: true, element: <StudyOverview /> },
+      { path: "perguntas", element: <JavaQuestions /> },
+      { path: "trilhas", element: <StudyTrails /> },
       { path: "ler/:file", element: <CourseReader /> },
       { path: ":subject", element: <StudySubjectPage /> },
     ],
