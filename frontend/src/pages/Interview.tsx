@@ -71,13 +71,13 @@ export function InterviewOverview() {
       to: "/entrevista/system-design",
       title: "System Design",
       badge: "framework + banco",
-      desc: "Framework de resposta, estimativa (Lei de Little, Scale Cube) e o banco de perguntas filtrável por dificuldade.",
+      desc: "Framework de resposta, estimativa (Lei de Little, Scale Cube), as 16 mais cobradas nas big techs e o banco de perguntas filtrável por dificuldade.",
     },
     {
       to: "/entrevista/dsa",
       title: "DSA",
       badge: "roadmap",
-      desc: "Os 12 padrões na ordem certa, o método de ataque e como treinar. Sem editor aqui — você resolve no LeetCode.",
+      desc: "Os 12 padrões na ordem certa, as 16 questões mais cobradas, o método de ataque e como treinar. Sem editor aqui — você resolve no LeetCode.",
     },
     {
       to: "/entrevista/comportamental",
@@ -94,6 +94,13 @@ export function InterviewOverview() {
         (roadmap e dicas — você pratica no LeetCode) e <strong>comportamental + como chegar preparado</strong>. Use o
         menu à esquerda ou os atalhos abaixo.
       </p>
+      <div className="callout">
+        <strong>Por que essas duas trilhas.</strong> Nos loops das big techs, a maior parte das rodadas técnicas é
+        exatamente DSA + System Design — relatos agregados de candidatos apontam ~85% na Apple, ~80% no Google, ~75% na
+        Meta e ~70% na Uber (ordem de grandeza de relatos de processo, não estatística oficial). Dominar as{" "}
+        <Link to="/entrevista/dsa">16 questões de DSA</Link> e os{" "}
+        <Link to="/entrevista/system-design">16 designs mais cobrados</Link> cobre o grosso do que cai.
+      </div>
       <div className="hero-card">
         <h2>Sessão recomendada de hoje</h2>
         <div className="hero-step">

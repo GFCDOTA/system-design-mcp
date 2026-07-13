@@ -53,6 +53,29 @@ export const dsaPrep: PrepPillar = {
       "note": "Faça nessa ordem: cada padrão constrói sobre o anterior. DP por último — é o mais difícil e o que mais assusta, mas vira mecânico depois dos fundamentos."
     },
     {
+      "title": "As 16 questões mais cobradas",
+      "kind": "checklist",
+      "note": "Lista agregada de relatos de loops recentes (Apple/Google/Meta/Uber e afins) — cada uma exercita um padrão do roadmap acima. Use como set de treino: reconheça o padrão ANTES de codar, e marque as que já refaz de memória.",
+      "items": [
+        "**Implement LRU/LFU Cache** — design com `hash map + doubly linked list` (LRU) O(1); LFU adiciona buckets de frequência. A questão de design mais pedida que existe.",
+        "**Find Median from Data Stream** — dois heaps balanceados (max-heap na metade menor, min-heap na maior); mediana em O(1), insert O(log n).",
+        "**Word Ladder** — menor transformação = menor caminho → **BFS** num grafo implícito de palavras (vizinhos = 1 letra de diferença).",
+        "**Merge K Sorted Lists** — heap com K ponteiros, O(n log k); alternativa divide & conquer. Par direto do padrão Heap.",
+        "**Detect Cycle in a Directed Graph** — DFS com 3 estados (branco/cinza/preto) ou Kahn (topo sort); ciclo em dirigido ≠ visited simples.",
+        "**Maximum Subarray Sum** — Kadane (DP 1D: estende ou recomeça); variações: circular, produto máximo.",
+        "**Kth Largest Element in a Stream** — min-heap de tamanho K; o topo É a resposta. Custo O(log k) por elemento.",
+        "**Design a Scheduler with Task Priorities** — priority queue + hash map de lookup; variação de design (pense em cancelamento e empate por timestamp).",
+        "**Two Sum e variações** — hash map O(n); array ordenado → two pointers; k-sum → ordenar e reduzir recursivamente pra 2-sum.",
+        "**Binary Search on Answer** — o espaço de busca é a RESPOSTA (capacidade, dias, peso máximo), não o array; ache o mínimo que satisfaz o predicado monotônico.",
+        "**Longest Increasing Subsequence** — DP O(n²) primeiro; otimize com patience sorting + busca binária O(n log n).",
+        "**Clone Graph / lista com random pointers** — hash map `original → cópia` + DFS/BFS; o mapa resolve os ponteiros arbitrários.",
+        "**Serialize and Deserialize a Binary Tree** — DFS preorder com marcador de null (`#`); a deserialização consome a mesma ordem.",
+        "**Trapping Rain Water** — two pointers com máximos das duas pontas (O(1) espaço) ou monotonic stack. Clássico absoluto.",
+        "**Top K Frequent Elements** — contar com hash + heap de tamanho K (O(n log k)) ou bucket sort por frequência (O(n)).",
+        "**Word Break** — DP 1D sobre prefixos (`dp[i]` = s[0..i) segmentável) com set do dicionário; trie acelera o inner loop."
+      ]
+    },
+    {
       "title": "Como treinar de verdade",
       "kind": "tips",
       "items": [
@@ -195,6 +218,29 @@ export const systemDesignPrep: PrepPillar = {
         "**Time-box cada fase.** Roteiro de 4 min: (1) separo comando de evento; (2) Event Store append-only/imutável me dá auditoria e reconstituição de graça; (3) comito evento + projeções juntos e publico no Kafka só pós-commit → sem dual-write; (4) saldo e extrato têm acessos diferentes → stores diferentes (Scylla/Mongo) via CQRS; (5) consistência eventual entre stores, forte no Event Store, semissíncrono pro saldo; (6) **trade-off final** explícito.",
         "**Comece simples e evolua.** Desenhe a versão de 1 réplica primeiro, depois aplique X→Y→Z conforme a carga aperta. Não chegue com microsserviços + sharding no slide 1 — isso parece over-engineering, não senioridade.",
         "**Feche com o trade-off, sempre:** *\"pago complexidade operacional e latência leitura-escrita em troca de auditabilidade total, reconstituição e escala de leitura independente.\"* Decisão sem trade-off nomeado é só preferência."
+      ]
+    },
+    {
+      "title": "As 16 mais cobradas nas big techs",
+      "kind": "checklist",
+      "note": "Lista agregada de relatos de loops recentes — são os enunciados que mais se repetem. Ataque TODAS com o framework acima (requisitos → números → APIs → dados → arquitetura → escala → trade-offs → riscos); ao lado de cada uma, o eixo que o entrevistador quer ver. Onde esta KB aprofunda, mergulhe no banco de perguntas.",
+      "items": [
+        "**Chat escalável (WhatsApp/Slack)** — WebSocket/long-polling, fan-out de mensagem, presença, ordenação por conversa, delivery receipts. Consistência por conversa ≈ ordem por agregado (a KB cobre em eventos).",
+        "**URL Shortener** — o clássico de aquecimento: geração de chave (hash vs contador+base62), redirect 301/302, cache de leitura pesada, analytics assíncrono.",
+        "**Sistema de Notificações distribuído** — fan-out para push/e-mail/SMS, filas por canal, retry + DLQ, idempotência e rate por usuário. A KB aprofunda retry/DLQ e idempotência de consumidores.",
+        "**Video Streaming (YouTube/Netflix)** — upload → transcoding assíncrono (fila), armazenamento de chunks, CDN + adaptive bitrate (HLS/DASH); metadados ≠ bytes de vídeo.",
+        "**Sistema de Pagamentos (Stripe/Razorpay)** — o ponto MAIS forte desta KB: ledger auditável, idempotência, outbox/dual-write, saga sem 2PC, escala 100→10.000 TPS. Treine pelo banco de perguntas inteiro.",
+        "**API Rate Limiter** — token bucket vs sliding window, estado no Redis (atomicidade via Lua/INCR+TTL), decisão local vs distribuída, resposta 429 e headers.",
+        "**Checkout de E-commerce** — reserva de estoque vs oversell, pagamento como saga com compensação, carrinho consistente, idempotência do 'place order'. Cruza direto com as perguntas de saga/outbox da KB.",
+        "**Ride-Hailing (Uber)** — matching motorista↔passageiro, indexação geoespacial (geohash/H3), localização em tempo real (stream), surge pricing e dispatch com baixa latência.",
+        "**Search Autocomplete** — trie/índice de prefixos com top-K por prefixo, agregação offline de frequência + merge online, cache agressivo, latência p99 de dígito único em ms.",
+        "**Distributed Cache (Redis)** — consistent hashing (a KB tem pergunta dedicada), políticas de eviction (LRU), invalidação, cache-aside vs write-through, hot keys.",
+        "**CDN** — hierarquia edge→origin, cache HTTP (TTL, invalidação, cache key), roteamento por anycast/DNS, o cheatsheet de latência cross-region acima é o argumento central.",
+        "**Google Docs (edição colaborativa)** — o diferencial é concorrência: OT vs CRDT, presença/cursores via WebSocket, snapshots + log de operações (parente do event sourcing da KB).",
+        "**Distributed Job Scheduler** — agendamento com fila ordenada por tempo, workers com lease/heartbeat, exactly-once impossível → idempotência + at-least-once, cron distribuído sem SPOF.",
+        "**Feed de rede social (Twitter/Instagram)** — fan-out on write vs on read (o trade-off É a resposta), celebrity problem, ranking assíncrono, paginação por cursor.",
+        "**File Storage (Dropbox/Drive)** — chunking + deduplicação por hash de bloco, sync delta, metadados fortemente consistentes vs blobs eventual, resumable upload.",
+        "**Distributed ID Generator** — Snowflake: timestamp + machine id + sequência; monotonicidade vs coordenação, clock skew, por que UUID aleatório machuca índice de banco."
       ]
     },
     {
