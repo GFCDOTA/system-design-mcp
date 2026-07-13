@@ -464,6 +464,65 @@ ol.steps.roadmap li { padding-top: 9px; padding-bottom: 9px; }
 .rm-label { color: var(--text-secondary); flex: 1; min-width: 200px; }
 .rm-inapp { margin: 0; }
 
+/* ===================== Selos de empresa ===================== */
+.cbadges { display: inline-flex; flex-wrap: wrap; gap: 4px; margin-left: 4px; }
+.cbadge {
+  font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: var(--radius-full);
+  background: var(--surface-2); border: 1px solid var(--border-subtle); color: var(--text-secondary);
+  white-space: nowrap;
+}
+.cbadge-note {
+  font-size: 12px; margin: 8px 0 14px; padding: 8px 12px; border-radius: var(--radius-md);
+  background: var(--surface-2); border: 1px solid var(--border-subtle); line-height: 1.5;
+}
+
+/* ===================== Banco de perguntas (Java do curso) ===================== */
+.qbank-search {
+  width: 100%; padding: 10px 14px; margin: 4px 0 10px; font-size: 14px; font-family: var(--font-sans);
+  border: 1px solid var(--border-default); border-radius: var(--radius-md);
+  background: var(--surface-1); color: var(--text-primary);
+}
+.qbank-search:focus { outline: 2px solid var(--brand); outline-offset: 1px; border-color: var(--brand); }
+.qbank-count { margin: 4px 0 8px; font-size: 13px; }
+
+/* ===================== Trilhas de estudo ===================== */
+.study-feature-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 18px 0 8px; }
+.study-feature {
+  display: flex; gap: 14px; align-items: flex-start; padding: 16px 18px; color: var(--text-primary);
+  background: linear-gradient(135deg, var(--brand-soft), var(--cyan-soft));
+  border: 1px solid var(--brand-border); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm);
+  transition: transform 140ms, box-shadow 140ms;
+}
+.study-feature:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); text-decoration: none; }
+.study-feature h3 { margin: 0 0 2px; font-size: 15px; }
+.study-feature p { margin: 0; color: var(--text-secondary); font-size: 13px; line-height: 1.45; }
+
+.trail-steps { list-style: none; counter-reset: none; padding: 0; margin: 12px 0 0; }
+.trail-step { display: flex; align-items: center; gap: 10px; padding: 6px 0; flex-wrap: wrap; }
+.trail-step-n {
+  flex-shrink: 0; width: 24px; height: 24px; display: grid; place-items: center; border-radius: 50%;
+  background: var(--brand-soft); color: var(--brand); font-size: 12px; font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.trail-step-link {
+  display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px;
+  background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--radius-md);
+  color: var(--text-primary);
+}
+.trail-step-link:hover { border-color: var(--brand-border); text-decoration: none; }
+.trail-step-label { font-weight: var(--fw-medium); font-size: 14px; }
+.trail-step-note { color: var(--text-muted); font-size: 12.5px; }
+
+.study-kind.k-step-material { color: var(--brand); background: var(--brand-soft); }
+.study-kind.k-step-perguntas { color: var(--cyan); background: var(--cyan-soft); }
+.study-kind.k-step-assunto { color: var(--info); background: var(--info-soft); }
+.study-kind.k-step-treino { color: var(--amber); background: rgba(217, 119, 6, 0.12); }
+.study-kind.k-step-base { color: var(--text-secondary); background: var(--surface-2); }
+
+@media (max-width: 720px) {
+  .study-feature-row { grid-template-columns: 1fr; }
+}
+
 /* ===================== Modo Estudos ===================== */
 .brand-mark.study { background: linear-gradient(135deg, #0EA5A0, #6D5AE6); font-size: 18px; }
 

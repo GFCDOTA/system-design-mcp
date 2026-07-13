@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { javaCategories, javaQuestionCount, type JavaQuestion } from "../data/javaCore";
 import { ProgressBar } from "../components/Progress";
+import { CompanyBadges } from "../components/CompanyBadges";
+import { companyDisclaimer } from "../data/companySignals";
 import { isDone, toggleDone, doneCount, useProgress } from "../progress";
 
 /** Renderiza **negrito** e `code` inline (mesmo markdown leve do prep). */
@@ -38,6 +40,7 @@ function JavaCard({ q }: { q: JavaQuestion }) {
           ✓
         </span>
         <span className="qa-q">{q.q}</span>
+        <CompanyBadges text={q.q + " " + q.a + " " + (q.pitfall ?? "")} />
         <span className="qa-toggle">{open ? "−" : "+"}</span>
       </button>
       {open && (
@@ -71,6 +74,7 @@ export function JavaCore() {
         <h3>Seu progresso</h3>
         <ProgressBar done={Math.min(doneCount("jq:"), javaQuestionCount)} total={javaQuestionCount} />
       </div>
+      <p className="muted cbadge-note">ℹ {companyDisclaimer}</p>
       {javaCategories.map((cat) => (
         <section key={cat.id} className="java-cat">
           <h2>{cat.title}</h2>
