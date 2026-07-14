@@ -5,39 +5,39 @@
   --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
 
-  /* ===== TEMA ESCURO (padrão) — slate/graphite suave, não preto puro ===== */
-  --bg: #0E1116;
-  --bg-elev: #171C23;
-  --bg-elev2: #1F252E;
-  --border: rgba(255, 255, 255, 0.10);
-  --text: #E9EDF4;
-  --muted: #A6AFBC;
-  --accent: #8F7DFF;     /* violeta = marca */
-  --accent-2: #3AD8C2;   /* teal/ciano */
-  --pro: #46D17F;
+  /* ===== TEMA ESCURO (padrão) — dim/slate, NÃO preto: confortável ===== */
+  --bg: #191E26;
+  --bg-elev: #232A34;
+  --bg-elev2: #2B333E;
+  --border: rgba(255, 255, 255, 0.11);
+  --text: #EAEEF5;
+  --muted: #AEB7C4;
+  --accent: #9384FF;     /* violeta = marca */
+  --accent-2: #43DECB;   /* teal/ciano */
+  --pro: #4FD787;
   --con: #FB7185;
   --radius: 12px;
   --maxw: 1180px;
 
-  /* Superfícies (4 níveis) */
-  --bg-app: #0E1116;
-  --bg-sidebar: #12161C;
-  --surface-1: #171C23;
-  --surface-2: #1F252E;
-  --surface-3: #272E38;
-  --surface-raised: #1F252E;
+  /* Superfícies (4 níveis) — dim dark, cada nível um degrau mais claro */
+  --bg-app: #191E26;
+  --bg-sidebar: #1D232C;
+  --surface-1: #232A34;
+  --surface-2: #2B333E;
+  --surface-3: #343D49;
+  --surface-raised: #2B333E;
 
   /* Bordas — sutis, pegam luz de leve */
-  --border-subtle: rgba(255, 255, 255, 0.06);
-  --border-default: rgba(255, 255, 255, 0.11);
-  --border-strong: rgba(255, 255, 255, 0.18);
+  --border-subtle: rgba(255, 255, 255, 0.07);
+  --border-default: rgba(255, 255, 255, 0.12);
+  --border-strong: rgba(255, 255, 255, 0.20);
 
   /* Texto */
-  --text-primary: #E9EDF4;
-  --text-secondary: #AAB3C0;
-  --text-muted: #737D8C;
-  --code-fg: #C9D6F0;
-  --stars-off: rgba(255, 255, 255, 0.16);
+  --text-primary: #EAEEF5;
+  --text-secondary: #AEB7C4;
+  --text-muted: #78828F;
+  --code-fg: #CCD8F0;
+  --stars-off: rgba(255, 255, 255, 0.18);
 
   /* Marca + acentos */
   --brand: #8F7DFF;
@@ -180,6 +180,22 @@ pre { background: var(--surface-2); padding: 12px; border-radius: 8px; overflow:
 
 /* Content */
 .content { padding: 40px 44px; max-width: var(--content-max); width: 100%; margin: 0 auto; }
+
+/* Barra de topo — botões de tema e idioma */
+.topbar { display: flex; justify-content: flex-end; gap: 10px; margin: -10px 0 18px; }
+.seg { display: inline-flex; background: var(--surface-2); border: 1px solid var(--border-subtle); border-radius: var(--radius-full); padding: 2px; }
+.seg button {
+  border: none; background: none; cursor: pointer; padding: 5px 12px; border-radius: var(--radius-full);
+  font-family: var(--font-sans); font-size: 12.5px; font-weight: var(--fw-semibold); color: var(--text-muted);
+  transition: background 130ms, color 130ms;
+}
+.seg button:hover { color: var(--text-primary); }
+.seg button.active { background: var(--brand); color: #fff; }
+:root[data-theme="light"] .seg button.active { color: #fff; }
+
+@media (max-width: 720px) {
+  .topbar { justify-content: flex-start; flex-wrap: wrap; margin: 4px 0 14px; }
+}
 .page-head h1, h1 { font-size: var(--fs-2xl); margin: 0 0 10px; line-height: 1.18; letter-spacing: -0.03em; font-weight: var(--fw-bold); }
 .lede { color: var(--text-secondary); font-size: var(--fs-lg); max-width: 72ch; line-height: 1.7; }
 h2 { font-size: var(--fs-xl); margin-top: 32px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 8px; letter-spacing: -0.01em; }
