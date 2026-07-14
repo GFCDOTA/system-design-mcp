@@ -19,14 +19,15 @@ export function applyTheme(t: Theme) {
   if (t === "light") root.setAttribute("data-theme", "light");
   else root.removeAttribute("data-theme");
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute("content", t === "light" ? "#F6F7FA" : "#0E1116");
+  if (meta) meta.setAttribute("content", t === "light" ? "#F6F7FA" : "#191E26");
 }
 
 const listeners = new Set<() => void>();
 let current: Theme = getTheme();
 
-export function toggleTheme() {
-  current = current === "dark" ? "light" : "dark";
+export function setTheme(t: Theme) {
+  if (t === current) return;
+  current = t;
   try {
     localStorage.setItem(KEY, current);
   } catch {
@@ -34,6 +35,10 @@ export function toggleTheme() {
   }
   applyTheme(current);
   for (const l of listeners) l();
+}
+
+export function toggleTheme() {
+  setTheme(current === "dark" ? "light" : "dark");
 }
 
 export function useTheme(): Theme {

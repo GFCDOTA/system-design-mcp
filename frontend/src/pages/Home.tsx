@@ -5,6 +5,7 @@ import { Async } from "../components/States";
 import { DoneMark, ProgressBar } from "../components/Progress";
 import { doneCount, lastVisit, useProgress } from "../progress";
 import { javaQuestionCount } from "../data/javaCore";
+import { useI18n } from "../i18n";
 
 function groupByCategory(topics: TopicSummary[]): [string, TopicSummary[]][] {
   const map = new Map<string, TopicSummary[]>();
@@ -32,27 +33,24 @@ export function Home() {
   const topics = useAsync(() => api.topics(), []);
   useProgress();
   const last = lastVisit();
+  const { t } = useI18n();
 
   return (
     <div>
       <section className="home-hero">
-        <span className="home-kicker">Base de prep pra entrevista</span>
-        <h1>Estude, treine e consulte — num espaço só</h1>
-        <p className="lede">
-          Todo o material do curso pra <strong>estudar a fundo</strong>, o <strong>treino de entrevista</strong>{" "}
-          (System Design + DSA + Java + comportamental) e a <strong>referência</strong> de System Design, juntos.
-          Aprender e treinar são a mesma jornada — sem trocar de mundo.
-        </p>
+        <span className="home-kicker">{t("home.kicker")}</span>
+        <h1>{t("home.title")}</h1>
+        <p className="lede">{t("home.lede")}</p>
         <div className="hero-actions">
           {last ? (
             <Link to={last.path} className="btn btn-primary">
-              Continuar: {last.label} →
+              {t("home.cta.continue")}: {last.label} →
             </Link>
           ) : (
-            <Link to="/estudos" className="btn btn-primary">Começar a estudar →</Link>
+            <Link to="/estudos" className="btn btn-primary">{t("home.cta.study")}</Link>
           )}
-          <Link to="/entrevista" className="btn btn-secondary">Treinar entrevista</Link>
-          <Link to="/topics" className="btn btn-secondary">Referência</Link>
+          <Link to="/entrevista" className="btn btn-secondary">{t("home.cta.train")}</Link>
+          <Link to="/topics" className="btn btn-secondary">{t("home.cta.reference")}</Link>
         </div>
         {last && (
           <p className="home-continue">
@@ -62,7 +60,7 @@ export function Home() {
         )}
       </section>
 
-      <h2>Trilhas de estudo</h2>
+      <h2>{t("home.trails")}</h2>
       <Async state={stats}>
         {(s) => {
           const trails: Trail[] = [
@@ -153,7 +151,7 @@ export function Home() {
         )}
       </Async>
 
-      <h2>Mapa de tópicos</h2>
+      <h2>{t("home.map")}</h2>
       <Async state={topics}>
         {(list) => (
           <div className="topic-map">
