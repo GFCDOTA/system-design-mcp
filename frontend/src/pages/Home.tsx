@@ -36,11 +36,12 @@ export function Home() {
   return (
     <div>
       <section className="home-hero">
-        <span className="home-kicker">Plataforma de estudo</span>
-        <h1>Aprenda System Design do jeito que cai na entrevista</h1>
+        <span className="home-kicker">Base de prep pra entrevista</span>
+        <h1>Estude, treine e consulte — num espaço só</h1>
         <p className="lede">
-          Trilhas de fundamentos, padrões de arquitetura, bancos de dados e um Modo Entrevista completo (System
-          Design + DSA + comportamental). Todo o conteúdo aponta para a fonte — nada é inventado.
+          Todo o material do curso pra <strong>estudar a fundo</strong>, o <strong>treino de entrevista</strong>{" "}
+          (System Design + DSA + Java + comportamental) e a <strong>referência</strong> de System Design, juntos.
+          Aprender e treinar são a mesma jornada — sem trocar de mundo.
         </p>
         <div className="hero-actions">
           {last ? (
@@ -48,10 +49,10 @@ export function Home() {
               Continuar: {last.label} →
             </Link>
           ) : (
-            <Link to="/topics" className="btn btn-primary">Começar pelos fundamentos →</Link>
+            <Link to="/estudos" className="btn btn-primary">Começar a estudar →</Link>
           )}
-          <Link to="/estudos" className="btn btn-secondary">Modo Estudos</Link>
-          <Link to="/entrevista" className="btn btn-secondary">Modo Entrevista</Link>
+          <Link to="/entrevista" className="btn btn-secondary">Treinar entrevista</Link>
+          <Link to="/topics" className="btn btn-secondary">Referência</Link>
         </div>
         {last && (
           <p className="home-continue">
