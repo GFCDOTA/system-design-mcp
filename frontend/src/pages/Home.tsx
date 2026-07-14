@@ -6,6 +6,7 @@ import { DoneMark, ProgressBar } from "../components/Progress";
 import { doneCount, lastVisit, useProgress } from "../progress";
 import { javaQuestionCount } from "../data/javaCore";
 import { useI18n } from "../i18n";
+import { ReadinessDashboard } from "../components/ReadinessDashboard";
 
 function groupByCategory(topics: TopicSummary[]): [string, TopicSummary[]][] {
   const map = new Map<string, TopicSummary[]>();
@@ -37,28 +38,15 @@ export function Home() {
 
   return (
     <div>
-      <section className="home-hero">
-        <span className="home-kicker">{t("home.kicker")}</span>
-        <h1>{t("home.title")}</h1>
-        <p className="lede">{t("home.lede")}</p>
-        <div className="hero-actions">
-          {last ? (
-            <Link to={last.path} className="btn btn-primary">
-              {t("home.cta.continue")}: {last.label} →
-            </Link>
-          ) : (
-            <Link to="/estudos" className="btn btn-primary">{t("home.cta.study")}</Link>
-          )}
-          <Link to="/entrevista" className="btn btn-secondary">{t("home.cta.train")}</Link>
-          <Link to="/topics" className="btn btn-secondary">{t("home.cta.reference")}</Link>
-        </div>
-        {last && (
-          <p className="home-continue">
-            Seu progresso fica salvo neste dispositivo — marque tópicos e perguntas como concluídos pra ver as
-            barras andarem.
-          </p>
-        )}
-      </section>
+      <ReadinessDashboard />
+
+      {last && (
+        <p className="home-continue rd-continue">
+          <Link to={last.path} className="btn btn-secondary">
+            {t("home.cta.continue")}: {last.label} →
+          </Link>
+        </p>
+      )}
 
       <h2>{t("home.trails")}</h2>
       <Async state={stats}>
