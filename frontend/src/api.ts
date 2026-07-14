@@ -1,4 +1,6 @@
-// Typed client for the BFF. URLs are relative; in dev Vite proxies /api to the BFF (see vite.config.ts).
+// Cliente de dados 100% ESTÁTICO — lê os JSON do knowledge-base servidos em
+// /kb/*.json (copiados de ../knowledge-base no predev/prebuild). Sem backend:
+// as listas e o /stats são projetados/contados no próprio cliente.
 
 export interface SourceRef {
   kind: "pdf" | "repo" | "reference";
@@ -170,28 +172,64 @@ export interface Stats {
   databases: number;
 }
 
-async function get<T>(path: string): Promise<T> {
-  const res = await fetch(path, { headers: { Accept: "application/json" } });
-  if (!res.ok) {
-    throw new Error(`${res.status} ${res.statusText} em ${path}`);
+// Cada coleção é carregada UMA vez de /kb/<arquivo>.json e cacheada (a lista e
+// os detalhes saem do mesmo array). O SW cacheia o arquivo; isto evita re-parse.
+const cache = new Map<string, Promise<unknown[]>>();
+
+function load<T>(file: string): Promise<T[]> {
+  let p = cache.get(file);
+  if (!p) {
+    p = fetch(`/kb/${file}.json`, { headers: { Accept: "application/json" } }).then((res) => {
+      if (!res.ok) throw new Error(`${res.status} ${res.statusText} em /kb/${file}.json`);
+      return res.json();
+    });
+    cache.set(file, p);
   }
-  return (await res.json()) as T;
+  return p as Promise<T[]>;
+}
+
+async function byId<T extends { id: string }>(file: string, id: string): Promise<T> {
+  const all = await load<T>(file);
+  const found = all.find((x) => x.id === id);
+  if (!found) throw new Error(`"${id}" não encontrado em ${file}`);
+  return found;
 }
 
 export const api = {
-  stats: () => get<Stats>("/api/meta/stats"),
-  topics: () => get<TopicSummary[]>("/api/topics"),
-  topic: (id: string) => get<Topic>(`/api/topics/${id}`),
-  patterns: () => get<PatternSummary[]>("/api/patterns"),
-  pattern: (id: string) => get<Pattern>(`/api/patterns/${id}`),
-  flows: () => get<FlowSummary[]>("/api/flows"),
-  flow: (id: string) => get<Flow>(`/api/flows/${id}`),
-  questions: () => get<QuestionSummary[]>("/api/interview/questions"),
-  question: (id: string) => get<InterviewQuestion>(`/api/interview/questions/${id}`),
-  diagrams: () => get<DiagramSummary[]>("/api/diagrams"),
-  diagram: (id: string) => get<Diagram>(`/api/diagrams/${id}`),
-  evidence: () => get<Evidence[]>("/api/evidence"),
-  aiGlossary: () => get<GlossaryEntry[]>("/api/ai-glossary"),
-  databases: () => get<DatabaseSummary[]>("/api/databases"),
-  database: (id: string) => get<Database>(`/api/databases/${id}`),
+  stats: async (): Promise<Stats> => {
+    const [topics, patterns, flows, interviewQuestions, diagrams, evidence, aiGlossary, databases] = await Promise.all([
+      load("topics"),
+      load("patterns"),
+      load("flows"),
+      load("interview-questions"),
+      load("diagrams"),
+      load("evidence"),
+      load("ai-agents-glossary"),
+      load("databases"),
+    ]);
+    return {
+      topics: topics.length,
+      patterns: patterns.length,
+      flows: flows.length,
+      interviewQuestions: interviewQuestions.length,
+      diagrams: diagrams.length,
+      evidence: evidence.length,
+      aiGlossary: aiGlossary.length,
+      databases: databases.length,
+    };
+  },
+  topics: () => load<TopicSummary>("topics"),
+  topic: (id: string) => byId<Topic>("topics", id),
+  patterns: () => load<PatternSummary>("patterns"),
+  pattern: (id: string) => byId<Pattern>("patterns", id),
+  flows: () => load<FlowSummary>("flows"),
+  flow: (id: string) => byId<Flow>("flows", id),
+  questions: () => load<QuestionSummary>("interview-questions"),
+  question: (id: string) => byId<InterviewQuestion>("interview-questions", id),
+  diagrams: () => load<DiagramSummary>("diagrams"),
+  diagram: (id: string) => byId<Diagram>("diagrams", id),
+  evidence: () => load<Evidence>("evidence"),
+  aiGlossary: () => load<GlossaryEntry>("ai-agents-glossary"),
+  databases: () => load<DatabaseSummary>("databases"),
+  database: (id: string) => byId<Database>("databases", id),
 };
