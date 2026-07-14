@@ -800,6 +800,7 @@ ol.steps.roadmap li { padding-top: 9px; padding-bottom: 9px; }
   white-space: pre;
 }
 .reader-img { max-width: 100%; height: auto; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); }
+.reader-scan-missing { background: var(--surface-2); border: 1px dashed var(--border-default); border-radius: var(--radius-md); padding: 14px 16px; color: var(--text-secondary); font-size: 13.5px; }
 
 .reader-nav { display: flex; justify-content: space-between; gap: 12px; margin: 22px 0 8px; }
 .reader-navlink {

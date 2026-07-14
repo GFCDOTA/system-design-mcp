@@ -10,6 +10,7 @@
     "dev": "vite",
     "prebuild": "node scripts/kb-to-public.mjs",
     "build": "tsc --noEmit && vite build",
+    "build:deploy": "npm run build && node scripts/build-deploy.mjs",
     "preview": "vite preview",
     "lint": "tsc --noEmit",
     "test": "node --test"
