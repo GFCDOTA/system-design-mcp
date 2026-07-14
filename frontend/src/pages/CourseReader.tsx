@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 import { useAsync } from "../hooks";
 import { Async } from "../components/States";
@@ -45,11 +45,32 @@ function PageView({ page, base }: { page: ReaderPage; base: string }) {
     <section className="reader-page" id={`p${page.n}`}>
       <span className="reader-pagenum">página {page.n}</span>
       {"image" in page ? (
-        <img className="reader-img" src={base + page.image} alt={`Página ${page.n} (digitalizada)`} loading="lazy" />
+        <ScanImage src={base + page.image} n={page.n} />
       ) : (
         page.blocks.map((b, i) => <Block key={i} text={b} />)
       )}
     </section>
+  );
+}
+
+/** Página manuscrita (imagem). Na versão hospedada as imagens pesadas não vão
+ *  junto — se não carregar, mostra um aviso em vez de imagem quebrada. */
+function ScanImage({ src, n }: { src: string; n: number }) {
+  const [failed, setFailed] = useState(false);
+  if (failed)
+    return (
+      <p className="reader-scan-missing">
+        📄 Página {n} é uma anotação manuscrita (imagem) — disponível na versão do app rodando no seu PC.
+      </p>
+    );
+  return (
+    <img
+      className="reader-img"
+      src={src}
+      alt={`Página ${n} (digitalizada)`}
+      loading="lazy"
+      onError={() => setFailed(true)}
+    />
   );
 }
 
