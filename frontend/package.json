@@ -5,7 +5,10 @@
   "type": "module",
   "description": "System Design Specialist Lab — interactive knowledge browser (frontend).",
   "scripts": {
+    "sync-kb": "node scripts/kb-to-public.mjs",
+    "predev": "node scripts/kb-to-public.mjs",
     "dev": "vite",
+    "prebuild": "node scripts/kb-to-public.mjs",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "lint": "tsc --noEmit",

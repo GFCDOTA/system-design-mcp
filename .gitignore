@@ -34,3 +34,6 @@ knowledge-base/_parts/
 
 # Material do curso comprado (Complete Interview Preparation) — LOCAL, nunca versionar
 frontend/public/course/
+
+# Dados do knowledge-base copiados p/ o frontend estático (derivado, regenerado no build)
+frontend/public/kb/
