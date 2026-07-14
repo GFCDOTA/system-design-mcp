@@ -1,8 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom";
-import { Layout } from "./components/Layout";
-import { InterviewLayout } from "./components/InterviewLayout";
+import { AppLayout } from "./components/AppLayout";
 import { Home } from "./pages/Home";
 import { Topics } from "./pages/Topics";
 import { TopicDetail } from "./pages/TopicDetail";
@@ -29,7 +28,6 @@ import {
 import { JavaCore } from "./pages/JavaCore";
 import { CourseRoadmap } from "./pages/CourseRoadmap";
 import { CourseReader } from "./pages/CourseReader";
-import { StudyLayout } from "./components/StudyLayout";
 import { StudyOverview, StudySubjectPage } from "./pages/Study";
 import { JavaQuestions } from "./pages/JavaQuestions";
 import { StudyTrails } from "./pages/StudyTrails";
@@ -45,12 +43,14 @@ applyTheme(getTheme());
 
 const router = createBrowserRouter([
   {
-    // Base de Conhecimento — o System Design Specialist Lab (produto original)
+    // Um espaço só — estudar, treinar e consultar sob o mesmo layout.
     path: "/",
-    element: <Layout />,
+    element: <AppLayout />,
     errorElement: <RouteError />,
     children: [
       { index: true, element: <Home /> },
+
+      // Referência (System Design)
       { path: "topics", element: <Topics /> },
       { path: "topics/:id", element: <TopicDetail /> },
       { path: "patterns", element: <Patterns /> },
@@ -65,43 +65,32 @@ const router = createBrowserRouter([
       { path: "databases", element: <Databases /> },
       { path: "databases/builder", element: <DatabaseBuilder /> },
       { path: "databases/:id", element: <DatabaseDetail /> },
+
+      // Estudar (material do curso)
+      { path: "estudos", element: <StudyOverview /> },
+      { path: "estudos/perguntas", element: <JavaQuestions /> },
+      { path: "estudos/trilhas", element: <StudyTrails /> },
+      { path: "estudos/curriculo", element: <Ats /> },
+      { path: "estudos/validador", element: <AtsChecker /> },
+      { path: "estudos/ler/:file", element: <CourseReader /> },
+      { path: "estudos/:subject", element: <StudySubjectPage /> },
+
+      // Treinar (entrevista)
+      { path: "entrevista", element: <InterviewOverview /> },
+      { path: "entrevista/system-design", element: <InterviewSystemDesign /> },
+      { path: "entrevista/java", element: <JavaCore /> },
+      { path: "entrevista/roadmap", element: <CourseRoadmap /> },
+      { path: "entrevista/curso/:file", element: <CourseReader /> },
+      { path: "entrevista/dsa", element: <InterviewDsa /> },
+      { path: "entrevista/fundamentos", element: <InterviewFundamentos /> },
+      { path: "entrevista/comportamental", element: <InterviewBehavioral /> },
+      { path: "entrevista/relatos", element: <InterviewRelatos /> },
+
       { path: "*", element: <NotFound /> },
     ],
   },
-  {
-    // Modo Estudos — aprender o material do curso por assunto
-    path: "/estudos",
-    element: <StudyLayout />,
-    errorElement: <RouteError />,
-    children: [
-      { index: true, element: <StudyOverview /> },
-      { path: "perguntas", element: <JavaQuestions /> },
-      { path: "trilhas", element: <StudyTrails /> },
-      { path: "curriculo", element: <Ats /> },
-      { path: "validador", element: <AtsChecker /> },
-      { path: "ler/:file", element: <CourseReader /> },
-      { path: ":subject", element: <StudySubjectPage /> },
-    ],
-  },
-  // back-compat: o Modo Entrevista era /interview antes de virar área própria
+  // back-compat: /interview antigo → visão de treino
   { path: "/interview", element: <Navigate to="/entrevista" replace /> },
-  {
-    // Modo Entrevista — área própria, layout próprio
-    path: "/entrevista",
-    element: <InterviewLayout />,
-    errorElement: <RouteError />,
-    children: [
-      { index: true, element: <InterviewOverview /> },
-      { path: "system-design", element: <InterviewSystemDesign /> },
-      { path: "java", element: <JavaCore /> },
-      { path: "roadmap", element: <CourseRoadmap /> },
-      { path: "curso/:file", element: <CourseReader /> },
-      { path: "dsa", element: <InterviewDsa /> },
-      { path: "fundamentos", element: <InterviewFundamentos /> },
-      { path: "comportamental", element: <InterviewBehavioral /> },
-      { path: "relatos", element: <InterviewRelatos /> },
-    ],
-  },
 ]);
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
