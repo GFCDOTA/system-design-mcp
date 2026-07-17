@@ -1,129 +1,139 @@
-# HANDOFF — System Design Specialist Lab
+# HANDOFF — Base de Prep pra Entrevista (system-design-specialist-lab)
 
 > Fio da meada entre sessões. Seção vazia = pergunta aberta, não "N/A" mudo.
+> ⚠️ Este handoff SUBSTITUI o de 2026-06-19 (BFF Java + Docker) — aquele estado
+> está OBSOLETO: o app virou **React puro estático, sem backend**.
 
-- **Data / sessão:** 2026-06-19 · build inicial + 2 follow-ups (módulo IA, fix de links)
-- **Repo / app:** `apps/system-design-specialist-lab` (remote: `github.com/fmodesto30/system-design-mcp`)
-- **Status geral:** 🟢 GREEN — tudo compila, 17 testes verdes, roda live no Docker, 0 links quebrados.
+- **Data / sessão:** 2026-07-17 · sessão longa (app pra entrevista: conteúdo, UI, PWA)
+- **Repo / app:** `E:\Claude\apps\system-design-specialist-lab` · remote `origin` =
+  `github.com/fmodesto30/system-design-mcp` (⚠️ transferido p/ `GFCDOTA/system-design-mcp`;
+  a URL antiga redireciona, o push funciona).
+- **Status geral:** 🟢 GREEN — `npm test` 15 verdes, build limpo, app roda 100% no frontend
+  (sem Java), working tree limpa, tudo pushado em `main`.
 
 ## 1. Objetivo atual
-Produto de **estudo/consulta de System Design** (não chatbot, **sem LLM em runtime**): BFF Java
-serve uma base de conhecimento JSON; frontend React navega. Tudo **ancorado em fonte** (workbook
-de M. S. Fidelis + 3 repos do mesmo autor + microservices.io) — toda afirmação tem `sourceRefs`,
-garantido por teste de integridade. Evoluiu pra ter 2 trilhas: **System Design** (entrevista) e
-**IA & Agentes** (glossário pra dev backend aprendendo IA). Entregue e funcional.
+App pessoal de **preparação pra entrevista de SWE**, num espaço só: **Estudar** (material do
+curso comprado + trilhas + 408 perguntas de Java + currículo/ATS), **Treinar** (System Design,
+DSA, Java Core, comportamental, relatos) e **Referência** (a KB de System Design original).
+Home = **painel de preparação** (nível de confiança + troféus + norte de estudo). **Sem LLM em
+runtime.** ROI da sessão: tirar toda a dor do backend (virou estático) e deixar instalável no
+iPhone (PWA).
 
 ## 2. Branch atual
-- **Branch:** `feat/system-design-specialist-lab` · **base:** `origin/main` (a7ca601 = README inicial
-  do GitHub; **história NÃO-relacionada** — esta branch é o import do projeto inteiro).
-- **Último commit:** `a5df61e` — docs+fix: refresh final-report (17 tests, IA module, link fix).
-- **Ahead/behind:** **ahead 1 não-pushado** (`a5df61e`); os 5 commits anteriores já estão no remote.
-  → primeiro movimento ao retomar: `git push origin feat/system-design-specialist-lab`.
+- **Branch:** `main` · **HEAD:** `dc4c832` (merge "build enxuto pra deploy").
+- **vs `origin/main`:** `0 0` — **100% em sync (pushado)**. Nada ahead/behind.
+- **Working tree:** limpa. Não há nada pendente pra commitar.
+- Fluxo da sessão: cada feature em branch `feat/*` off `main` → `merge --no-ff` → push → delete.
 
-## 3. Arquivos alterados
-Projeto inteiro novo (~100 arquivos). Áreas:
-- `bff/` — Java 21 + Spring Boot 3.4, hexagonal (`domain/{model,port}`, `application`,
-  `infrastructure/{web,persistence,config}`); `mvnw` incluso; `Dockerfile`.
-- `frontend/` — React + Vite + TS (`src/pages`, `src/components`, `api.ts`); `Dockerfile` + `nginx.conf`.
-- `mcp/` — MCP server stdio (Node/TS): `src/{kb,server}.ts`, `test/smoke.mjs`; lê os mesmos JSON.
-  `.mcp.json` (raiz) registra ele. `node_modules`/`dist` gitignored (setup = `npm install && build`).
-- `knowledge-base/*.json` — fonte de verdade (topics/patterns/flows/interview-questions/diagrams/
-  evidence + **ai-agents-glossary**) + `schema/`. Cada `sourceRef` agora tem `url` verificada.
-- `docs/` — source-inventory, system-design-knowledge-map, architecture, ADRs, runbook,
-  interview-guide, tradeoffs, glossary, **ai-agents-glossary**, open-questions, final-report.
-- `scripts/` — `merge_validate_kb.py`, `resolve_source_urls.py`, `build.sh`, `test.sh`, `run.sh`.
-- `docker-compose.yml`, `CLAUDE.md`. **Sensível:** `.tools/` (JDK21+Maven baixados) e
-  `docs/_sources/` (PDF extraído) são **gitignored** — não comitar.
+## 3. Arquivos/áreas alteradas (nesta sessão)
+- **`frontend/src/`** — TODO o produto é React/Vite/TS:
+  - `components/AppLayout.tsx` (layout ÚNICO, nav agrupada Estudar/Treinar/Referência), `TopBar.tsx`
+    (botões tema + idioma), `ReadinessDashboard.tsx`, `CompanyBadges.tsx`, `Progress.tsx`.
+  - `pages/`: Home (painel), Study/JavaQuestions/StudyTrails/CourseReader/Ats/AtsChecker, JavaCore,
+    Interview, + as de referência (Topics/Patterns/…).
+  - `data/`: `api.ts` (agora lê `/kb/*.json` estático, cache em memória), `readiness.js`(+`.d.ts`),
+    `atsValidator.js`(+`.d.ts`), `studySyllabus.ts`, `studyTrails.ts`, `javaCore.ts`, `companySignals.ts`,
+    `atsGuide.ts`, `courseRoadmap.ts`, `sampleResume.ts`. `theme.ts`, `i18n.ts`, `progress.ts`.
+  - `test/` (node --test): `route-coverage`, `ats-validator`, `readiness` = **15 testes**.
+  - `scripts/`: `kb-to-public.mjs` (copia knowledge-base→public/kb no predev/prebuild),
+    `build-deploy.mjs` (build enxuto p/ hospedar), `extract_course.py`+`extract_qbank.py` (raiz `scripts/`).
+- **`frontend/public/`** — `manifest.webmanifest`, `sw.js` (v2, offline estático), `icons/`.
+  ⚠️ **gitignored (derivado/privado):** `public/kb/` (copiado da KB), `public/course/` (PDFs+extração).
+- **BFF Java (`bff/`) e `.tools/`** — **APOSENTADOS** (não usados em runtime). Continuam no repo;
+  candidatos a arquivar.
 
 ## 4. Decisões tomadas
-- **BFF hexagonal em Java/Spring** (ADR-0002): domínio = records puros sem anotação; porta
-  `KnowledgeBasePort`; adapter JSON. Serve de exemplo vivo do padrão BFF que o lab ensina.
-- **Base JSON sem banco** (ADR-0003): read-only, versionável, validada por schema + teste de
-  integridade. Trocar pra DB depois = só um novo adapter.
-- **Frontend Vite+React** (ADR-0004), não Next — é navegador de KB, SSR é desnecessário.
-- **Trilha IA & Agentes SEPARADA** do System Design: fontes são refs de IA (Anthropic, MCP spec),
-  não o workbook → não fura a regra de sourcing. Felipe pediu (dev backend aprendendo IA).
-- **`url` verificada por curl em cada sourceRef** (`resolve_source_urls.py`): bug era o front
-  hardcodar microservices.io pra todo `reference` + linkar arquivo de repo via `tree/main` (404).
-  Agora: deep-link se resolve, fallback pro índice, raiz do repo pra repo, sem link pro PDF.
-- **Docker: BFF no host 18080** (8080 ocupado por outra stack Docker do Felipe — rag-llm-mcp etc.);
-  no container Linux o BFF sobe **sem** o workaround AF_UNIX.
+- **App 100% React estático, BFF Java aposentado** (o Java só servia os JSON e vivia caindo — causa
+  de TODOS os "500" da sessão). `api.ts` lê `/kb/<coleção>.json` (copiado de `knowledge-base/` no
+  predev/prebuild via `kb-to-public.mjs`), projeta lista/detalhe/stats no cliente. MESMA interface,
+  zero mudança nas páginas. → não cai, roda offline (SW), sobe em qualquer host estático.
+- **UM espaço só** (Felipe escolheu via pergunta): fim do seletor de modo; `AppLayout` único, nav
+  agrupada. Router achatado (tudo filho de `/`), PATHS iguais → nenhum link quebrado.
+- **Tema ESCURO dim padrão** (#191E26, "não tão escuro") + toggle claro; **i18n PT/EN** — ⚠️ só a
+  CASCA traduzida (nav/topo/home); conteúdo das páginas segue PT (a traduzir progressivo).
+- **Conteúdo do curso é PRIVADO** (pago): os 89 PDFs + extração + 408 perguntas ficam LOCAIS,
+  gitignored. Nunca vão pro repo público. No deploy só entra o TEXTO (kb + perguntas + material
+  legível = 7.6MB); manuscritos (imagem, 411MB) e PDFs (148MB) NÃO hospedam.
+- **Selos de empresa** (Amazon/Google/…): por TEMA, padrão público conhecido + disclaimer explícito
+  — NÃO é do PDF nem oficial. Nunca copiei o currículo-exemplo (PII) nem links promocionais.
+- **PWA pra iPhone**, não nativo: App Store exige Mac+Xcode+conta Apple (impossível no Windows).
 
 ## 5. Testes rodados + evidências
-- **BFF:** `./mvnw test` → **`Tests run: 17, Failures: 0, Errors: 0` — BUILD SUCCESS** (unit +
-  contrato MockMvc + integridade da base).
-- **Frontend:** `npm run build` → **built** (tsc strict + vite).
-- **Gate da base:** `merge_validate_kb.py` → 29/20/7/30/12/24, 0 erro de schema, 0 id duplicado;
-  cross-ref check → **0 quebrados**; `resolve_source_urls.py` sweep → **28 URLs únicas, 0 broken**.
-- **Evidência (browser):** Docker live em :5173 → home, mapa de tópicos, **12/12 diagramas Mermaid
-  renderizados (0 erro)**, Modo Entrevista expandindo Q&A com fontes, **0 erro de console**
-  (screenshots na sessão). `stats` = `{topics:29,...,evidence:24,aiGlossary:13}`.
-- **Veredito visual GPT-via-Chrome:** N/A (não é artefato SKP; gate aqui = testes + sweep de links).
+- **`cd frontend && npm test`** → **15 testes, 0 falha** (route-coverage 4 · ats-validator 5 · readiness 6).
+  Os testes de ats/readiness pegaram bugs reais antes (clamp, telefone-lido-como-data, regex cruzando \n).
+- **`npm run build`** → verde (tsc strict + vite; prebuild sincroniza a KB).
+- **Prova do "sem backend"**: com o **BFF DESLIGADO**, verifiquei ao vivo (browser) — topics(29),
+  perguntas(35)+detalhe, stats/inventário, painel: **tudo carrega, 0 erro**. `/kb/*.json` serve 200.
+- **PWA**: manifest servido ("Base de Prep pra Entrevista"/"Prep", standalone, 3 ícones); `dist-deploy`
+  = **7.6MB** (zip 2.2MB no Desktop `prep-app-para-deploy.zip`).
+- **Veredito visual GPT-via-Chrome:** N/A (não é artefato SKP). Screenshots via headless Chrome ao longo.
 
-## 6. Pendências
-- **Merge `feat/...` → `main`** no GitHub: PR **não aberto** (PAT só tem `Contents:write`, `gh pr
-  create` falha). Esperando **decisão do Felipe**: abrir PR pela URL, ou eu faço merge via `git`.
-  ⚠️ históricos não-relacionados (`--allow-unrelated-histories` se for merge de verdade).
-- **MCP server** (`system-design-mcp`): ✅ **CONSTRUÍDO** em `mcp/` (Node stdio, 4 tools
-  overview/search/list/get, lê os mesmos JSON). `npm run smoke` verde. `.mcp.json` no repo +
-  `docs/FOR-AGENTS.md`. **Falta (decisão Felipe):** registrar no `.mcp.json`/`~/.claude.json` do
-  workspace `E:\Claude` (caminho absoluto) pra usar nas sessões dele — não apliquei sem ok.
-  Path via Docker MCP Gateway = opcional (ver `docs/mcp-server-plan.md`).
+## 6. Pendências (onde "continuar")
+1. **iPhone em casa (LAN):** falta a **regra de firewall** pro celular enxergar o PC — precisa
+   **admin** (não consigo elevar):
+   `netsh advfirewall firewall add rule name="sdlab 5173" dir=in action=allow protocol=TCP localport=5173`
+   Depois: iPhone (mesma Wi-Fi) → Safari `http://192.168.15.4:5173` → Compartilhar → Adicionar à Tela.
+   ⚠️ Local = PC ligado + mesma rede + **sem offline** (iOS só liga SW em HTTPS).
+2. **Deploy (opcional, se quiser offline/fora de casa):** Felipe topou "privado com todo o conteúdo",
+   mas depois inclinou pra "só rodar aqui". `dist-deploy` (7.6MB) pronto. Host: Cloudflare Pages+Access
+   (grátis, e-mail-gated = privado de verdade) ou Netlify Drop (rápido, URL secreta). **Login é do Felipe**
+   (não manuseio credencial); eu dirijo o upload.
+3. **(opcional)** comprimir os 3 manuscritos (411MB→~50MB WebP) pra caberem num deploy.
+4. **(opcional)** traduzir as páginas de conteúdo pra EN (hoje só a casca é i18n).
+5. **(opcional)** arquivar `bff/` e `.tools/` (JDK) — mortos.
 
-## 7. Riscos
-- **`merge_validate_kb.py` é footgun agora:** ele reescreve os `knowledge-base/*.json` a partir de
-  `_parts/` (gitignored, **sem o campo `url`**). Se rodar de novo, **perde os url**. → sempre rodar
-  `resolve_source_urls.py` **depois** de qualquer `merge_validate`.
-- **Boot LOCAL do BFF** (fora do Docker) precisa do workaround AF_UNIX desta máquina:
-  `JAVA_TOOL_OPTIONS=-Djdk.net.unixdomain.tmpdir=Z:\nope`. Os **testes** não (web MOCK, sem socket).
-- **Links genéricos de "Anthropic docs"** (token, prompt…) apontam pra `docs.claude.com` (home),
-  não anchor exato — subpágina de doc muda muito; deep-link só onde verifiquei estável.
-- **`.tools/` é local** (JDK21+Maven baixados, gitignored): num checkout limpo, `./mvnw` baixa o
-  Maven sozinho, mas precisa de um **JDK 21** no PATH/JAVA_HOME. A máquina tem JDK 25 global.
+## 7. Riscos / gotchas
+- **Service worker serve o shell ANTIGO em cache** após deploy grande → cliente já aberto precisa
+  `Ctrl+Shift+R` (ou unregister SW). Foi a causa de vários "por que não atualizou" da sessão. Chrome
+  fresco/headless pega o novo na hora.
+- **`merge_validate_kb.py` é footgun**: reescreve `knowledge-base/*.json` a partir de `_parts/`
+  (gitignored, stale) → pode REVERTER conteúdo. Não rodar sem os `_parts` sincronizados.
+- **Editar hooks/módulos com o vite rodando** trava o HMR (erro stale de export que existe) →
+  **reiniciar o vite pelo launcher** resolve; `rm .vite`/kill exigem permissão nesta máquina.
+- **Screenshot da Browser pane (mcp) TRAVA** (timeout 30s) — usar `chrome.exe --headless=new
+  --screenshot=... URL` direto do shell (o spawn via node morre no AV; CLI direto passa).
+- **Conteúdo do curso NUNCA vai pro git** (pago). Confirmar `git ls-files frontend/public/course|kb`
+  = 0 antes de qualquer push.
 
-## 8. Próximos 5 passos
-1. `git push origin feat/system-design-specialist-lab` (manda o `a5df61e`).
-2. Decidir merge `feat/...`→`main` (PR por URL OU `git merge --allow-unrelated-histories`).
-3. **Registrar o MCP** (já construído em `mcp/`, smoke verde): adicionar `system-design` no
-   `.mcp.json`/`~/.claude.json` do workspace `E:\Claude` com caminho ABSOLUTO pro
-   `mcp/dist/server.js`, e reabrir a sessão pra ver `mcp__system-design__*`. (config global → só com ok do Felipe).
-4. (opcional) Path Docker MCP Gateway pro MCP — containerizar + catálogo (`docs/mcp-server-plan.md`).
-5. CI mínimo (GitHub Actions) rodando `./mvnw test` + `resolve_source_urls.py` sweep; depois
-   code-split do bundle Mermaid (~1 MB) e busca full-text.
+## 8. Próximos 5 passos (menor risco primeiro)
+1. **Subir o app** (parou): dois cliques em `SUBIR-SYSTEM-DESIGN.cmd` (Desktop) OU
+   `cd frontend && npm run dev -- --host`. Sinal: `curl localhost:5173 → 200`.
+2. **Regra de firewall** (admin, 1×) pro iPhone conectar — comando na §6.1.
+3. iPhone: abrir `http://192.168.15.4:5173`, Adicionar à Tela de Início → app "Prep".
+4. Decidir deploy (só se quiser offline/fora de casa) — §6.2.
+5. Higiene: arquivar `bff/`+`.tools/`; considerar traduzir 1ª página de conteúdo pra EN.
 
 ## 9. Comandos úteis
 ```bash
 REPO="E:/Claude/apps/system-design-specialist-lab"
-
-# --- Docker (caminho à prova de bala) ---
-cd "$REPO" && docker compose up --build -d     # UI http://localhost:5173 ; API :18080
-docker compose ps                              # checar healthy
-docker compose down                            # parar
-
-# --- Local (precisa JDK 21) ---
-export JAVA_HOME="$REPO/.tools/jdk/jdk-21.0.11+10"; export PATH="$JAVA_HOME/bin:$PATH"
-export JAVA_TOOL_OPTIONS="-Djdk.net.unixdomain.tmpdir=Z:\\nope"   # só pro boot live
-cd "$REPO/bff" && ./mvnw test                  # 17 testes
-cd "$REPO/bff" && ./mvnw spring-boot:run       # :8080
-cd "$REPO/frontend" && npm install && npm run dev   # :5173
-
-# --- Manutenção da base ---
+# rodar (só frontend, sem Java):
+cd "$REPO/frontend" && npm run dev -- --host      # http://localhost:5173  (--host = LAN/iPhone)
+# testes + build:
+cd "$REPO/frontend" && npm test                   # 15 (node --test)
+cd "$REPO/frontend" && npm run build              # prebuild copia a KB p/ public/kb
+cd "$REPO/frontend" && npm run build:deploy       # dist-deploy/ enxuto (7.6MB) p/ hospedar
+# regenerar conteúdo do curso (LOCAL, se sumir):
 PY="E:/Claude/apps/sketchup-mcp/.venv/Scripts/python.exe"
-"$PY" "$REPO/scripts/resolve_source_urls.py"   # re-verifica e re-baka os url (curl)
+"$PY" "$REPO/scripts/extract_course.py"           # PDFs → JSON/imagens (public/course/extracted)
+"$PY" "$REPO/scripts/extract_qbank.py"            # perguntas de Java → qbank/java.json
+# launcher Desktop: SUBIR-SYSTEM-DESIGN.cmd / PARAR-SYSTEM-DESIGN.cmd  (só frontend agora)
 ```
 
 ## 10. O que NÃO fazer
-- **Não push direto em `main`** do remote; `main` recebe `feat/...` via PR/merge explícito.
-- **Não re-rodar `merge_validate_kb.py` sem rodar `resolve_source_urls.py` depois** — perde os `url`.
-- **Não misturar conteúdo de IA na trilha System Design** (topics/patterns/evidence): fura a regra
-  "tudo ancorado no workbook". IA vai só em `ai-agents-glossary.json`.
-- **Não subir o BFF no host 8080** via Docker (ocupado pela stack MCP/RAG do Felipe) — usar 18080.
-- **Não comitar `.tools/` nem `docs/_sources/`** (gitignored; toolchain baixado + PDF extraído).
-- **Não declarar link bom sem curl** — já quebrou uma vez; o sweep é a prova.
+- **Não commitar `frontend/public/course/` nem `public/kb/`** (curso pago + derivado). Checar
+  `git ls-files` antes de push.
+- **Não ressuscitar o BFF Java** pra servir dado — o app é estático de propósito. (Pode reusar `bff/`
+  se um dia precisar de escrita/persistência, mas não pra leitura da KB.)
+- **Não re-rodar `merge_validate_kb.py`** sem os `_parts` sincronizados (reverte conteúdo).
+- **Não subir o conteúdo pago num host PÚBLICO** — deploy do curso só privado (Access/senha).
+- **Não declarar visual/veredito** que não foi verificado; screenshot = headless Chrome, não a pane.
+- **Não push direto sem branch** — fluxo é `feat/*`→merge `--no-ff`→push→delete.
 
 ## 11. Checkpoint p/ próxima sessão
-Parei após consertar os links quebrados (campo `url` verificado em toda fonte) + atualizar o
-final-report + remover âncora morta, com Docker rebuildado e servindo. **Primeiro movimento:**
-`git push` do `a5df61e`. **Sinal de que está tudo de pé:** `docker compose ps` mostra os 2
-containers (bff `healthy`), `curl localhost:5173 → 200` e `curl localhost:18080/actuator/health → 200`.
-Working tree limpa em `a5df61e`.
+Parei depois de: (a) tornar o app **React puro estático** (BFF aposentado, `api.ts` lê `/kb`), (b)
+polir o **PWA instalável** (manifest/marca/SW v2), (c) gerar o **build enxuto** (`dist-deploy` 7.6MB,
+zip no Desktop) e o fallback de manuscrito. Felipe perguntou "não seria só gerar o app pra rodar
+aqui?" — SIM: pra uso local não precisa deploy. **Primeiro movimento ao retomar:** subir o app
+(`SUBIR-SYSTEM-DESIGN.cmd`) e criar a **regra de firewall** (admin) pro iPhone. **Sinal de tudo de
+pé:** `curl localhost:5173 → 200` e `curl localhost:5173/kb/topics.json → 200` (sem nenhum processo
+Java). Working tree limpa em `dc4c832`, sync com `origin/main`.
