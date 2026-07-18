@@ -5,6 +5,8 @@ import { Async } from "../components/States";
 import { coursePdfBase, readingEntry } from "../data/courseRoadmap";
 import { studyReadingEntry } from "../data/studySyllabus";
 import { isDone, toggleDone, useProgress } from "../progress";
+import { useEmphasis, toggleEmphasis } from "../emphasis";
+import { Emphasis } from "../components/Emphasis";
 
 interface PageBlockText {
   n: number;
@@ -34,20 +36,24 @@ function isQuestion(text: string): boolean {
   return /^\s*(Q\d+[.)]|Question\b)/i.test(text) || (text.length < 160 && text.trimEnd().endsWith("?"));
 }
 
-function Block({ text }: { text: string }) {
+function Block({ text, emphasis }: { text: string; emphasis: boolean }) {
   if (looksLikeCode(text)) return <pre className="reader-code">{text}</pre>;
   if (isQuestion(text)) return <p className="reader-q">{text}</p>;
-  return <p className="reader-p">{text}</p>;
+  return (
+    <p className="reader-p">
+      <Emphasis text={text} on={emphasis} />
+    </p>
+  );
 }
 
-function PageView({ page, base }: { page: ReaderPage; base: string }) {
+function PageView({ page, base, emphasis }: { page: ReaderPage; base: string; emphasis: boolean }) {
   return (
     <section className="reader-page" id={`p${page.n}`}>
       <span className="reader-pagenum">página {page.n}</span>
       {"image" in page ? (
         <ScanImage src={base + page.image} n={page.n} />
       ) : (
-        page.blocks.map((b, i) => <Block key={i} text={b} />)
+        page.blocks.map((b, i) => <Block key={i} text={b} emphasis={emphasis} />)
       )}
     </section>
   );
@@ -118,6 +124,7 @@ export function CourseReader() {
   const { file = "" } = useParams();
   const study = useLocation().pathname.startsWith("/estudos");
   useProgress();
+  const emphasis = useEmphasis();
   const nav = useReaderNav(file, study);
   const state = useAsync<ExtractedDoc>(
     () =>
@@ -155,6 +162,15 @@ export function CourseReader() {
         <a href={`${coursePdfBase}${nav.pdf}`} target="_blank" rel="noreferrer" className="chip link">
           PDF original ↗
         </a>
+        <button
+          type="button"
+          className={`chip emph-toggle ${emphasis ? "on" : ""}`}
+          onClick={toggleEmphasis}
+          aria-pressed={emphasis}
+          title="Realçar a frase-chave e os números de cada resposta"
+        >
+          ✨ Realce {emphasis ? "ligado" : "desligado"}
+        </button>
         {study && (
           <button
             type="button"
@@ -202,7 +218,7 @@ export function CourseReader() {
             </div>
             <article className="reader-body">
               {doc.pages.map((p) => (
-                <PageView key={p.n} page={p} base={coursePdfBase} />
+                <PageView key={p.n} page={p} base={coursePdfBase} emphasis={emphasis} />
               ))}
             </article>
           </>

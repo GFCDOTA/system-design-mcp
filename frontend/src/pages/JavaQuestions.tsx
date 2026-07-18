@@ -6,6 +6,8 @@ import { CompanyBadges } from "../components/CompanyBadges";
 import { companyDisclaimer } from "../data/companySignals";
 import { isDone, toggleDone, doneCount, useProgress } from "../progress";
 import { ProgressBar } from "../components/Progress";
+import { useEmphasis } from "../emphasis";
+import { Emphasis } from "../components/Emphasis";
 
 interface QBQuestion {
   id: string;
@@ -28,14 +30,19 @@ function isCode(text: string): boolean {
   return /[{};]/.test(text) && (/\b(public|private|class|void|return|new|import)\b/.test(text) || text.includes("\n"));
 }
 
-function AnswerBlock({ text }: { text: string }) {
+function AnswerBlock({ text, emphasis }: { text: string; emphasis: boolean }) {
   if (isCode(text)) return <pre className="reader-code">{text}</pre>;
-  return <p className="reader-p">{text}</p>;
+  return (
+    <p className="reader-p">
+      <Emphasis text={text} on={emphasis} />
+    </p>
+  );
 }
 
 function QCard({ q }: { q: QBQuestion }) {
   const [open, setOpen] = useState(false);
   useProgress();
+  const emphasis = useEmphasis();
   const studied = isDone(`cq:${q.id}`);
   return (
     <div className={`qa ${open ? "open" : ""} ${studied ? "studied" : ""}`}>
@@ -59,7 +66,7 @@ function QCard({ q }: { q: QBQuestion }) {
       {open && (
         <div className="qa-body">
           {q.blocks.map((b, i) => (
-            <AnswerBlock key={i} text={b} />
+            <AnswerBlock key={i} text={b} emphasis={emphasis} />
           ))}
         </div>
       )}
