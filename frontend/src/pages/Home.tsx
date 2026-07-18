@@ -5,7 +5,6 @@ import { Async } from "../components/States";
 import { DoneMark, ProgressBar } from "../components/Progress";
 import { doneCount, lastVisit, useProgress } from "../progress";
 import { javaQuestionCount } from "../data/javaCore";
-import { useI18n } from "../i18n";
 import { ReadinessDashboard } from "../components/ReadinessDashboard";
 
 function groupByCategory(topics: TopicSummary[]): [string, TopicSummary[]][] {
@@ -34,21 +33,20 @@ export function Home() {
   const topics = useAsync(() => api.topics(), []);
   useProgress();
   const last = lastVisit();
-  const { t } = useI18n();
 
   return (
     <div>
       {last && (
         <p className="home-continue rd-continue">
           <Link to={last.path} className="btn btn-secondary">
-            {t("home.cta.continue")}: {last.label} →
+            Continuar: {last.label} →
           </Link>
         </p>
       )}
 
       <ReadinessDashboard part="header" />
 
-      <h2>{t("home.trails")}</h2>
+      <h2>Trilhas de estudo</h2>
       <Async state={stats}>
         {(s) => {
           const trails: Trail[] = [
@@ -127,7 +125,7 @@ export function Home() {
 
       <ReadinessDashboard part="detail" />
 
-      <h2>{t("home.map")}</h2>
+      <h2>Mapa de tópicos</h2>
       <Async state={topics}>
         {(list) => (
           <div className="topic-map">

@@ -36,13 +36,11 @@ import { AtsChecker } from "./pages/AtsChecker";
 import { RouteError, NotFound } from "./pages/RouteError";
 import { InstallHint } from "./components/InstallHint";
 import { applyTheme, getTheme } from "./theme";
-import { applyLang, getLang } from "./i18n";
 import { applyAccent, getAccent } from "./accent";
 import "./styles.css";
 
-// aplica tema, idioma e cor de destaque salvos antes do render (evita flash)
+// aplica tema e cor de destaque salvos antes do render (evita flash)
 applyTheme(getTheme());
-applyLang(getLang());
 applyAccent(getAccent());
 
 const router = createBrowserRouter([

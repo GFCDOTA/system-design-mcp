@@ -1,14 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { setTheme, useTheme } from "../theme";
 import { ACCENTS, setAccent, useAccent } from "../accent";
-import { useI18n } from "../i18n";
 
 /** Menu de Aparência (no topo): tema claro/escuro + cor de destaque. */
 export function AppearanceMenu() {
   const [open, setOpen] = useState(false);
   const theme = useTheme();
   const accent = useAccent();
-  const { t } = useI18n();
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -35,23 +33,23 @@ export function AppearanceMenu() {
         aria-expanded={open}
         title="Aparência"
       >
-        🎨 {t("top.appearance")}
+        🎨 Aparência
       </button>
       {open && (
         <div className="appearance-pop" role="menu">
           <div className="appearance-sec">
-            <span className="appearance-label">{t("top.theme")}</span>
+            <span className="appearance-label">Tema</span>
             <div className="seg">
               <button className={theme === "dark" ? "active" : ""} onClick={() => setTheme("dark")}>
-                ☾ {t("top.theme.dark")}
+                ☾ Escuro
               </button>
               <button className={theme === "light" ? "active" : ""} onClick={() => setTheme("light")}>
-                ☀ {t("top.theme.light")}
+                ☀ Claro
               </button>
             </div>
           </div>
           <div className="appearance-sec">
-            <span className="appearance-label">{t("top.accent")}</span>
+            <span className="appearance-label">Cor de destaque</span>
             <div className="swatches">
               {ACCENTS.map((a) => (
                 <button

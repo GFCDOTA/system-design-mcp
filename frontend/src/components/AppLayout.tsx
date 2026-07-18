@@ -2,57 +2,56 @@ import { useState } from "react";
 import { NavLink, Outlet, Link } from "react-router-dom";
 import { TrackVisit } from "./Progress";
 import { TopBar } from "./TopBar";
-import { useI18n } from "../i18n";
 
 interface NavItem {
   to: string;
-  key: string;
+  label: string;
   icon: string;
   end?: boolean;
 }
 interface NavGroup {
-  titleKey?: string;
+  title?: string;
   items: NavItem[];
 }
 
 // Um espaço só: Estudar (aprender) → Treinar (entrevista) → Referência (System Design).
 // Ícone por item ajuda a ESCANEAR a lista (22 itens) em vez de ler linha a linha.
 const GROUPS: NavGroup[] = [
-  { items: [{ to: "/", key: "nav.home", icon: "🏠", end: true }] },
+  { items: [{ to: "/", label: "Início", icon: "🏠", end: true }] },
   {
-    titleKey: "nav.g.study",
+    title: "Estudar",
     items: [
-      { to: "/estudos", key: "nav.study.material", icon: "📚", end: true },
-      { to: "/estudos/trilhas", key: "nav.study.trails", icon: "🧭" },
-      { to: "/estudos/perguntas", key: "nav.study.javaq", icon: "❓" },
-      { to: "/estudos/curriculo", key: "nav.study.resume", icon: "📄" },
-      { to: "/estudos/validador", key: "nav.study.validator", icon: "✅" },
+      { to: "/estudos", label: "Material do curso", icon: "📚", end: true },
+      { to: "/estudos/trilhas", label: "Trilhas de estudo", icon: "🧭" },
+      { to: "/estudos/perguntas", label: "Perguntas de Java", icon: "❓" },
+      { to: "/estudos/curriculo", label: "Currículo & ATS", icon: "📄" },
+      { to: "/estudos/validador", label: "Validador de ATS", icon: "✅" },
     ],
   },
   {
-    titleKey: "nav.g.train",
+    title: "Treinar (entrevista)",
     items: [
-      { to: "/entrevista", key: "nav.train.overview", icon: "📊", end: true },
-      { to: "/entrevista/system-design", key: "nav.train.sd", icon: "🎯" },
-      { to: "/entrevista/java", key: "nav.train.java", icon: "☕" },
-      { to: "/entrevista/dsa", key: "nav.train.dsa", icon: "🧩" },
-      { to: "/entrevista/fundamentos", key: "nav.train.bigo", icon: "⏱️" },
-      { to: "/entrevista/comportamental", key: "nav.train.behavioral", icon: "💬" },
-      { to: "/entrevista/relatos", key: "nav.train.reports", icon: "📋" },
-      { to: "/entrevista/roadmap", key: "nav.train.roadmap", icon: "🗺️" },
+      { to: "/entrevista", label: "Visão geral", icon: "📊", end: true },
+      { to: "/entrevista/system-design", label: "System Design", icon: "🎯" },
+      { to: "/entrevista/java", label: "Java Core", icon: "☕" },
+      { to: "/entrevista/dsa", label: "DSA", icon: "🧩" },
+      { to: "/entrevista/fundamentos", label: "Estruturas & Big-O", icon: "⏱️" },
+      { to: "/entrevista/comportamental", label: "Comportamental", icon: "💬" },
+      { to: "/entrevista/relatos", label: "Relatos de entrevista", icon: "📋" },
+      { to: "/entrevista/roadmap", label: "Roadmap do curso", icon: "🗺️" },
     ],
   },
   {
-    titleKey: "nav.g.reference",
+    title: "Referência (System Design)",
     items: [
-      { to: "/topics", key: "nav.ref.topics", icon: "📖" },
-      { to: "/patterns", key: "nav.ref.patterns", icon: "🧱" },
-      { to: "/flows", key: "nav.ref.flows", icon: "🔀" },
-      { to: "/diagrams", key: "nav.ref.diagrams", icon: "📐" },
-      { to: "/databases", key: "nav.ref.databases", icon: "🗄️" },
-      { to: "/compare", key: "nav.ref.compare", icon: "⚖️" },
-      { to: "/evidence", key: "nav.ref.evidence", icon: "🔎" },
-      { to: "/ai-agents", key: "nav.ref.ai", icon: "🤖" },
+      { to: "/topics", label: "Tópicos", icon: "📖" },
+      { to: "/patterns", label: "Padrões", icon: "🧱" },
+      { to: "/flows", label: "Fluxos", icon: "🔀" },
+      { to: "/diagrams", label: "Diagramas", icon: "📐" },
+      { to: "/databases", label: "Bancos de Dados", icon: "🗄️" },
+      { to: "/compare", label: "Comparar", icon: "⚖️" },
+      { to: "/evidence", label: "Evidências", icon: "🔎" },
+      { to: "/ai-agents", label: "IA & Agentes", icon: "🤖" },
     ],
   },
 ];
@@ -61,7 +60,6 @@ const GROUPS: NavGroup[] = [
 export function AppLayout() {
   const [open, setOpen] = useState(false);
   const close = () => setOpen(false);
-  const { t } = useI18n();
   return (
     <div className="app">
       <TrackVisit />
@@ -69,33 +67,33 @@ export function AppLayout() {
         <button className="hamburger" onClick={() => setOpen(true)} aria-label="Menu">
           ☰
         </button>
-        <span className="mobile-title">{t("brand.line1")}</span>
+        <span className="mobile-title">Base de Prep</span>
       </header>
       {open ? <div className="drawer-overlay" onClick={close} /> : null}
       <aside className={`sidebar ${open ? "open" : ""}`}>
         <Link to="/" className="brand" onClick={close}>
           <span className="brand-mark">SD</span>
           <span className="brand-text">
-            {t("brand.line1")}
+            Base de Prep
             <br />
-            {t("brand.line2")}
+            pra Entrevista
           </span>
         </Link>
         <nav onClick={close}>
           {GROUPS.map((g, i) => (
             <div key={i} className="nav-group">
-              {g.titleKey && <span className="nav-group-title">{t(g.titleKey)}</span>}
+              {g.title && <span className="nav-group-title">{g.title}</span>}
               {g.items.map((n) => (
                 <NavLink key={n.to} to={n.to} end={n.end} className={({ isActive }) => (isActive ? "active" : "")}>
                   <span className="nav-ico" aria-hidden>{n.icon}</span>
-                  {t(n.key)}
+                  {n.label}
                 </NavLink>
               ))}
             </div>
           ))}
         </nav>
         <div className="sidebar-foot">
-          <p>{t("foot.tagline")}</p>
+          <p>Estudar → treinar → consultar, num espaço só. Sem LLM em runtime.</p>
         </div>
       </aside>
       <main className="content">
