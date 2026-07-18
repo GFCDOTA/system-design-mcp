@@ -1,4 +1,5 @@
 import { Link, useParams } from "react-router-dom";
+import { Breadcrumb } from "../components/Breadcrumb";
 import { api } from "../api";
 import { useAsync } from "../hooks";
 import { Async } from "../components/States";
@@ -38,6 +39,7 @@ export function DatabaseDetail() {
     <Async state={state}>
       {(d) => (
         <article className="detail">
+          <Breadcrumb items={[{ label: "Bancos de Dados", to: "/databases" }, { label: d.name }]} />
           <span className="badge" style={{ borderColor: dbColor(d.id), color: dbColor(d.id) }}>
             {d.category}
           </span>

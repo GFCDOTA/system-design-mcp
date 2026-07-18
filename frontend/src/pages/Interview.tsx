@@ -183,31 +183,51 @@ export function InterviewOverview() {
 export function InterviewSystemDesign() {
   const state = useAsync(() => api.questions(), []);
   const [diff, setDiff] = useState("all");
+  const [query, setQuery] = useState("");
+  const [unstudied, setUnstudied] = useState(false);
+  useProgress();
   return (
     <div>
       <h1>System Design — entrevista</h1>
       <PrepSection pillar={systemDesignPrep} />
       <h2>Banco de perguntas</h2>
       <p className="muted">
-        Clique para abrir resposta curta, detalhada, desenho mental e como responder. Filtre pela dificuldade que você
-        quer treinar.
+        Clique para abrir resposta curta, detalhada, desenho mental e como responder. Busque por palavra ou filtre
+        pela dificuldade; marque a ✓ pra acompanhar o que já treinou.
       </p>
       <Async state={state}>
         {(list) => {
           const levels = ["all", ...Array.from(new Set(list.map((q) => q.difficulty).filter(Boolean)))];
-          const filtered = diff === "all" ? list : list.filter((q) => q.difficulty === diff);
+          const q = query.trim().toLowerCase();
+          const filtered = list.filter(
+            (x) =>
+              (diff === "all" || x.difficulty === diff) &&
+              (!unstudied || !isDone(`q:${x.id}`)) &&
+              (q === "" || x.question.toLowerCase().includes(q)),
+          );
           return (
             <>
+              <input
+                className="qbank-search"
+                type="search"
+                placeholder="Buscar por palavra (ex.: idempotência, sharding, cache…)"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
               <div className="button-group prep-filter">
                 {levels.map((d) => (
                   <button key={d} className={diff === d ? "active" : ""} onClick={() => setDiff(d)}>
-                    {d === "all" ? `Todas (${list.length})` : `${d} (${list.filter((q) => q.difficulty === d).length})`}
+                    {d === "all" ? `Todas (${list.length})` : `${d} (${list.filter((x) => x.difficulty === d).length})`}
                   </button>
                 ))}
+                <button className={unstudied ? "active" : ""} onClick={() => setUnstudied((v) => !v)}>
+                  Só não estudadas
+                </button>
               </div>
+              <p className="muted qbank-count">{filtered.length} pergunta(s)</p>
               <div className="qa-list">
-                {filtered.map((q) => (
-                  <QuestionCard key={q.id} q={q} />
+                {filtered.map((x) => (
+                  <QuestionCard key={x.id} q={x} />
                 ))}
               </div>
             </>

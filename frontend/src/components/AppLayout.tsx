@@ -7,6 +7,7 @@ import { useI18n } from "../i18n";
 interface NavItem {
   to: string;
   key: string;
+  icon: string;
   end?: boolean;
 }
 interface NavGroup {
@@ -15,42 +16,43 @@ interface NavGroup {
 }
 
 // Um espaço só: Estudar (aprender) → Treinar (entrevista) → Referência (System Design).
+// Ícone por item ajuda a ESCANEAR a lista (22 itens) em vez de ler linha a linha.
 const GROUPS: NavGroup[] = [
-  { items: [{ to: "/", key: "nav.home", end: true }] },
+  { items: [{ to: "/", key: "nav.home", icon: "🏠", end: true }] },
   {
     titleKey: "nav.g.study",
     items: [
-      { to: "/estudos", key: "nav.study.material", end: true },
-      { to: "/estudos/trilhas", key: "nav.study.trails" },
-      { to: "/estudos/perguntas", key: "nav.study.javaq" },
-      { to: "/estudos/curriculo", key: "nav.study.resume" },
-      { to: "/estudos/validador", key: "nav.study.validator" },
+      { to: "/estudos", key: "nav.study.material", icon: "📚", end: true },
+      { to: "/estudos/trilhas", key: "nav.study.trails", icon: "🧭" },
+      { to: "/estudos/perguntas", key: "nav.study.javaq", icon: "❓" },
+      { to: "/estudos/curriculo", key: "nav.study.resume", icon: "📄" },
+      { to: "/estudos/validador", key: "nav.study.validator", icon: "✅" },
     ],
   },
   {
     titleKey: "nav.g.train",
     items: [
-      { to: "/entrevista", key: "nav.train.overview", end: true },
-      { to: "/entrevista/system-design", key: "nav.train.sd" },
-      { to: "/entrevista/java", key: "nav.train.java" },
-      { to: "/entrevista/dsa", key: "nav.train.dsa" },
-      { to: "/entrevista/fundamentos", key: "nav.train.bigo" },
-      { to: "/entrevista/comportamental", key: "nav.train.behavioral" },
-      { to: "/entrevista/relatos", key: "nav.train.reports" },
-      { to: "/entrevista/roadmap", key: "nav.train.roadmap" },
+      { to: "/entrevista", key: "nav.train.overview", icon: "📊", end: true },
+      { to: "/entrevista/system-design", key: "nav.train.sd", icon: "🎯" },
+      { to: "/entrevista/java", key: "nav.train.java", icon: "☕" },
+      { to: "/entrevista/dsa", key: "nav.train.dsa", icon: "🧩" },
+      { to: "/entrevista/fundamentos", key: "nav.train.bigo", icon: "⏱️" },
+      { to: "/entrevista/comportamental", key: "nav.train.behavioral", icon: "💬" },
+      { to: "/entrevista/relatos", key: "nav.train.reports", icon: "📋" },
+      { to: "/entrevista/roadmap", key: "nav.train.roadmap", icon: "🗺️" },
     ],
   },
   {
     titleKey: "nav.g.reference",
     items: [
-      { to: "/topics", key: "nav.ref.topics" },
-      { to: "/patterns", key: "nav.ref.patterns" },
-      { to: "/flows", key: "nav.ref.flows" },
-      { to: "/diagrams", key: "nav.ref.diagrams" },
-      { to: "/databases", key: "nav.ref.databases" },
-      { to: "/compare", key: "nav.ref.compare" },
-      { to: "/evidence", key: "nav.ref.evidence" },
-      { to: "/ai-agents", key: "nav.ref.ai" },
+      { to: "/topics", key: "nav.ref.topics", icon: "📖" },
+      { to: "/patterns", key: "nav.ref.patterns", icon: "🧱" },
+      { to: "/flows", key: "nav.ref.flows", icon: "🔀" },
+      { to: "/diagrams", key: "nav.ref.diagrams", icon: "📐" },
+      { to: "/databases", key: "nav.ref.databases", icon: "🗄️" },
+      { to: "/compare", key: "nav.ref.compare", icon: "⚖️" },
+      { to: "/evidence", key: "nav.ref.evidence", icon: "🔎" },
+      { to: "/ai-agents", key: "nav.ref.ai", icon: "🤖" },
     ],
   },
 ];
@@ -85,6 +87,7 @@ export function AppLayout() {
               {g.titleKey && <span className="nav-group-title">{t(g.titleKey)}</span>}
               {g.items.map((n) => (
                 <NavLink key={n.to} to={n.to} end={n.end} className={({ isActive }) => (isActive ? "active" : "")}>
+                  <span className="nav-ico" aria-hidden>{n.icon}</span>
                   {t(n.key)}
                 </NavLink>
               ))}

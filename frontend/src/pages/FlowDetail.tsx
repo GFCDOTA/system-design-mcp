@@ -1,4 +1,5 @@
 import { useParams } from "react-router-dom";
+import { Breadcrumb } from "../components/Breadcrumb";
 import { api } from "../api";
 import { useAsync } from "../hooks";
 import { Async } from "../components/States";
@@ -14,6 +15,7 @@ export function FlowDetail() {
     <Async state={state}>
       {(f) => (
         <article className="detail">
+          <Breadcrumb items={[{ label: "Fluxos", to: "/flows" }, { label: f.title }]} />
           <h1>{f.title}</h1>
           <p className="lede">{f.summary}</p>
 
