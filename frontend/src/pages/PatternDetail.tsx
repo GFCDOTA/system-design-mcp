@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { api } from "../api";
 import { useAsync } from "../hooks";
@@ -10,6 +11,8 @@ import { DiagramEmbeds } from "../components/DiagramEmbeds";
 import { DbRecommendation } from "../components/DbRecommendation";
 import { MarkDoneButton } from "../components/Progress";
 import { Breadcrumb } from "../components/Breadcrumb";
+import { Mermaid } from "../components/Mermaid";
+import { buildPatternMindmap } from "../data/mindmap";
 
 function Bullets({ title, items, kind }: { title: string; items: string[]; kind: string }) {
   if (!items?.length) return null;
@@ -28,6 +31,7 @@ function Bullets({ title, items, kind }: { title: string; items: string[]; kind:
 export function PatternDetail() {
   const { id = "" } = useParams();
   const state = useAsync(() => api.pattern(id), [id]);
+  const [map, setMap] = useState(false);
   return (
     <Async state={state}>
       {(p) => (
@@ -35,8 +39,19 @@ export function PatternDetail() {
           <Breadcrumb items={[{ label: "Padrões", to: "/patterns" }, { label: p.name }]} />
           <span className="badge">{p.category}</span>
           <h1>{p.name}</h1>
-          <MarkDoneButton id={`pattern:${p.id}`} />
+          <div className="detail-actions">
+            <MarkDoneButton id={`pattern:${p.id}`} />
+            <button type="button" className="view-toggle" onClick={() => setMap((v) => !v)} aria-pressed={map}>
+              {map ? "📄 Ver texto" : "🧠 Ver como mapa"}
+            </button>
+          </div>
 
+          {map ? (
+            <div className="mindmap-wrap">
+              <Mermaid code={buildPatternMindmap(p)} />
+            </div>
+          ) : (
+          <>
           <section>
             <h2>Problema</h2>
             <Markdown>{p.problem}</Markdown>
@@ -81,6 +96,8 @@ export function PatternDetail() {
           <DbRecommendation rec={p.databaseRecommendation} />
           <LinkChips label="Padrões relacionados" base="/patterns" ids={p.relatedPatterns} />
           <SourceRefList refs={p.sourceRefs} />
+          </>
+          )}
         </article>
       )}
     </Async>

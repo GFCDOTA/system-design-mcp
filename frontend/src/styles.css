@@ -293,6 +293,19 @@ h4 { font-size: 15px; margin: 16px 0 4px; color: var(--cyan); }
 
 /* Detail */
 .detail { max-width: 75ch; }
+.detail-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 2px 0 10px; }
+.view-toggle {
+  display: inline-flex; align-items: center; gap: 7px; padding: 7px 14px; border-radius: var(--radius-full);
+  border: 1px solid var(--brand-border); background: var(--brand-soft); color: var(--brand-hover); cursor: pointer;
+  font-family: var(--font-sans); font-size: 13px; font-weight: var(--fw-semibold); transition: all 140ms;
+}
+.view-toggle:hover { background: var(--brand); color: #fff; }
+.mindmap-wrap {
+  margin: 14px 0; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-lg);
+  background: var(--surface-1); overflow-x: auto; box-shadow: var(--shadow-sm);
+}
+.mindmap-wrap .mermaid { min-width: 640px; display: flex; justify-content: center; }
+.mindmap-wrap .mermaid svg { max-width: none; height: auto; }
 .detail .badge { margin-bottom: 8px; display: inline-block; }
 .callout { background: var(--surface-2); border-left: 3px solid var(--accent); border-radius: var(--radius-sm); padding: 10px 14px; margin: 14px 0; }
 .callout.short { border-left-color: var(--accent-2); }
