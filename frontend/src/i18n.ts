@@ -12,6 +12,9 @@ const PT: Dict = {
   // topo
   "top.theme.dark": "Escuro",
   "top.theme.light": "Claro",
+  "top.appearance": "Aparência",
+  "top.theme": "Tema",
+  "top.accent": "Cor de destaque",
   // navegação
   "nav.home": "Início",
   "nav.g.study": "Estudar",
@@ -57,6 +60,9 @@ const PT: Dict = {
 const EN: Dict = {
   "top.theme.dark": "Dark",
   "top.theme.light": "Light",
+  "top.appearance": "Appearance",
+  "top.theme": "Theme",
+  "top.accent": "Accent color",
   "nav.home": "Home",
   "nav.g.study": "Study",
   "nav.g.train": "Train (interview)",

@@ -1,21 +1,12 @@
-import { setTheme, useTheme } from "../theme";
 import { setLang, useI18n } from "../i18n";
+import { AppearanceMenu } from "./AppearanceMenu";
 
-/** Barra de topo: botões de tema (Escuro/Claro) e idioma (PT/EN). */
+/** Barra de topo: menu de aparência (tema + cor) e idioma (PT/EN). */
 export function TopBar() {
-  const theme = useTheme();
-  const { lang, t } = useI18n();
-
+  const { lang } = useI18n();
   return (
     <div className="topbar">
-      <div className="seg" role="group" aria-label="Tema">
-        <button className={theme === "dark" ? "active" : ""} onClick={() => setTheme("dark")}>
-          ☾ {t("top.theme.dark")}
-        </button>
-        <button className={theme === "light" ? "active" : ""} onClick={() => setTheme("light")}>
-          ☀ {t("top.theme.light")}
-        </button>
-      </div>
+      <AppearanceMenu />
       <div className="seg" role="group" aria-label="Idioma / Language">
         <button className={lang === "pt" ? "active" : ""} onClick={() => setLang("pt")}>
           PT

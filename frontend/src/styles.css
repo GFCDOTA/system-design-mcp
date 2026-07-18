@@ -195,8 +195,36 @@ pre { background: var(--surface-2); padding: 12px; border-radius: var(--radius-m
 .seg button.active { background: var(--brand); color: #fff; }
 :root[data-theme="light"] .seg button.active { color: #fff; }
 
+/* Menu de Aparência (tema + cor de destaque) */
+.appearance { position: relative; }
+.appearance-btn {
+  display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+  background: var(--surface-2); border: 1px solid var(--border-subtle); border-radius: var(--radius-full);
+  padding: 6px 14px; font-family: var(--font-sans); font-size: 12.5px; font-weight: var(--fw-semibold); color: var(--text-secondary);
+  transition: border-color 130ms, color 130ms;
+}
+.appearance-btn:hover { color: var(--text-primary); border-color: var(--border-default); }
+.appearance-pop {
+  position: absolute; top: calc(100% + 8px); right: 0; z-index: 70; width: 260px;
+  background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md); padding: 14px 16px; display: flex; flex-direction: column; gap: 14px;
+}
+.appearance-sec { display: flex; flex-direction: column; gap: 8px; }
+.appearance-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }
+.appearance-sec .seg { width: 100%; }
+.appearance-sec .seg button { flex: 1; }
+.swatches { display: flex; flex-wrap: wrap; gap: 8px; }
+.swatch {
+  width: 30px; height: 30px; border-radius: 50%; cursor: pointer; border: 2px solid transparent;
+  display: grid; place-items: center; color: #fff; font-size: 13px; font-weight: 800; line-height: 1;
+  box-shadow: 0 0 0 1px var(--border-subtle);
+}
+.swatch.active { border-color: var(--text-primary); }
+.swatch:hover { transform: scale(1.08); }
+
 @media (max-width: 720px) {
   .topbar { justify-content: flex-start; flex-wrap: wrap; margin: 4px 0 14px; }
+  .appearance-pop { right: auto; left: 0; }
 }
 .page-head h1, h1 { font-size: var(--fs-2xl); margin: 0 0 10px; line-height: 1.18; letter-spacing: -0.03em; font-weight: var(--fw-bold); }
 .lede { color: var(--text-secondary); font-size: var(--fs-lg); max-width: 72ch; line-height: 1.7; }
