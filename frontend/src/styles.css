@@ -832,6 +832,16 @@ ol.steps.roadmap li { padding-top: 9px; padding-bottom: 9px; }
 .reader-img { max-width: 100%; height: auto; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); }
 .reader-scan-missing { background: var(--surface-2); border: 1px dashed var(--border-default); border-radius: var(--radius-md); padding: 14px 16px; color: var(--text-secondary); font-size: 13.5px; }
 
+/* Realce do essencial — a frase-chave num marcador (highlighter) e os números em destaque */
+mark.reader-key {
+  background: linear-gradient(180deg, transparent 55%, rgba(246, 182, 75, 0.30) 55%);
+  color: inherit; border-radius: 2px; padding: 0 1px;
+}
+:root[data-theme="light"] mark.reader-key { background: linear-gradient(180deg, transparent 55%, rgba(246, 199, 107, 0.60) 55%); }
+.reader-num { color: var(--cyan); font-weight: 650; }
+.chip.emph-toggle { cursor: pointer; font-family: var(--font-sans); }
+.chip.emph-toggle.on { color: var(--amber); border-color: rgba(246, 182, 75, 0.40); background: rgba(246, 182, 75, 0.12); }
+
 .reader-nav { display: flex; justify-content: space-between; gap: 12px; margin: 22px 0 8px; }
 .reader-navlink {
   display: flex; flex-direction: column; gap: 3px; max-width: 46%;
