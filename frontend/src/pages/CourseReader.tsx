@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 import { useAsync } from "../hooks";
 import { Async } from "../components/States";
@@ -130,8 +130,24 @@ export function CourseReader() {
 
   const read = isDone(`read:${file}`);
 
+  // progresso de leitura (barra fina no topo) + botão voltar-ao-topo
+  const [progress, setProgress] = useState(0);
+  const [showTop, setShowTop] = useState(false);
+  useEffect(() => {
+    const onScroll = () => {
+      const h = document.documentElement;
+      const max = h.scrollHeight - h.clientHeight;
+      setProgress(max > 0 ? Math.min(100, (h.scrollTop / max) * 100) : 0);
+      setShowTop(h.scrollTop > 600);
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [file]);
+
   return (
     <div className="reader">
+      <div className="reader-progress" style={{ width: `${progress}%` }} aria-hidden />
       <div className="reader-bar">
         <Link to={nav.back.to} className="chip">
           ← {nav.back.label}
@@ -157,9 +173,33 @@ export function CourseReader() {
       <Async state={state}>
         {(doc) => (
           <>
-            <p className="muted reader-meta">
-              {doc.stats.pages} página(s){doc.stats.imagePages ? ` · ${doc.stats.imagePages} digitalizada(s)` : ""}
-            </p>
+            <div className="reader-jump">
+              <span className="muted reader-meta">
+                {doc.stats.pages} página(s){doc.stats.imagePages ? ` · ${doc.stats.imagePages} digitalizada(s)` : ""}
+              </span>
+              {doc.pages.length > 8 && (
+                <label className="reader-jump-sel">
+                  Ir para a página
+                  <select
+                    defaultValue=""
+                    onChange={(e) => {
+                      const el = document.getElementById(`p${e.target.value}`);
+                      el?.scrollIntoView({ behavior: "smooth" });
+                      e.target.value = "";
+                    }}
+                  >
+                    <option value="" disabled>
+                      —
+                    </option>
+                    {doc.pages.map((p) => (
+                      <option key={p.n} value={p.n}>
+                        {p.n}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+            </div>
             <article className="reader-body">
               {doc.pages.map((p) => (
                 <PageView key={p.n} page={p} base={coursePdfBase} />
@@ -187,6 +227,18 @@ export function CourseReader() {
           <span />
         )}
       </nav>
+
+      {showTop && (
+        <button
+          type="button"
+          className="reader-top"
+          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          aria-label="Voltar ao topo"
+          title="Voltar ao topo"
+        >
+          ↑
+        </button>
+      )}
     </div>
   );
 }

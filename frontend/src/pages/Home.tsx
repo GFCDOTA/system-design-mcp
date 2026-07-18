@@ -38,8 +38,6 @@ export function Home() {
 
   return (
     <div>
-      <ReadinessDashboard />
-
       {last && (
         <p className="home-continue rd-continue">
           <Link to={last.path} className="btn btn-secondary">
@@ -47,6 +45,8 @@ export function Home() {
           </Link>
         </p>
       )}
+
+      <ReadinessDashboard part="header" />
 
       <h2>{t("home.trails")}</h2>
       <Async state={stats}>
@@ -125,19 +125,7 @@ export function Home() {
         }}
       </Async>
 
-      <Async state={stats}>
-        {(s) => (
-          <p className="inventory">
-            <span><b>{s.topics}</b> tópicos</span>
-            <span><b>{s.patterns}</b> padrões</span>
-            <span><b>{s.flows}</b> fluxos</span>
-            <span><b>{s.interviewQuestions}</b> perguntas</span>
-            <span><b>{s.diagrams}</b> diagramas</span>
-            <span><b>{s.databases}</b> bancos</span>
-            <span><b>{s.evidence}</b> evidências</span>
-          </p>
-        )}
-      </Async>
+      <ReadinessDashboard part="detail" />
 
       <h2>{t("home.map")}</h2>
       <Async state={topics}>
@@ -150,7 +138,6 @@ export function Home() {
                   {ts.map((t) => (
                     <li key={t.id}>
                       <DoneMark id={`topic:${t.id}`} /> <Link to={`/topics/${t.id}`}>{t.title}</Link>
-                      <span className="muted"> — {t.summary}</span>
                     </li>
                   ))}
                 </ul>

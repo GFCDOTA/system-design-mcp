@@ -39,22 +39,31 @@ function TrophyChip({ t }: { t: Trophy }) {
   );
 }
 
-/** Painel de preparação: confiança, troféus e o norte de estudo. */
-export function ReadinessDashboard() {
+// fetch do total de perguntas do curso, cacheado no módulo (evita re-fetch
+// quando o painel é renderizado em duas partes na Home).
+let courseTotalCache: Promise<number> | null = null;
+function loadCourseTotal(): Promise<number> {
+  if (!courseTotalCache)
+    courseTotalCache = fetch("/course/qbank/java.json")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => (d && typeof d.count === "number" ? d.count : 0))
+      .catch(() => 0);
+  return courseTotalCache;
+}
+
+/**
+ * Painel de preparação: confiança, troféus e o norte de estudo.
+ * `part`: "header" (anel + próximo passo) · "detail" (troféus/áreas/empresa) · "full".
+ * A Home usa header e detail separados pra encaixar as trilhas no meio.
+ */
+export function ReadinessDashboard({ part = "full" }: { part?: "header" | "detail" | "full" }) {
   useProgress();
   const stats = useAsync(() => api.stats(), []);
-  const courseTotal = useAsync<number>(
-    () =>
-      fetch("/course/qbank/java.json")
-        .then((r) => (r.ok ? r.json() : null))
-        .then((d) => (d && typeof d.count === "number" ? d.count : 0))
-        .catch(() => 0),
-    [],
-  );
+  const courseTotal = useAsync<number>(loadCourseTotal, []);
 
   const s = stats.data;
   const cTotal = courseTotal.data ?? 0;
-  if (!s) return <div className="state loading">Carregando…</div>;
+  if (!s) return part === "detail" ? null : <div className="state loading">Carregando…</div>;
 
   const areas = [
     { id: "fundamentos", label: "Fundamentos (System Design)", icon: "📚", done: doneCount("topic:"), total: s.topics },
@@ -67,8 +76,13 @@ export function ReadinessDashboard() {
   const r = buildReadiness(areas);
   const trail = trails.find((t) => t.id === r.nextTrailId) ?? trails[0];
 
+  const header = part !== "detail";
+  const detail = part !== "header";
+
   return (
     <section className="readiness">
+      {header && (
+      <>
       <div className="rd-top">
         <div className="rd-meter" style={{ ["--cc" as string]: confColor(r.overall) }}>
           <div className="rd-meter-num">{r.overall}%</div>
@@ -105,7 +119,11 @@ export function ReadinessDashboard() {
           Ver a trilha →
         </Link>
       </div>
+      </>
+      )}
 
+      {detail && (
+      <>
       <div className="rd-block">
         <div className="rd-block-head">
           <h2>Troféus</h2>
@@ -141,6 +159,8 @@ export function ReadinessDashboard() {
           ))}
         </div>
       </div>
+      </>
+      )}
     </section>
   );
 }

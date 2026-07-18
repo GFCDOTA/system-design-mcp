@@ -9,6 +9,7 @@ import { LinkChips } from "../components/Chips";
 import { DiagramEmbeds } from "../components/DiagramEmbeds";
 import { DbRecommendation } from "../components/DbRecommendation";
 import { MarkDoneButton } from "../components/Progress";
+import { Breadcrumb } from "../components/Breadcrumb";
 
 export function TopicDetail() {
   const { id = "" } = useParams();
@@ -17,6 +18,7 @@ export function TopicDetail() {
     <Async state={state}>
       {(t) => (
         <article className="detail">
+          <Breadcrumb items={[{ label: "Tópicos", to: "/topics" }, { label: t.title }]} />
           <span className="badge">{t.category}</span>
           <h1>{t.title}</h1>
           <p className="lede">{t.summary}</p>

@@ -1,4 +1,5 @@
 import { useParams } from "react-router-dom";
+import { Breadcrumb } from "../components/Breadcrumb";
 import { api } from "../api";
 import { useAsync } from "../hooks";
 import { Async } from "../components/States";
@@ -13,6 +14,7 @@ export function DiagramDetail() {
     <Async state={state}>
       {(d) => (
         <article className="detail">
+          <Breadcrumb items={[{ label: "Diagramas", to: "/diagrams" }, { label: d.title }]} />
           <span className="badge">diagrama</span>
           <h1>{d.title}</h1>
           {d.description && <p className="lede">{d.description}</p>}
