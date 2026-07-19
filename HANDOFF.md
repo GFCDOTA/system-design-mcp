@@ -73,9 +73,24 @@ trava da KB preservada).
 - **Ao vivo (Browser pane):** clique em pergunta → 🧠 → SVG renderiza, 0 erro Mermaid,
   console limpo; leitor idem (49 nós); JavaCore curado idem. Screenshot da prova
   (headless Chrome, gotcha da pane confirmado de novo) enviado ao Felipe.
-- **Veredito visual GPT-via-Chrome:** N/A (feature de UI utilitária, não artefato SKP).
+- **Veredito GPT (via Chrome, 2026-07-19, chat "Revisão crítica UX aprendizado"): FIX-FIRST — 4/10 geral.**
+  Fonte Mermaid dos 5 mapas enviada como texto (imagem foi bloqueada por CSP/upload; conteúdo
+  pago não pode ir pra URL pública). Notas: mapa 1 (qbank 1-parágrafo) 4/10 — fragmentos truncados
+  sem vantagem sobre o parágrafo; mapa 2 (multi+código) 3/10 — "this.name = newName" como irmão
+  de conceito = hierarquia semanticamente errada; mapa 3 (curada) **7/10 — único que melhora de
+  verdade a revisão**; mapa 4 (doc outline) 2/10 — chips "+16 itens" repetidos pesam e "p 10s ·
+  p.64" é ruído de extração promovido a seção; mapa 5 (doc Q&A) 6/10 — falta agrupamento temático.
+  **Roadmap do juiz (c): "compressor determinístico de rótulos orientado a conceitos"** — proibir
+  sentença crua como nó (tirar filler/introdução, preservar palavra-chave, rótulo ~6-9 palavras,
+  complemento/exemplo/consequência viram FILHOS); o truncamento "…" hoje apaga justamente o que
+  diferencia um conceito do outro.
 
 ## 6. Pendências
+0. **FIX-FIRST do GPT no gerador de mapas (nota 4/10 → alvo ≥7):** implementar o compressor de
+   rótulos (ver §5) em `mindmapCourse.js` — nó = conceito comprimido (~6-9 palavras), não sentença
+   crua; código nunca como irmão de conceito; mapa 4: agrupar por TEMA em vez de chip "+N" repetido
+   por ramo (1 nó-resumo só, ou sub-hierarquia); filtrar ruído tipo "p 10s". O mapa 3 (curada,
+   7/10) é o formato de referência. Red→green nos testes de contrato antes de re-submeter ao GPT.
 1. **iPhone em casa — falta SÓ o Felipe:** clicar com botão direito →
    "Executar como administrador" em **`Desktop\LIBERAR-IPHONE-5173.cmd`** (novo, idempotente).
    Depois: Safari → `http://192.168.15.4:5173` → Compartilhar → Adicionar à Tela de Início.
@@ -104,6 +119,7 @@ trava da KB preservada).
   como canal de decisão. Se precisar do juiz visual, subir o Docker primeiro.
 
 ## 8. Próximos 5 passos
+0. **Aplicar o FIX-FIRST do GPT no gerador (§6.0)** e re-submeter pro juiz (alvo ≥7/10).
 1. Felipe: 1 clique admin no `LIBERAR-IPHONE-5173.cmd` → app no iPhone (§6.1).
 2. Conferir o CI verde no GitHub após os pushes de hoje (agora roda `npm test`).
 3. Decidir destino das branches `feat/content-batch` e `feat/system-design-labs` (§6.3).
