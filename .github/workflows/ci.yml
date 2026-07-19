@@ -7,22 +7,8 @@ on:
     branches: [main]
 
 jobs:
-  bff:
-    name: BFF (Java 21) — tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "21"
-          cache: maven
-      - name: ./mvnw test
-        working-directory: bff
-        run: ./mvnw -B test
-
   frontend:
-    name: Frontend — build (tsc strict + vite)
+    name: Frontend — tests + build (tsc strict + vite)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -31,10 +17,13 @@ jobs:
           node-version: "20"
           cache: npm
           cache-dependency-path: frontend/package-lock.json
-      - name: install + build
+      # npm test cobre também a integridade da knowledge-base (kb-integrity),
+      # herdada do antigo KnowledgeBaseIntegrityTest do BFF aposentado.
+      - name: install + test + build
         working-directory: frontend
         run: |
           npm ci
+          npm test
           npm run build
 
   mcp:
