@@ -13,5 +13,6 @@ export interface ExtractedDocLike {
   stats: { pages: number; textPages: number; imagePages: number };
   pages: ExtractedDocPage[];
 }
+export function isQuestionBlock(t: string): boolean;
 export function buildQuestionMindmap(q: QbankQuestion): string;
 export function buildDocMindmap(doc: ExtractedDocLike, title: string): string;

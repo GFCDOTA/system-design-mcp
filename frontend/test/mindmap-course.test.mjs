@@ -3,7 +3,7 @@
 // do repo). Roda: npm test (node --test).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildQuestionMindmap, buildDocMindmap } from "../src/data/mindmapCourse.js";
+import { buildQuestionMindmap, buildDocMindmap, isQuestionBlock } from "../src/data/mindmapCourse.js";
 
 test("pergunta: resposta de 1 parágrafo abre em sentenças como ramos", () => {
   const code = buildQuestionMindmap({
@@ -102,6 +102,25 @@ test("doc: no máximo 12 ramos; headings excedentes viram folhas (nada se perde)
   const branchLines = code.split("\n").filter((l) => /^    \S/.test(l));
   assert.ok(branchLines.length <= 12, `${branchLines.length} ramos (esperado <= 12)`);
   for (let p = 1; p <= 30; p++) assert.match(code, new RegExp(`Unique Heading Number ${p}\\b`));
+});
+
+test("doc: >48 itens — excedente vira indicador '+N', nunca perda silenciosa", () => {
+  const pages = [];
+  for (let p = 1; p <= 60; p++) pages.push({ n: p, blocks: [`Unique Heading Number ${p}`] });
+  const doc = { file: "big.pdf", stats: { pages: 60, textPages: 60, imagePages: 0 }, pages };
+  const code = buildDocMindmap(doc, "Huge Doc");
+  const branchLines = code.split("\n").filter((l) => /^    \S/.test(l));
+  assert.ok(branchLines.length <= 12, `${branchLines.length} ramos (esperado <= 12)`);
+  // size=5: cada grupo mostra 1 ramo + 3 folhas e declara o que ficou de fora
+  assert.match(code, /\+1 item neste trecho/);
+});
+
+test("isQuestionBlock: contrato compartilhado com o leitor (Q1., Question, linha com ?)", () => {
+  assert.ok(isQuestionBlock("Q3) What is a synthetic thing?"));
+  assert.ok(isQuestionBlock("Question: does this trigger?"));
+  assert.ok(isQuestionBlock("Short line ending in a question mark?"));
+  assert.ok(!isQuestionBlock("A plain statement about nothing."));
+  assert.ok(!isQuestionBlock("x".repeat(200) + "?")); // longa demais pra ser pergunta
 });
 
 test("doc: sem estrutura textual → mapa fica só na raiz (a UI esconde o botão)", () => {

@@ -59,10 +59,10 @@ export function buildQuestionMindmap(q) {
 }
 
 const PAGE_ARTIFACT = /^\d+\s*\|\s*p\s*a\s*g\s*e/i;
-const BULLET = /^(?:o|•|•|-|\*|–)\s/;
+const BULLET = /^(?:o|•|-|\*|–)\s/;
 
-/** Pergunta de entrevista dentro de um doc (mesma heurística do leitor). */
-function isQuestionBlock(t) {
+/** Pergunta de entrevista dentro de um doc — o leitor (CourseReader) importa daqui. */
+export function isQuestionBlock(t) {
   return /^\s*(Q\d+[.)]|Question\b)/i.test(t) || (t.length < 160 && t.trimEnd().endsWith("?"));
 }
 
@@ -71,7 +71,8 @@ function isQuestionBlock(t) {
  * Headings = linhas curtas sem pontuação final, filtrando artefatos de página
  * ("N | P a g e"), bullets e running headers (texto que repete em 3+ páginas).
  * Doc de Q&A (perguntas dominam) mapeia as PERGUNTAS em vez dos headings.
- * Até 12 ramos na ordem do doc; o excedente de cada trecho vira folha.
+ * Até 12 ramos na ordem do doc; até 3 itens seguintes viram folha e o
+ * excedente vira um indicador "+N" (overview honesto, nunca perda silenciosa).
  */
 export function buildDocMindmap(doc, title) {
   const headings = [];
@@ -106,9 +107,12 @@ export function buildDocMindmap(doc, title) {
   const branches = [];
   for (let i = 0; i < items.length; i += size) {
     const g = items.slice(i, i + size);
+    const leaves = g.slice(1, 4).map((x) => x.text);
+    const extra = g.length - 4;
+    if (extra > 0) leaves.push(`+${extra} ${extra === 1 ? "item" : "itens"} neste trecho`);
     branches.push({
       title: `${clean(g[0].text, 38)} · p.${g[0].page}`,
-      leaves: g.slice(1, 4).map((x) => x.text),
+      leaves,
     });
   }
   return build(title, branches, { branchMax: 60, leafless: true });

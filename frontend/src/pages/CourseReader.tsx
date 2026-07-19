@@ -8,7 +8,7 @@ import { isDone, toggleDone, useProgress } from "../progress";
 import { useEmphasis, toggleEmphasis } from "../emphasis";
 import { Emphasis } from "../components/Emphasis";
 import { Mermaid } from "../components/Mermaid";
-import { buildDocMindmap } from "../data/mindmapCourse";
+import { buildDocMindmap, isQuestionBlock } from "../data/mindmapCourse";
 
 interface PageBlockText {
   n: number;
@@ -33,14 +33,9 @@ function looksLikeCode(text: string): boolean {
   return hits >= 2 || (lines.length > 1 && hits / lines.length > 0.4);
 }
 
-/** Pergunta de entrevista: "Q1.", "Question:", ou linha curta terminando em "?". */
-function isQuestion(text: string): boolean {
-  return /^\s*(Q\d+[.)]|Question\b)/i.test(text) || (text.length < 160 && text.trimEnd().endsWith("?"));
-}
-
 function Block({ text, emphasis }: { text: string; emphasis: boolean }) {
   if (looksLikeCode(text)) return <pre className="reader-code">{text}</pre>;
-  if (isQuestion(text)) return <p className="reader-q">{text}</p>;
+  if (isQuestionBlock(text)) return <p className="reader-q">{text}</p>;
   return (
     <p className="reader-p">
       <Emphasis text={text} on={emphasis} />
@@ -79,6 +74,71 @@ function ScanImage({ src, n }: { src: string; n: number }) {
       loading="lazy"
       onError={() => setFailed(true)}
     />
+  );
+}
+
+/**
+ * Corpo do doc carregado (jump + mapa/texto). Componente próprio (não
+ * render-prop) por dois motivos apontados no review: o useMemo evita re-gerar
+ * o mapa a cada re-render de scroll, e o key={file} no pai reseta o toggle 🧠
+ * ao navegar Anterior/Próximo.
+ */
+function ReaderDoc({ doc, title, emphasis }: { doc: ExtractedDoc; title: string; emphasis: boolean }) {
+  const [map, setMap] = useState(false);
+  const mapCode = useMemo(() => buildDocMindmap(doc, title), [doc, title]);
+  const hasMap = mapCode.split("\n").length >= 3; // doc só de scans não tem o que mapear
+  return (
+    <>
+      <div className="reader-jump">
+        <span className="muted reader-meta">
+          {doc.stats.pages} página(s){doc.stats.imagePages ? ` · ${doc.stats.imagePages} digitalizada(s)` : ""}
+        </span>
+        {hasMap && (
+          <button
+            type="button"
+            className="view-toggle"
+            onClick={() => setMap((v) => !v)}
+            aria-pressed={map}
+            title="Mapa mental do que este material cobre, com a página de cada seção"
+          >
+            {map ? "📄 Ver texto" : "🧠 Ver como mapa"}
+          </button>
+        )}
+        {!map && doc.pages.length > 8 && (
+          <label className="reader-jump-sel">
+            Ir para a página
+            <select
+              defaultValue=""
+              onChange={(e) => {
+                const el = document.getElementById(`p${e.target.value}`);
+                el?.scrollIntoView({ behavior: "smooth" });
+                e.target.value = "";
+              }}
+            >
+              <option value="" disabled>
+                —
+              </option>
+              {doc.pages.map((p) => (
+                <option key={p.n} value={p.n}>
+                  {p.n}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+      </div>
+      {map && hasMap ? (
+        <div className="mindmap-wrap">
+          <Mermaid code={mapCode} />
+        </div>
+      ) : (
+        <article className="reader-body">
+          {doc.pages.map((p) => (
+            <PageView key={p.n} page={p} base={coursePdfBase} emphasis={emphasis} />
+          ))}
+        </article>
+      )}
+    </>
   );
 }
 
@@ -138,7 +198,6 @@ export function CourseReader() {
   );
 
   const read = isDone(`read:${file}`);
-  const [map, setMap] = useState(false);
 
   // progresso de leitura (barra fina no topo) + botão voltar-ao-topo
   const [progress, setProgress] = useState(0);
@@ -190,63 +249,7 @@ export function CourseReader() {
       {nav.sub && <p className="muted reader-sub">{nav.sub}</p>}
 
       <Async state={state}>
-        {(doc) => {
-          const mapCode = buildDocMindmap(doc, nav.title);
-          const hasMap = mapCode.split("\n").length >= 3; // doc só de scans não tem o que mapear
-          return (
-            <>
-              <div className="reader-jump">
-                <span className="muted reader-meta">
-                  {doc.stats.pages} página(s){doc.stats.imagePages ? ` · ${doc.stats.imagePages} digitalizada(s)` : ""}
-                </span>
-                {hasMap && (
-                  <button
-                    type="button"
-                    className="view-toggle"
-                    onClick={() => setMap((v) => !v)}
-                    aria-pressed={map}
-                    title="Mapa mental do que este material cobre, com a página de cada seção"
-                  >
-                    {map ? "📄 Ver texto" : "🧠 Ver como mapa"}
-                  </button>
-                )}
-                {!map && doc.pages.length > 8 && (
-                  <label className="reader-jump-sel">
-                    Ir para a página
-                    <select
-                      defaultValue=""
-                      onChange={(e) => {
-                        const el = document.getElementById(`p${e.target.value}`);
-                        el?.scrollIntoView({ behavior: "smooth" });
-                        e.target.value = "";
-                      }}
-                    >
-                      <option value="" disabled>
-                        —
-                      </option>
-                      {doc.pages.map((p) => (
-                        <option key={p.n} value={p.n}>
-                          {p.n}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                )}
-              </div>
-              {map && hasMap ? (
-                <div className="mindmap-wrap">
-                  <Mermaid code={mapCode} />
-                </div>
-              ) : (
-                <article className="reader-body">
-                  {doc.pages.map((p) => (
-                    <PageView key={p.n} page={p} base={coursePdfBase} emphasis={emphasis} />
-                  ))}
-                </article>
-              )}
-            </>
-          );
-        }}
+        {(doc) => <ReaderDoc key={file} doc={doc} title={nav.title} emphasis={emphasis} />}
       </Async>
 
       <nav className="reader-nav">
