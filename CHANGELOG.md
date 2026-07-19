@@ -5,6 +5,13 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
 ## [Unreleased]
 
+### Removed
+- **BFF Java/Spring (`bff/`) removido** — aposentado desde a migração pro app 100% estático
+  (`api.ts` lê `/kb/*.json`); o código segue no histórico do git. Junto: `docker-compose.yml`,
+  `frontend/Dockerfile`/`nginx.conf` e o toolchain local `.tools/` (JDK/Maven baixáveis).
+  O `KnowledgeBaseIntegrityTest` (regra "nada sem fonte") foi **portado 1:1** pra
+  `frontend/test/kb-integrity.test.mjs` e agora roda no CI via `npm test`.
+
 ### Added
 - `docs/deep-dive-dedup-kafka.md` — análise de deduplicação ponta a ponta num pipeline Kafka
   ~1M TPS (DynamoDB write side + CDC/CQRS pra PostgreSQL), preservada do `main` pré-existente.

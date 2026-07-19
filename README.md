@@ -6,8 +6,9 @@ event-driven, sharding, CQRS, Event Sourcing, consistência distribuída, observ
 resiliência e BFF/API Gateway.
 
 Não é um chatbot e **não usa LLM em runtime**: todo o conteúdo é uma base de
-conhecimento versionada (JSON), servida por um BFF em Java/Spring e navegada por um
-frontend React. **Cada afirmação aponta para a sua fonte** — nada é inventado.
+conhecimento versionada (JSON), servida como arquivos estáticos e navegada por um
+frontend React (100% estático, PWA instalável). **Cada afirmação aponta para a sua
+fonte** — nada é inventado.
 
 [![CI](https://github.com/fmodesto30/system-design-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/fmodesto30/system-design-mcp/actions/workflows/ci.yml)
 ![tópicos](https://img.shields.io/badge/tópicos-29-5b9dff) ![padrões](https://img.shields.io/badge/padrões-20-5b9dff) ![perguntas](https://img.shields.io/badge/perguntas%20de%20entrevista-31-5b9dff) ![diagramas](https://img.shields.io/badge/diagramas%20mermaid-12-7ee0c0)
@@ -44,74 +45,34 @@ prática dos mesmos conceitos. O inventário completo está em
 ## Arquitetura (resumo)
 
 ```
-frontend (React + Vite, :5173)
-      │  fetch /api/*  (proxy em dev)
-      ▼
-bff (Java 21 + Spring Boot, hexagonal, :8080)
-      │  porta de saída KnowledgeBasePort
+frontend (React + Vite + TS, :5173 — 100% estático, PWA)
+      │  fetch /kb/*.json  (copiados no predev/prebuild)
       ▼
 knowledge-base/*.json  (fonte de verdade, versionada)
 ```
 
-Detalhes em [`docs/architecture.md`](docs/architecture.md) e nos
-[ADRs](docs/adr/). O BFF é **hexagonal**: domínio puro (records, sem anotações de
-framework) → portas → adapters (web de entrada, JSON de saída).
+Detalhes em [`docs/architecture.md`](docs/architecture.md) e nos [ADRs](docs/adr/).
+O antigo **BFF Java/Spring foi aposentado e removido** (vive no histórico do git e
+no `CHANGELOG.md`): sem backend, o app lê a base direto como arquivo estático —
+`frontend/scripts/kb-to-public.mjs` copia `knowledge-base/` → `public/kb/` no
+predev/prebuild.
 
 ## Como rodar
 
-Pré-requisitos: **JDK 21** e **Node 20+**. (Maven não é necessário — o BFF traz o
-wrapper `./mvnw`.)
+Pré-requisito: **Node 20+**.
 
-### 1. BFF
-```bash
-cd bff
-./mvnw spring-boot:run          # sobe em http://localhost:8080
-```
-> Em máquinas onde o antivírus bloqueia AF_UNIX/loopback para `java.exe`
-> (`Selector.open() EINVAL`), exporte antes:
-> `export JAVA_TOOL_OPTIONS="-Djdk.net.unixdomain.tmpdir=Z:\\nope"` (força TCP).
-> Ver [`docs/runbook.md`](docs/runbook.md).
-
-### 2. Frontend
 ```bash
 cd frontend
 npm install
-npm run dev                     # sobe em http://localhost:5173 (proxy /api -> :8080)
+npm run dev                     # sobe em http://localhost:5173
+npm run dev -- --host           # idem, exposto na LAN (celular)
 ```
-
-### 3. Tudo junto com Docker (caminho mais à prova de bala)
-```bash
-docker compose up --build       # abra http://localhost:5173 ; API direta em :18080
-```
-> No Docker o BFF não precisa do workaround AF_UNIX (é Linux). A UI fica em `:5173`
-> (o nginx faz proxy de `/api` para o bff internamente); a API também é exposta em
-> `:18080` para `curl`. (Host 8080 costuma estar ocupado nesta máquina por outra stack.)
 
 ### Atalhos
 ```bash
-scripts/test.sh                 # roda os testes do BFF + type-check do frontend
-scripts/build.sh                # empacota o jar do BFF + build do frontend
-```
-
-## Endpoints da API
-
-| Método/rota | Retorna |
-|-------------|---------|
-| `GET /api/topics` · `GET /api/topics/{id}` | tópicos (resumo / completo) |
-| `GET /api/patterns` · `GET /api/patterns/{id}` | padrões |
-| `GET /api/flows` · `GET /api/flows/{id}` | fluxos arquiteturais |
-| `GET /api/interview/questions` · `…/{id}` | perguntas de entrevista |
-| `GET /api/diagrams` · `GET /api/diagrams/{id}` | diagramas Mermaid |
-| `GET /api/evidence` | matriz de evidências |
-| `GET /api/ai-glossary` | glossário IA &amp; Agentes (trilha separada) |
-| `GET /api/meta/stats` | contagens |
-| `GET /actuator/health` · `/actuator/prometheus` | health + métricas Micrometer |
-
-Exemplo:
-```bash
-curl localhost:8080/api/meta/stats
-# {"topics":29,"patterns":20,"flows":7,"interviewQuestions":30,"diagrams":12,"evidence":24}
-curl localhost:8080/api/patterns/event-sourcing | jq '.sourceRefs'
+scripts/test.sh                 # npm test (unit + kb-integrity) + build estrito
+scripts/build.sh                # build do bundle estático (dist/)
+scripts/run.sh                  # dev server com --host
 ```
 
 ## Telas
@@ -137,13 +98,12 @@ exemplos em [`docs/FOR-AGENTS.md`](docs/FOR-AGENTS.md); o repo já traz um `.mcp
 
 ```
 system-design-specialist-lab/
-  bff/                 # Java 21 + Spring Boot, hexagonal (mvnw incluso)
-  frontend/            # React + Vite + TypeScript
+  frontend/            # React + Vite + TypeScript (100% estático, PWA)
   mcp/                 # MCP server stdio (Node) — expõe a base como tools
   knowledge-base/      # JSON versionado (fonte de verdade) + schema/
   docs/                # inventário, mapa de conhecimento, ADRs, runbook, guia, trade-offs, glossário, FOR-AGENTS
-  scripts/             # build / test / run
-  .mcp.json  docker-compose.yml
+  scripts/             # build / test / run + extração de conteúdo (Python)
+  .mcp.json
 ```
 
 ## Limitações
@@ -165,7 +125,7 @@ adicionais por fluxo · CI rodando os testes de integridade. Ver
 
 Veja [`CONTRIBUTING.md`](CONTRIBUTING.md) — setup, fluxo de git (GitHub Flow), Conventional
 Commits e a **regra de ouro**: todo item de conteúdo precisa de fonte verificada (o
-`KnowledgeBaseIntegrityTest` falha o build se faltar). Também:
+`kb-integrity.test.mjs` falha o build se faltar). Também:
 [`SECURITY.md`](SECURITY.md) · [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) ·
 [`CHANGELOG.md`](CHANGELOG.md).
 

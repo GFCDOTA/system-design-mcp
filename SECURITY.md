@@ -15,7 +15,6 @@ reprodução. Não há SLA formal — é um projeto pessoal — mas issues de se
 ## Práticas adotadas
 
 - **Zero credencial** em código, teste ou commit; nada de `.env`/token versionado (ver `.gitignore`).
-- Entrada validada na borda do BFF (`@Pattern` em path vars; handler global de erro).
-- CORS restrito às origens de dev.
+- App **100% estático** — sem backend, sem borda de API própria (o antigo BFF foi removido).
 - Conteúdo renderizado no front passa por React/markdown; Mermaid roda com `securityLevel: strict`.
-- Dependências: rode `npm audit` (frontend/mcp) e mantenha o Spring Boot atualizado.
+- Dependências: rode `npm audit` (frontend/mcp).
