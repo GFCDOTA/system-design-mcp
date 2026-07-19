@@ -7,6 +7,8 @@ import { studyReadingEntry } from "../data/studySyllabus";
 import { isDone, toggleDone, useProgress } from "../progress";
 import { useEmphasis, toggleEmphasis } from "../emphasis";
 import { Emphasis } from "../components/Emphasis";
+import { Mermaid } from "../components/Mermaid";
+import { buildDocMindmap } from "../data/mindmapCourse";
 
 interface PageBlockText {
   n: number;
@@ -136,6 +138,7 @@ export function CourseReader() {
   );
 
   const read = isDone(`read:${file}`);
+  const [map, setMap] = useState(false);
 
   // progresso de leitura (barra fina no topo) + botão voltar-ao-topo
   const [progress, setProgress] = useState(0);
@@ -187,42 +190,63 @@ export function CourseReader() {
       {nav.sub && <p className="muted reader-sub">{nav.sub}</p>}
 
       <Async state={state}>
-        {(doc) => (
-          <>
-            <div className="reader-jump">
-              <span className="muted reader-meta">
-                {doc.stats.pages} página(s){doc.stats.imagePages ? ` · ${doc.stats.imagePages} digitalizada(s)` : ""}
-              </span>
-              {doc.pages.length > 8 && (
-                <label className="reader-jump-sel">
-                  Ir para a página
-                  <select
-                    defaultValue=""
-                    onChange={(e) => {
-                      const el = document.getElementById(`p${e.target.value}`);
-                      el?.scrollIntoView({ behavior: "smooth" });
-                      e.target.value = "";
-                    }}
+        {(doc) => {
+          const mapCode = buildDocMindmap(doc, nav.title);
+          const hasMap = mapCode.split("\n").length >= 3; // doc só de scans não tem o que mapear
+          return (
+            <>
+              <div className="reader-jump">
+                <span className="muted reader-meta">
+                  {doc.stats.pages} página(s){doc.stats.imagePages ? ` · ${doc.stats.imagePages} digitalizada(s)` : ""}
+                </span>
+                {hasMap && (
+                  <button
+                    type="button"
+                    className="view-toggle"
+                    onClick={() => setMap((v) => !v)}
+                    aria-pressed={map}
+                    title="Mapa mental do que este material cobre, com a página de cada seção"
                   >
-                    <option value="" disabled>
-                      —
-                    </option>
-                    {doc.pages.map((p) => (
-                      <option key={p.n} value={p.n}>
-                        {p.n}
+                    {map ? "📄 Ver texto" : "🧠 Ver como mapa"}
+                  </button>
+                )}
+                {!map && doc.pages.length > 8 && (
+                  <label className="reader-jump-sel">
+                    Ir para a página
+                    <select
+                      defaultValue=""
+                      onChange={(e) => {
+                        const el = document.getElementById(`p${e.target.value}`);
+                        el?.scrollIntoView({ behavior: "smooth" });
+                        e.target.value = "";
+                      }}
+                    >
+                      <option value="" disabled>
+                        —
                       </option>
-                    ))}
-                  </select>
-                </label>
+                      {doc.pages.map((p) => (
+                        <option key={p.n} value={p.n}>
+                          {p.n}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+              </div>
+              {map && hasMap ? (
+                <div className="mindmap-wrap">
+                  <Mermaid code={mapCode} />
+                </div>
+              ) : (
+                <article className="reader-body">
+                  {doc.pages.map((p) => (
+                    <PageView key={p.n} page={p} base={coursePdfBase} emphasis={emphasis} />
+                  ))}
+                </article>
               )}
-            </div>
-            <article className="reader-body">
-              {doc.pages.map((p) => (
-                <PageView key={p.n} page={p} base={coursePdfBase} emphasis={emphasis} />
-              ))}
-            </article>
-          </>
-        )}
+            </>
+          );
+        }}
       </Async>
 
       <nav className="reader-nav">

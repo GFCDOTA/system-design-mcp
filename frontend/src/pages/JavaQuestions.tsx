@@ -8,6 +8,8 @@ import { isDone, toggleDone, doneCount, useProgress } from "../progress";
 import { ProgressBar } from "../components/Progress";
 import { useEmphasis } from "../emphasis";
 import { Emphasis } from "../components/Emphasis";
+import { Mermaid } from "../components/Mermaid";
+import { buildQuestionMindmap } from "../data/mindmapCourse";
 
 interface QBQuestion {
   id: string;
@@ -41,6 +43,7 @@ function AnswerBlock({ text, emphasis }: { text: string; emphasis: boolean }) {
 
 function QCard({ q }: { q: QBQuestion }) {
   const [open, setOpen] = useState(false);
+  const [map, setMap] = useState(false);
   useProgress();
   const emphasis = useEmphasis();
   const studied = isDone(`cq:${q.id}`);
@@ -65,9 +68,22 @@ function QCard({ q }: { q: QBQuestion }) {
       </button>
       {open && (
         <div className="qa-body">
-          {q.blocks.map((b, i) => (
-            <AnswerBlock key={i} text={b} emphasis={emphasis} />
-          ))}
+          <button
+            type="button"
+            className="view-toggle qa-map-toggle"
+            onClick={() => setMap((v) => !v)}
+            aria-pressed={map}
+            title="Alternar entre a resposta em texto e o mapa mental dela"
+          >
+            {map ? "📄 Ver texto" : "🧠 Ver como mapa"}
+          </button>
+          {map ? (
+            <div className="mindmap-wrap">
+              <Mermaid code={buildQuestionMindmap(q)} />
+            </div>
+          ) : (
+            q.blocks.map((b, i) => <AnswerBlock key={i} text={b} emphasis={emphasis} />)
+          )}
         </div>
       )}
     </div>
