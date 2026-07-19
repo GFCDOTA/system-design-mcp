@@ -352,6 +352,7 @@ ol.steps .note { color: var(--muted); }
 .qa-q { flex: 1; font-weight: 600; }
 .qa-toggle { color: var(--accent); font-size: 20px; }
 .qa-body { padding: 4px 16px 16px; border-top: 1px solid var(--border); }
+.qa-map-toggle { margin: 10px 0 4px; }
 .qa.studied .qa-q { color: var(--text-muted); }
 .qa.studied { border-left: 3px solid var(--success); }
 

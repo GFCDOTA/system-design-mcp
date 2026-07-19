@@ -4,6 +4,8 @@ import { ProgressBar } from "../components/Progress";
 import { CompanyBadges } from "../components/CompanyBadges";
 import { companyDisclaimer } from "../data/companySignals";
 import { isDone, toggleDone, doneCount, useProgress } from "../progress";
+import { Mermaid } from "../components/Mermaid";
+import { buildQuestionMindmap } from "../data/mindmapCourse";
 
 /** Renderiza **negrito** e `code` inline (mesmo markdown leve do prep). */
 function Inline({ text }: { text: string }) {
@@ -21,6 +23,7 @@ function Inline({ text }: { text: string }) {
 
 function JavaCard({ q }: { q: JavaQuestion }) {
   const [open, setOpen] = useState(false);
+  const [map, setMap] = useState(false);
   useProgress();
   const studied = isDone(`jq:${q.id}`);
   return (
@@ -45,13 +48,31 @@ function JavaCard({ q }: { q: JavaQuestion }) {
       </button>
       {open && (
         <div className="qa-body">
-          <p className="java-answer">
-            <Inline text={q.a} />
-          </p>
-          {q.pitfall && (
-            <div className="callout">
-              <strong>Pegadinha.</strong> <Inline text={q.pitfall} />
+          <button
+            type="button"
+            className="view-toggle qa-map-toggle"
+            onClick={() => setMap((v) => !v)}
+            aria-pressed={map}
+            title="Alternar entre a resposta em texto e o mapa mental dela"
+          >
+            {map ? "📄 Ver texto" : "🧠 Ver como mapa"}
+          </button>
+          {map ? (
+            <div className="mindmap-wrap">
+              {/* clean() do gerador já descarta o **markdown** da resposta curada */}
+              <Mermaid code={buildQuestionMindmap({ id: q.id, q: q.q, blocks: [q.a, ...(q.pitfall ? [`Pegadinha — ${q.pitfall}`] : [])] })} />
             </div>
+          ) : (
+            <>
+              <p className="java-answer">
+                <Inline text={q.a} />
+              </p>
+              {q.pitfall && (
+                <div className="callout">
+                  <strong>Pegadinha.</strong> <Inline text={q.pitfall} />
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
