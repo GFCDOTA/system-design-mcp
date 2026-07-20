@@ -7,9 +7,13 @@
 - **Repo / app:** `E:\Claude\apps\system-design-specialist-lab` · remote `origin` =
   `github.com/fmodesto30/system-design-mcp` (⚠️ transferido p/ `GFCDOTA/system-design-mcp`;
   a URL antiga redireciona, push funciona).
-- **Status geral:** 🟢 GREEN — `npm test` **31 verdes** (15 antigos + 8 mindmap + 2 fixes
-  + 6 kb-integrity), build limpo, working tree limpa, `main` @ `a6c9ecc` 100% pushado,
-  app servindo (app/kb/qbank = 200). **`bff/` e `.tools/` não existem mais no repo.**
+- **Status geral:** 🟢 GREEN — `npm test` **43 verdes** (31 + 12 de contrato do compressor),
+  build limpo, working tree limpa, `main` @ `87933bb` 100% pushado, app servindo
+  (app/kb/qbank = 200). **`bff/` e `.tools/` não existem mais no repo.**
+- **2026-07-20 (recuperação):** a sessão que implementava o FIX-FIRST caiu SEM commitar —
+  o trabalho (compressor de rótulos completo, iterado com o juiz até o veredito v3) foi
+  encontrado green no working tree, verificado (43/43 + build + render ao vivo) e **landado
+  em `87933bb`**. Falta SÓ re-submeter ao GPT pro score final (era 4/10; alvo ≥7).
 
 ## 1. Objetivo atual
 App pessoal de **preparação pra entrevista de SWE**: Estudar (curso + trilhas + 408
@@ -86,11 +90,11 @@ trava da KB preservada).
   diferencia um conceito do outro.
 
 ## 6. Pendências
-0. **FIX-FIRST do GPT no gerador de mapas (nota 4/10 → alvo ≥7):** implementar o compressor de
-   rótulos (ver §5) em `mindmapCourse.js` — nó = conceito comprimido (~6-9 palavras), não sentença
-   crua; código nunca como irmão de conceito; mapa 4: agrupar por TEMA em vez de chip "+N" repetido
-   por ramo (1 nó-resumo só, ou sub-hierarquia); filtrar ruído tipo "p 10s". O mapa 3 (curada,
-   7/10) é o formato de referência. Red→green nos testes de contrato antes de re-submeter ao GPT.
+0. **FIX-FIRST: ✅ IMPLEMENTADO e landado (`87933bb`, 2026-07-20)** — compressor de rótulos
+   (conceptSplit/tailPieces), código nunca irmão de conceito, ruído filtrado, coesão como veto,
+   "+N itens" único, perguntas sempre irmãs (vereditos v1→v3). **RESTA: re-submeter os 5 mapas
+   ao GPT-via-Chrome pro score final** (era 4/10; alvo ≥7). Fonte Mermaid como TEXTO no chat
+   (imagem bloqueada por CSP; conteúdo pago não vai pra URL pública).
 1. **iPhone em casa — falta SÓ o Felipe:** clicar com botão direito →
    "Executar como administrador" em **`Desktop\LIBERAR-IPHONE-5173.cmd`** (novo, idempotente).
    Depois: Safari → `http://192.168.15.4:5173` → Compartilhar → Adicionar à Tela de Início.
