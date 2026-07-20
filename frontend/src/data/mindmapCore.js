@@ -2,13 +2,20 @@
 // de texto, sem framework, no padrão testável de atsValidator.js/readiness.js:
 // o app (TS) importa via .d.ts e os testes (node --test) importam direto.
 
-/** Limpa texto pra caber num nó Mermaid (tira markdown e chars que quebram a sintaxe). */
+/**
+ * Limpa texto pra caber num nó Mermaid (tira markdown e chars que quebram a
+ * sintaxe). Parênteses viram ❨❩ e ":" vira " —" em vez de sumir — apagar
+ * degradava sintaxe técnica ("a.equals(b)" virava "a.equalsb"; veredito GPT).
+ */
 export function clean(s, max = 55) {
   let t = (s || "")
     .replace(/\*\*/g, "")
     .replace(/`/g, "")
+    .replace(/\(/g, "❨")
+    .replace(/\)/g, "❩")
     .replace(/::/g, " ")
-    .replace(/[()[\]{}#;:"|]/g, "")
+    .replace(/:/g, " —")
+    .replace(/[[\]{}#;"|]/g, "")
     .replace(/\s+/g, " ")
     .trim();
   if (t.length > max) t = t.slice(0, max - 1).replace(/\s+\S*$/, "").trim() + "…";
@@ -49,9 +56,12 @@ export function keyConcepts(text, limit = 8) {
  * mapas de tópico/padrão) para projeções que carregam sufixo (ex.: "· p.12").
  * `opts.leafless` mantém ramo sem folhas (projeções onde o título É o conteúdo,
  * ex.: sentença de resposta); no default, ramo vazio segue descartado.
+ * `opts.leafMax` alarga a folha (a cauda-filho do compressor não pode perder
+ * justamente o complemento que a distingue).
  */
 export function build(rootText, branches, opts = {}) {
   const branchMax = opts.branchMax ?? 30;
+  const leafMax = opts.leafMax ?? 55;
   const L = ["mindmap", `  root((${clean(rootText, 40) || "Mapa"}))`];
   for (const b of branches) {
     const bt = clean(b.title, branchMax);
@@ -60,7 +70,7 @@ export function build(rootText, branches, opts = {}) {
     if (!hasContent && !opts.leafless) continue;
     L.push(`    ${bt}`);
     for (const leaf of b.leaves) {
-      const lt = clean(leaf);
+      const lt = clean(leaf, leafMax);
       if (lt) L.push(`      ${lt}`);
     }
     for (const s of b.sub || []) {
