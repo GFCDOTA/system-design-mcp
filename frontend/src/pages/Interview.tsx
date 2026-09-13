@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import { RefChips, List } from "../components/StudyKit";
 import { api, type QuestionSummary } from "../api";
 import { useAsync } from "../hooks";
 import { Async } from "../components/States";
@@ -14,13 +15,17 @@ import { isDone, toggleDone, doneCount, useProgress } from "../progress";
 import { complexityGuide, structures, type DataStructure } from "../data/dsaFundamentals";
 import { reports, crossLessons, pitfalls, resourceStack, type InterviewReport } from "../data/interviewReports";
 
-function QuestionCard({ q }: { q: QuestionSummary }) {
-  const [open, setOpen] = useState(false);
+function QuestionCard({ q, initiallyOpen = false }: { q: QuestionSummary; initiallyOpen?: boolean }) {
+  const [open, setOpen] = useState(initiallyOpen);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (initiallyOpen) ref.current?.scrollIntoView({ block: "start" });
+  }, [initiallyOpen]);
   const detail = useAsync(() => api.question(q.id), [open ? q.id : ""]);
   useProgress();
   const studied = isDone(`q:${q.id}`);
   return (
-    <div className={`qa ${open ? "open" : ""} ${studied ? "studied" : ""}`}>
+    <div ref={ref} id={q.id} className={`qa ${open ? "open" : ""} ${studied ? "studied" : ""}`}>
       <button className="qa-head" onClick={() => setOpen((v) => !v)}>
         <span
           className={`qa-done ${studied ? "done" : ""}`}
@@ -67,10 +72,47 @@ function QuestionCard({ q }: { q: QuestionSummary }) {
                     <Markdown>{d.repoExample}</Markdown>
                   </>
                 )}
+                {d.productionExample && (
+                  <div className="callout callout-evidence">
+                    <strong>Em produção.</strong> <Markdown>{d.productionExample}</Markdown>
+                  </div>
+                )}
+                {d.followUps?.length ? (
+                  <>
+                    <h4>Follow-ups</h4>
+                    {d.followUps.map((f, k) => (
+                      <details key={k} className="qa-followup">
+                        <summary>{f.question}</summary>
+                        <p>{f.answer}</p>
+                      </details>
+                    ))}
+                  </>
+                ) : null}
+                {d.failureInjections?.length ? (
+                  <>
+                    <h4>Falhas que o entrevistador injeta</h4>
+                    {d.failureInjections.map((f, k) => (
+                      <details key={k} className="qa-followup">
+                        <summary>{f.injection}</summary>
+                        <p>{f.expectedReasoning}</p>
+                      </details>
+                    ))}
+                  </>
+                ) : null}
+                {(d.redFlags?.length || d.strongSignals?.length) ? (
+                  <div className="two-col">
+                    <section className="bullets avoid"><h4>Red flags</h4><List items={d.redFlags} /></section>
+                    <section className="bullets use"><h4>Strong signals</h4><List items={d.strongSignals} /></section>
+                  </div>
+                ) : null}
+                {d.whatToMonitor?.length ? (<><h4>O que monitorar</h4><List items={d.whatToMonitor} /></>) : null}
                 <TagChips label="Riscos" items={d.risks} />
                 {d.tradeOffs.length > 0 && <TradeOffTable tradeOffs={d.tradeOffs} />}
                 <LinkChips label="Padrões" base="/patterns" ids={d.patterns} />
                 <LinkChips label="Tópicos" base="/topics" ids={d.relatedTopics} />
+                <RefChips label="Failure modes" refs={(d.failureModes ?? []).map((id) => ({ kind: "failure-modes", id }))} />
+                <RefChips label="Perguntas relacionadas" refs={(d.relatedQuestions ?? []).map((id) => ({ kind: "interview-questions", id }))} />
+                <TagChips label="Dimensões da rubrica" items={d.rubricDimensions ?? []} />
                 <SourceRefList refs={d.sourceRefs} />
               </>
             )}
@@ -182,6 +224,8 @@ export function InterviewOverview() {
 /** /entrevista/system-design — estratégia + banco de perguntas (da KB). */
 export function InterviewSystemDesign() {
   const state = useAsync(() => api.questions(), []);
+  const [params] = useSearchParams();
+  const openId = params.get("open");
   const [diff, setDiff] = useState("all");
   const [query, setQuery] = useState("");
   const [unstudied, setUnstudied] = useState(false);
@@ -227,7 +271,7 @@ export function InterviewSystemDesign() {
               <p className="muted qbank-count">{filtered.length} pergunta(s)</p>
               <div className="qa-list">
                 {filtered.map((x) => (
-                  <QuestionCard key={x.id} q={x} />
+                  <QuestionCard key={x.id} q={x} initiallyOpen={x.id === openId} />
                 ))}
               </div>
             </>

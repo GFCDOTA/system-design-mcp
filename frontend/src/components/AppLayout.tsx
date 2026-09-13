@@ -15,7 +15,7 @@ interface NavGroup {
 }
 
 // Um espaço só: Estudar (aprender) → Treinar (entrevista) → Referência (System Design).
-// Ícone por item ajuda a ESCANEAR a lista (22 itens) em vez de ler linha a linha.
+// Ícone por item ajuda a ESCANEAR a lista em vez de ler linha a linha.
 const GROUPS: NavGroup[] = [
   { items: [{ to: "/", label: "Início", icon: "🏠", end: true }] },
   {
@@ -39,6 +39,18 @@ const GROUPS: NavGroup[] = [
       { to: "/entrevista/comportamental", label: "Comportamental", icon: "💬" },
       { to: "/entrevista/relatos", label: "Relatos de entrevista", icon: "📋" },
       { to: "/entrevista/roadmap", label: "Roadmap do curso", icon: "🗺️" },
+    ],
+  },
+  {
+    title: "Produção & Falhas",
+    items: [
+      { to: "/failure-modes", label: "Failure modes", icon: "💥" },
+      { to: "/drills", label: "Incident drills", icon: "🚨" },
+      { to: "/chains", label: "Cadeias de falha", icon: "⛓️" },
+      { to: "/quiz", label: "Quiz & jogo", icon: "🎲" },
+      { to: "/review", label: "Revisão", icon: "🔁" },
+      { to: "/paths", label: "Trilhas de System Design", icon: "🧭" },
+      { to: "/search", label: "Buscar por sintoma", icon: "🔍" },
     ],
   },
   {

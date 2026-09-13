@@ -8,7 +8,7 @@ export function Async<T>({ state, children }: { state: AsyncState<T>; children: 
     return (
       <div className="state error">
         <strong>Erro:</strong> {state.error}
-        <p className="hint">O BFF está rodando em :8080? (ver docs/runbook.md)</p>
+        <p className="hint">Os JSON da base são copiados para public/kb no predev/prebuild — rode <code>npm run sync-kb</code> e recarregue.</p>
         {state.retry && (
           <button type="button" className="btn-retry" onClick={state.retry}>
             Tentar novamente

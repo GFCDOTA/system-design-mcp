@@ -67,6 +67,13 @@ export function Home() {
               total: s.patterns,
             },
             {
+              to: "/failure-modes",
+              icon: "💥",
+              title: "Produção & Falhas",
+              desc: "Como sistemas quebram em escala: cenário, cadeia de falha, diagnóstico, mitigação, o que monitorar e resposta de entrevista — com drills e quiz.",
+              meta: `${s.failureModes} failure modes · ${s.incidentDrills} drills · ${s.comparisons} comparações`,
+            },
+            {
               to: "/entrevista",
               icon: "🎯",
               title: "Modo Entrevista",
