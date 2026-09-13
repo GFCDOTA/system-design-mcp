@@ -120,7 +120,9 @@ SYNONYM_GROUPS.forEach((g, i) => g.forEach((t) => { if (!GROUP_OF.has(t)) GROUP_
 
 function prefixOf(t) {
   if (t.length < 5) return null; // termos curtos só casam exatos (db, ttl, pool, hot, lag, key)
-  return t.slice(0, Math.min(5, Math.max(4, t.length - 2)));
+  // 5 letras: só extensões da própria palavra ("cache" → "caches"; "storm" não vira "store").
+  // 6+: raiz de 5–6 letras ("expirou" → "expir", "consumidor" → "consum", sem pegar "consulta").
+  return t.slice(0, Math.max(5, Math.min(6, t.length - 2)));
 }
 
 // ----------------------------------------------------------------------------------- indexação
@@ -186,6 +188,7 @@ export function createIndex(collections) {
         fields,
         bodyLen,
         phraseTexts: [...aliasList, ...keywordList, titleText].map((s) => new Set(tokenize(s))),
+        exactNames: new Set([titleText, ...aliasList].map((s) => tokenize(s).join(" "))),
       });
     }
   }
@@ -260,6 +263,7 @@ export function searchIndex(index, query, opts = {}) {
   const allow = kinds && kinds.length ? new Set(kinds) : null;
   const concepts = expandQuery(index, query);
   if (!concepts.length) return [];
+  const queryName = concepts.map((c) => c.term).join(" ");
   const hits = [];
   for (const doc of index.docs) {
     if (allow && !allow.has(doc.kind)) continue;
@@ -294,6 +298,8 @@ export function searchIndex(index, query, opts = {}) {
       }
       if (bestPhrase >= 0.66) score *= 1 + bestPhrase;
     }
+    // a consulta É o nome (título ou alias) do item: o conceito em si vem antes de quem só o menciona
+    if (doc.exactNames.has(queryName)) score *= 2;
     hits.push({ doc, score, matched });
   }
   const kindRank = new Map(index.kindOrder.map((k, i) => [k, i]));
