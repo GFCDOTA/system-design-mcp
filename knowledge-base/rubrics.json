@@ -1,0 +1,172 @@
+[
+  {
+    "id": "system-design-interview",
+    "title": "Rubrica de entrevista de System Design (senior → staff)",
+    "level": "senior",
+    "usage": "Avaliar por CRITÉRIO, nunca contra uma única 'resposta de ouro'. Cada nota precisa citar evidência do transcript (o que o candidato disse), por exemplo: '4/5 em data-consistency: identificou entrega at-least-once, propôs consumidor idempotente e discutiu ordem por partição'. Nota sem evidência é inválida. Perguntas indicam em rubricDimensions quais dimensões exercitam; dimensões não exercitadas ficam sem nota em vez de 0.",
+    "scale": [
+      {
+        "score": 0,
+        "label": "absent",
+        "meaning": "Dimensão não abordada mesmo quando a pergunta exigia."
+      },
+      {
+        "score": 1,
+        "label": "major gaps",
+        "meaning": "Abordou com erro conceitual relevante ou solução que pioraria o sistema."
+      },
+      {
+        "score": 2,
+        "label": "partial",
+        "meaning": "Conceito certo, mas sem mecanismo, sem números ou sem tratar o caso difícil."
+      },
+      {
+        "score": 3,
+        "label": "senior bar",
+        "meaning": "Mecanismo correto, mitigação adequada e pelo menos um trade-off explícito."
+      },
+      {
+        "score": 4,
+        "label": "strong senior",
+        "meaning": "Cobre casos de falha/concorrência, justifica com números e escolhe entre alternativas com critério."
+      },
+      {
+        "score": 5,
+        "label": "staff signal",
+        "meaning": "Antecipa falhas de segunda ordem, blast radius, operação/observabilidade e custo organizacional; muda o desenho conforme o requisito muda."
+      }
+    ],
+    "dimensions": [
+      {
+        "id": "requirements",
+        "name": "Requirements",
+        "whatGoodLooksLike": "Esclarece requisitos funcionais e não funcionais que mudam o desenho (consistência exigida, latência, volume, o que pode falhar).",
+        "evidenceExamples": [
+          "Perguntou se o saldo pode ser eventual antes de propor réplica",
+          "Separou o que precisa de consistência forte do que tolera atraso"
+        ],
+        "commonGaps": [
+          "Começa pela tecnologia",
+          "Assume requisitos sem declarar"
+        ]
+      },
+      {
+        "id": "capacity",
+        "name": "Capacity",
+        "whatGoodLooksLike": "Estima ordens de grandeza e usa-as para decidir (L = λ × W, tamanho de backlog, conexões totais, carga na origem por hit ratio).",
+        "evidenceExamples": [
+          "Calculou 10 pods × 100 conexões = 1.000 no banco",
+          "Estimou backlog de 2,4M em 1 minuto"
+        ],
+        "commonGaps": [
+          "Números sem uso na decisão",
+          "Nenhuma estimativa"
+        ]
+      },
+      {
+        "id": "architecture",
+        "name": "Architecture",
+        "whatGoodLooksLike": "Componentes e fluxos coerentes com os requisitos, com responsabilidades claras e sem complexidade gratuita.",
+        "evidenceExamples": [
+          "Colocou o claim de idempotência antes do efeito, na mesma transação",
+          "Justificou não usar Kafka para request/response"
+        ],
+        "commonGaps": [
+          "Buzzwords sem fluxo",
+          "Componentes sem motivo"
+        ]
+      },
+      {
+        "id": "data-consistency",
+        "name": "Data / Consistency",
+        "whatGoodLooksLike": "Modelo de dados, garantias de consistência, concorrência, ordem e idempotência explicados pelo mecanismo.",
+        "evidenceExamples": [
+          "Explicou a corrida do check-then-act e usou UNIQUE como árbitro",
+          "Citou read-your-writes para leitura pós-escrita"
+        ],
+        "commonGaps": [
+          "'Exactly-once resolve'",
+          "Deduplicação só por payload"
+        ]
+      },
+      {
+        "id": "reliability",
+        "name": "Reliability",
+        "whatGoodLooksLike": "Trata falhas parciais: timeouts, retries limitados com jitter, circuit breaker, bulkhead, degradação e recuperação sem laço.",
+        "evidenceExamples": [
+          "Identificou retry como amplificação e propôs retry budget",
+          "Propôs derrubar tráfego para quebrar a cascata"
+        ],
+        "commonGaps": [
+          "'Coloco circuit breaker' sem timeout/limites",
+          "Retry infinito ou imediato"
+        ]
+      },
+      {
+        "id": "trade-offs",
+        "name": "Trade-offs",
+        "whatGoodLooksLike": "Nomeia o custo de cada escolha e quando mudaria a decisão.",
+        "evidenceExamples": [
+          "Stale-while-revalidate protege a origem mas relaxa freshness; não usaria para saldo",
+          "Sufixo aleatório espalha escrita mas obriga fan-out na leitura"
+        ],
+        "commonGaps": [
+          "Solução sem custo declarado",
+          "Uma única opção apresentada como óbvia"
+        ]
+      },
+      {
+        "id": "observability",
+        "name": "Observability",
+        "whatGoodLooksLike": "Diz o que medir, qual sinal mexe primeiro, qual é consequência e qual alerta existiria.",
+        "evidenceExamples": [
+          "Pending do pool e tempo de aquisição antes da CPU do banco",
+          "Razão tentativas/requests para detectar retry storm"
+        ],
+        "commonGaps": [
+          "'Monitoro CPU'",
+          "Métricas só agregadas quando o problema é por shard"
+        ]
+      },
+      {
+        "id": "communication",
+        "name": "Communication",
+        "whatGoodLooksLike": "Estrutura a resposta, declara hipóteses, verifica entendimento e ajusta à pergunta seguinte.",
+        "evidenceExamples": [
+          "Resumiu o mecanismo antes das soluções",
+          "Separou mitigação imediata de correção definitiva"
+        ],
+        "commonGaps": [
+          "Lista de tecnologias sem narrativa",
+          "Não responde o follow-up feito"
+        ]
+      }
+    ],
+    "sourceRefs": [
+      {
+        "kind": "pdf",
+        "source": "System Design Workbook",
+        "locator": "p.609-638",
+        "note": "Capacity planning como raciocínio quantitativo"
+      },
+      {
+        "kind": "pdf",
+        "source": "System Design Workbook",
+        "locator": "p.496-527",
+        "note": "Resiliência"
+      },
+      {
+        "kind": "pdf",
+        "source": "System Design Workbook",
+        "locator": "p.533-557",
+        "note": "Observabilidade: sinais e service levels"
+      },
+      {
+        "kind": "pdf",
+        "source": "System Design Workbook",
+        "locator": "p.72-106",
+        "note": "Consistência, CAP/ACID/BASE"
+      }
+    ]
+  }
+]

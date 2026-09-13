@@ -13,6 +13,7 @@ import { MarkDoneButton } from "../components/Progress";
 import { Breadcrumb } from "../components/Breadcrumb";
 import { Mermaid } from "../components/Mermaid";
 import { buildTopicMindmap } from "../data/mindmap";
+import { BreaksInProduction } from "../components/BreaksInProduction";
 
 export function TopicDetail() {
   const { id = "" } = useParams();
@@ -47,6 +48,15 @@ export function TopicDetail() {
                   <Markdown>{t.example}</Markdown>
                 </section>
               )}
+
+              {t.productionExample && (
+                <section className="callout callout-evidence">
+                  <h2>Em produção</h2>
+                  <Markdown>{t.productionExample}</Markdown>
+                </section>
+              )}
+
+              <BreaksInProduction field="relatedTopics" id={t.id} />
 
               {t.interviewAngle && (
                 <section className="callout">

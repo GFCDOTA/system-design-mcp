@@ -1,6 +1,6 @@
 # ADR-0002 — BFF em Java 21 + Spring Boot, arquitetura hexagonal
 
-- **Status:** aceito
+- **Status:** substituído (2026-07) — o BFF foi aposentado e removido; o app lê `knowledge-base/*.json` como arquivos estáticos e o MCP lê os mesmos arquivos. Ver `docs/architecture.md`, ADR-0005 e ADR-0006. Mantido como registro histórico.
 - **Contexto:** precisamos servir a base de conhecimento por uma API estável, validada,
   com health/métricas, e que sirva ela mesma de **exemplo** de um padrão que o Lab
   ensina (Backend for Frontend). O domínio do problema (estudo de System Design) valoriza

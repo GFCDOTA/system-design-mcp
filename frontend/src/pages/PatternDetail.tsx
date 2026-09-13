@@ -13,6 +13,7 @@ import { MarkDoneButton } from "../components/Progress";
 import { Breadcrumb } from "../components/Breadcrumb";
 import { Mermaid } from "../components/Mermaid";
 import { buildPatternMindmap } from "../data/mindmap";
+import { BreaksInProduction } from "../components/BreaksInProduction";
 
 function Bullets({ title, items, kind }: { title: string; items: string[]; kind: string }) {
   if (!items?.length) return null;
@@ -77,6 +78,15 @@ export function PatternDetail() {
               <Markdown>{p.financialExample}</Markdown>
             </section>
           )}
+
+          {p.productionExample && (
+            <section className="callout callout-evidence">
+              <h2>Em produção</h2>
+              <Markdown>{p.productionExample}</Markdown>
+            </section>
+          )}
+
+          <BreaksInProduction field="relatedPatterns" id={p.id} />
 
           {p.tradeOffs.length > 0 && (
             <section>

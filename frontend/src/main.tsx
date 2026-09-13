@@ -34,6 +34,10 @@ import { StudyTrails } from "./pages/StudyTrails";
 import { Ats } from "./pages/Ats";
 import { AtsChecker } from "./pages/AtsChecker";
 import { RouteError, NotFound } from "./pages/RouteError";
+import { FailureModes } from "./pages/FailureModes";
+import { FailureModeDetail } from "./pages/FailureModeDetail";
+import { Drills, DrillDetail } from "./pages/Drills";
+import { FailureChains, SearchPage, LearningPaths, QuizPage, ReviewPage } from "./pages/StudyModes";
 import { InstallHint } from "./components/InstallHint";
 import { applyTheme, getTheme } from "./theme";
 import { applyAccent, getAccent } from "./accent";
@@ -67,6 +71,17 @@ const router = createBrowserRouter([
       { path: "databases", element: <Databases /> },
       { path: "databases/builder", element: <DatabaseBuilder /> },
       { path: "databases/:id", element: <DatabaseDetail /> },
+
+      // Produção & falhas (failure modes at scale + modos de estudo)
+      { path: "failure-modes", element: <FailureModes /> },
+      { path: "failure-modes/:id", element: <FailureModeDetail /> },
+      { path: "drills", element: <Drills /> },
+      { path: "drills/:id", element: <DrillDetail /> },
+      { path: "chains", element: <FailureChains /> },
+      { path: "search", element: <SearchPage /> },
+      { path: "paths", element: <LearningPaths /> },
+      { path: "quiz", element: <QuizPage /> },
+      { path: "review", element: <ReviewPage /> },
 
       // Estudar (material do curso)
       { path: "estudos", element: <StudyOverview /> },
@@ -103,7 +118,8 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
 );
 
 // PWA: registra o service worker (offline + instalável). Falha silenciosa fora de https/localhost.
-if ("serviceWorker" in navigator) {
+// Só no build de produção: em dev o SW cacheava módulos do Vite e servia código velho após editar.
+if (import.meta.env.PROD && "serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("/sw.js").catch(() => {});
   });

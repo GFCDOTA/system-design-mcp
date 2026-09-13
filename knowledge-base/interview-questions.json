@@ -139,7 +139,85 @@
         "source": "microservices.io",
         "locator": "patterns/communication-style/idempotent-consumer.html",
         "url": "https://microservices.io/patterns/communication-style/idempotent-consumer.html"
+      },
+      {
+        "kind": "reference",
+        "source": "Apache Kafka 4.0 — KafkaConsumer javadoc",
+        "locator": "kafka.apache.org/40/javadoc/org/apache/kafka/clients/consumer/KafkaConsumer.html",
+        "note": "Falha entre inserir no banco e comitar o offset leva a reprocessamento",
+        "url": "https://kafka.apache.org/40/javadoc/org/apache/kafka/clients/consumer/KafkaConsumer.html"
       }
+    ],
+    "relatedQuestions": [
+      "q35",
+      "q36",
+      "q31"
+    ],
+    "failureModes": [
+      "missing-idempotency",
+      "no-backpressure"
+    ],
+    "expectedSignals": [
+      "Assume at-least-once como caso normal",
+      "Chave de domínio (não offset)",
+      "Marca de processado atômica com o efeito"
+    ],
+    "strongSignals": [
+      "Idempotência distribuída em todos os downstream no replay",
+      "Diferencia consumidor idempotente de idempotência HTTP",
+      "Discute ordem por partição/version"
+    ],
+    "redFlags": [
+      "Confiar no exactly-once do broker para o banco",
+      "Chave derivada do offset",
+      "Checar duplicata fora da transação do efeito"
+    ],
+    "followUps": [
+      {
+        "question": "E se o consumidor cair depois de gravar no banco e antes de comitar o offset?",
+        "answer": "O broker reentrega o lote: com a marca de processado na mesma transação do efeito (UNIQUE ou version), a segunda aplicação vira no-op."
+      },
+      {
+        "question": "E se um rebalance acontecer no meio do lote?",
+        "answer": "Outro consumidor recebe as mesmas mensagens a partir do último offset comitado; idempotência por chave de domínio cobre."
+      }
+    ],
+    "failureInjections": [
+      {
+        "injection": "Consumer cai entre o INSERT e o commit do offset.",
+        "expectedReasoning": "Redelivery; UNIQUE/version torna o reprocessamento no-op."
+      },
+      {
+        "injection": "Replay do tópico inteiro após bug no read model.",
+        "expectedReasoning": "Todo consumidor downstream precisa ser idempotente; efeitos externos também."
+      }
+    ],
+    "acceptableSolutions": [
+      "INSERT ... ON CONFLICT DO NOTHING com chave de domínio",
+      "UPDATE condicional por version",
+      "Tabela inbox/processados na mesma transação do efeito"
+    ],
+    "decisionCriteria": [
+      "Chave natural disponível → UNIQUE",
+      "Read model por estado → version/LWW",
+      "Efeito sem chave natural → inbox"
+    ],
+    "whatToMonitor": [
+      "redeliveries/rebalances",
+      "conflitos de chave (duplicatas absorvidas)",
+      "consumer lag"
+    ],
+    "rubricDimensions": [
+      "data-consistency",
+      "reliability",
+      "trade-offs",
+      "communication"
+    ],
+    "keywords": [
+      "kafka entregou a mesma mensagem duas vezes",
+      "mensagem duplicada no consumer",
+      "consumer processou a mesma mensagem duas vezes",
+      "redelivery depois de rebalance"
     ]
   },
   {
@@ -639,6 +717,41 @@
         "note": "roteamento por hash da sharding key id_client; descoberta dinâmica de shards",
         "url": "https://github.com/msfidelis/msc-shard-router"
       }
+    ],
+    "failureModes": [
+      "hot-key-partition"
+    ],
+    "expectedSignals": [
+      "Chave de alta cardinalidade",
+      "Hot partition como risco central",
+      "Consistent hashing para rebalanceamento"
+    ],
+    "strongSignals": [
+      "Capacidade total ≠ capacidade útil",
+      "Separa hot key de leitura e de escrita",
+      "Isolamento de tenant/célula"
+    ],
+    "redFlags": [
+      "Particionar por atributo concentrado (país, status)",
+      "Salting aleatório sem discutir leitura agregada"
+    ],
+    "followUps": [
+      {
+        "question": "E se um único cliente B2B gerar 40% das escritas?",
+        "answer": "Hashing não resolve: isolar o tenant em shard/célula dedicada ou dividir a chave com custo de leitura agregada e ordem."
+      }
+    ],
+    "failureInjections": [
+      {
+        "injection": "Um shard satura com o cluster a 50%.",
+        "expectedReasoning": "Hot key; métricas por shard; replicar leitura ou dividir escrita."
+      }
+    ],
+    "rubricDimensions": [
+      "requirements",
+      "capacity",
+      "architecture",
+      "trade-offs"
     ]
   },
   {
@@ -1013,6 +1126,43 @@
         "note": "métricas Prometheus por shard + /healthz (application metrics + health check API)",
         "url": "https://github.com/msfidelis/msc-shard-router"
       }
+    ],
+    "failureModes": [
+      "cascading-failure",
+      "connection-pool-exhaustion",
+      "retry-storm"
+    ],
+    "expectedSignals": [
+      "RED/USE/Four Golden Signals",
+      "Métricas de negócio além das técnicas",
+      "Traces e correlação"
+    ],
+    "strongSignals": [
+      "Diz qual sinal mexe primeiro e qual é consequência",
+      "Alertas por SLO/burn rate em vez de CPU",
+      "Métricas por dependência e por shard"
+    ],
+    "redFlags": [
+      "'Monitoro CPU e memória'",
+      "Alertas sem ação associada"
+    ],
+    "followUps": [
+      {
+        "question": "O pool está 20/20, pending subindo e a CPU da aplicação está baixa. O que você olha primeiro?",
+        "answer": "Tempo de posse das conexões: pg_stat_activity (active na mesma query ou idle in transaction) e mean_exec_time das top queries — CPU baixa indica threads esperando."
+      }
+    ],
+    "whatToMonitor": [
+      "pending/acquisition time do pool",
+      "retry rate e razão tentativas/requests",
+      "lag em segundos",
+      "hit ratio por chave quente",
+      "replay_lag"
+    ],
+    "rubricDimensions": [
+      "observability",
+      "reliability",
+      "communication"
     ]
   },
   {
@@ -1090,7 +1240,89 @@
         "source": "microservices.io",
         "locator": "patterns/communication-style/idempotent-consumer.html",
         "url": "https://microservices.io/patterns/communication-style/idempotent-consumer.html"
+      },
+      {
+        "kind": "reference",
+        "source": "Google SRE Book — Handling Overload",
+        "locator": "sre.google/sre-book/handling-overload/",
+        "note": "Retry budget e retry numa camada",
+        "url": "https://sre.google/sre-book/handling-overload/"
+      },
+      {
+        "kind": "reference",
+        "source": "Amazon SQS docs — Using dead-letter queues",
+        "locator": "docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-dead-letter-queues.html",
+        "note": "maxReceiveCount e DLQ",
+        "url": "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-dead-letter-queues.html"
       }
+    ],
+    "failureModes": [
+      "retry-storm",
+      "thundering-herd",
+      "poison-message",
+      "missing-idempotency"
+    ],
+    "expectedSignals": [
+      "Retry exige idempotência",
+      "Backoff exponencial com jitter",
+      "DLQ com limite de tentativas"
+    ],
+    "strongSignals": [
+      "Retry como amplificação de carga",
+      "Retry budget / retry numa camada",
+      "Erros permanentes direto para DLQ",
+      "DLQ monitorada e reprocessamento idempotente"
+    ],
+    "redFlags": [
+      "Retry infinito",
+      "Retry imediato",
+      "Mesma política para qualquer erro",
+      "DLQ sem alerta"
+    ],
+    "followUps": [
+      {
+        "question": "E se 100 mil consumidores falharem ao mesmo tempo contra a mesma dependência?",
+        "answer": "Sem jitter as tentativas sincronizam (herd); sem limite/budget amplificam (storm). Jitter + budget + circuit breaker."
+      },
+      {
+        "question": "Quando NÃO fazer retry?",
+        "answer": "Erro permanente (parse/validação), sinal de sobrecarga do servidor, deadline já estourado ou efeito sem idempotência."
+      },
+      {
+        "question": "E se o fluxo exigir ordem por conta e a mensagem for para a DLQ?",
+        "answer": "Pular quebra a sequência: estacionar as mensagens daquela chave ou detectar lacuna por version."
+      }
+    ],
+    "failureInjections": [
+      {
+        "injection": "Dependência a jusante degrada de 100 ms para 3 s sem erro.",
+        "expectedReasoning": "Timeouts viram retries que amplificam; limitar, jitter, budget, circuit breaker."
+      },
+      {
+        "injection": "Uma mensagem malformada chega numa partição.",
+        "expectedReasoning": "Poison message: limite de tentativas + DLQ para não bloquear a partição."
+      }
+    ],
+    "acceptableSolutions": [
+      "Retry com backoff+jitter limitado + DLQ + reprocessamento idempotente",
+      "Tópicos de retry com atraso crescente + DLQ"
+    ],
+    "decisionCriteria": [
+      "Erro transitório vs permanente",
+      "Ordem por entidade exigida?",
+      "Custo de duplicar o efeito"
+    ],
+    "whatToMonitor": [
+      "retry rate por motivo",
+      "profundidade/taxa da DLQ",
+      "offset parado por partição",
+      "timeout rate da dependência"
+    ],
+    "rubricDimensions": [
+      "reliability",
+      "data-consistency",
+      "observability",
+      "trade-offs"
     ]
   },
   {
@@ -1163,7 +1395,41 @@
         "source": "microservices.io",
         "locator": "patterns/data/cqrs.html",
         "url": "https://microservices.io/patterns/data/cqrs.html"
+      },
+      {
+        "kind": "reference",
+        "source": "Werner Vogels — Eventually Consistent, Revisited (2008)",
+        "locator": "www.allthingsdistributed.com/2008/12/eventually_consistent.html",
+        "note": "Read-your-writes e janela de inconsistência",
+        "url": "https://www.allthingsdistributed.com/2008/12/eventually_consistent.html"
       }
+    ],
+    "failureModes": [
+      "read-replica-lag"
+    ],
+    "expectedSignals": [
+      "Traduz eventual em janela/SLO de lag",
+      "Decisão crítica lê da fonte forte"
+    ],
+    "strongSignals": [
+      "Nomeia read-your-writes",
+      "Propõe UI/contrato para a janela",
+      "Mede lag como SLO"
+    ],
+    "redFlags": [
+      "Prometer consistência imediata sem custo",
+      "Autorizar saldo a partir de read model"
+    ],
+    "followUps": [
+      {
+        "question": "O usuário salvou e viu o valor antigo. Como explicar e resolver sem mandar tudo ao primário?",
+        "answer": "Read-your-writes por sessão (fixar leituras pós-escrita no primário por uma janela ou até a réplica alcançar), roteamento por lag e renderizar a resposta da escrita."
+      }
+    ],
+    "rubricDimensions": [
+      "data-consistency",
+      "communication",
+      "trade-offs"
     ]
   },
   {
@@ -1249,14 +1515,15 @@
     "question": "Como você protege as APIs financeiras (débito/crédito) de uma plataforma de pagamentos?",
     "difficulty": "senior",
     "shortAnswer": "Defesa em camadas: autenticação/autorização forte com tokens de escopo mínimo na borda (gateway), rate limiting/throttling por cliente, validação rigorosa de input em toda borda (rejeitar cedo com erro tipado), idempotência obrigatória (idempotency key) para que retry não duplique débito, e validação transacional de saldo/limite na fonte ACID. Tudo com auditoria e segredos fora do código.",
-    "detailedAnswer": "## Modelo de defesa em camadas\n\nAPI financeira é alvo: a proteção é **em profundidade**, não um único muro.\n\n### 1. Borda (API Gateway / Envoy)\n- **Authn/Authz**: token de acesso (JWT/OAuth) validado no gateway; **least privilege** — cada cliente recebe só o escopo necessário (consultar ≠ movimentar).\n- **Rate limiting / throttling**: limite por cliente/chave. No repo do ledger isso aparece com **Envoy fazendo rate limit** e **Kong como gateway**. Protege de abuso e de tempestade de retries.\n\n### 2. Validação de entrada em TODA borda\n- Rejeitar cedo, com **erro tipado**, qualquer payload inválido (valor negativo, moeda errada, conta inexistente). Nunca deixar input não-validado propagar para o domínio. Query **sempre parametrizada**, nunca concatenar SQL.\n\n### 3. Idempotência (a defesa que mais gente esquece)\n- Toda operação de movimentação carrega uma **idempotency key** (ou `movimentacao_id`). Se o cliente reenvia por timeout/retry, o sistema reconhece a chave e **não debita de novo** — devolve o resultado da primeira execução. No ledger isso é garantido com `movimentacao_id` único nos read models e `INSERT IF NOT EXISTS` (Mongo ignora erro de chave duplicada 11000; Scylla usa LWT). Sem isso, um retry vira prejuízo real.\n\n### 4. Consistência transacional na fonte\n- A decisão de débito **valida saldo e limite dentro da transação ACID** do ledger (abre txn → persiste evento com versão/optimistic lock → lê saldo → calcula → valida regra → commit → publica). Nunca autorizar lendo de read model eventual.\n\n### 5. Segredos e auditoria\n- **Zero credencial hardcoded**; segredo vem de env/secret manager fora do git. **Redatar PII/segredo em log**. Registrar quem fez o quê (ver audit logging na q19).\n\n## Resiliência também é segurança\n- **Circuit breaker** (no shard-router já existe: threshold 5 falhas, open 30s) evita que uma dependência caída seja martelada e vire DoS interno; **bulkhead/sharding** contém blast radius de um cliente abusivo a uma célula.",
+    "detailedAnswer": "## Modelo de defesa em camadas\n\nAPI financeira é alvo: a proteção é **em profundidade**, não um único muro.\n\n### 1. Borda (API Gateway / Envoy)\n- **Authn/Authz**: token de acesso (JWT/OAuth) validado no gateway; **least privilege** — cada cliente recebe só o escopo necessário (consultar ≠ movimentar).\n- **Rate limiting / throttling**: limite por cliente/chave. No repo do ledger isso aparece com **Envoy fazendo rate limit** e **Kong como gateway**. Protege de abuso e de tempestade de retries.\n\n### 2. Validação de entrada em TODA borda\n- Rejeitar cedo, com **erro tipado**, qualquer payload inválido (valor negativo, moeda errada, conta inexistente). Nunca deixar input não-validado propagar para o domínio. Query **sempre parametrizada**, nunca concatenar SQL.\n\n### 3. Idempotência (a defesa que mais gente esquece)\n- Toda operação de movimentação carrega uma **idempotency key** (ou `movimentacao_id`). Se o cliente reenvia por timeout/retry, o sistema reconhece a chave e **não debita de novo** — devolve o resultado da primeira execução. No ledger isso é garantido com `movimentacao_id` único nos read models e `INSERT IF NOT EXISTS` (Mongo ignora erro de chave duplicada 11000; Scylla usa LWT). Sem isso, um retry vira prejuízo real. **Retry seguro não é apenas 'consultar se a key existe':** duas tentativas concorrentes passam juntas pelo `exists()`; a disputa deve ser arbitrada atomicamente por UNIQUE/conditional write antes do efeito — deep-dive dos quatro caminhos (nova, replay, conflito, em andamento) na **q36** e no pattern *Idempotent Request*.\n\n### 4. Consistência transacional na fonte\n- A decisão de débito **valida saldo e limite dentro da transação ACID** do ledger (abre txn → persiste evento com versão/optimistic lock → lê saldo → calcula → valida regra → commit → publica). Nunca autorizar lendo de read model eventual.\n\n### 5. Segredos e auditoria\n- **Zero credencial hardcoded**; segredo vem de env/secret manager fora do git. **Redatar PII/segredo em log**. Registrar quem fez o quê (ver audit logging na q19).\n\n## Resiliência também é segurança\n- **Circuit breaker** (no shard-router já existe: threshold 5 falhas, open 30s) evita que uma dependência caída seja martelada e vire DoS interno; **bulkhead/sharding** contém blast radius de um cliente abusivo a uma célula.",
     "mentalModel": "Cebola de camadas concêntricas. De fora para dentro: 'Auth + escopo mínimo' → 'Rate limit / throttle' → 'Validação de input (rejeita cedo)' → 'Idempotency key' → 'Transação ACID valida saldo/limite' → núcleo 'Event Store'. Setas de retry batendo na camada de idempotência e sendo absorvidas (não duplicam).",
     "patterns": [
       "api-gateway",
       "idempotent-consumer",
       "circuit-breaker",
       "bulkhead",
-      "audit-logging"
+      "audit-logging",
+      "idempotent-request"
     ],
     "risks": [
       "Falta de idempotência: um retry de timeout debita o cliente duas vezes",
@@ -1294,7 +1561,8 @@
     "diagrams": [
       "api-gateway-vs-bff",
       "transactional-api-flow",
-      "financial-movement"
+      "financial-movement",
+      "financial-http-idempotency"
     ],
     "sourceRefs": [
       {
@@ -1321,6 +1589,13 @@
         "locator": "patterns/communication-style/idempotent-consumer.html",
         "url": "https://microservices.io/patterns/communication-style/idempotent-consumer.html"
       }
+    ],
+    "relatedQuestions": [
+      "q36"
+    ],
+    "failureModes": [
+      "missing-idempotency",
+      "retry-storm"
     ]
   },
   {
@@ -1794,6 +2069,42 @@
         "locator": "patterns/data/cqrs.html",
         "url": "https://microservices.io/patterns/data/cqrs.html"
       }
+    ],
+    "failureModes": [
+      "connection-pool-exhaustion",
+      "hot-key-partition",
+      "no-backpressure",
+      "cache-stampede"
+    ],
+    "expectedSignals": [
+      "Mudança de gargalo por degrau",
+      "Estimativas por degrau",
+      "Particionamento quando escrita não cabe"
+    ],
+    "strongSignals": [
+      "Nomeia o failure mode de cada degrau",
+      "Capacidade útil vs total",
+      "Custo operacional da complexidade adicionada"
+    ],
+    "redFlags": [
+      "Mesma arquitetura para 100 e 10.000 TPS sem justificar",
+      "Microsserviços/Kafka desde o primeiro degrau sem requisito"
+    ],
+    "followUps": [
+      {
+        "question": "Em 10.000 TPS, o que quebra primeiro se o banco ficar 10× mais lento por 5 minutos?",
+        "answer": "Tempo de posse das conexões explode: pool exhaustion, retries e cascata; mitigação com load shedding, circuit breaker e fila com backpressure."
+      }
+    ],
+    "rubricDimensions": [
+      "requirements",
+      "capacity",
+      "architecture",
+      "data-consistency",
+      "reliability",
+      "trade-offs",
+      "observability",
+      "communication"
     ]
   },
   {
@@ -1866,6 +2177,32 @@
         "locator": "p.620",
         "note": "ponto saudável de CPU em ~80-85%; filas crescem antes de 100%"
       }
+    ],
+    "failureModes": [
+      "connection-pool-exhaustion",
+      "no-backpressure"
+    ],
+    "expectedSignals": [
+      "L = λ × W aplicado",
+      "Ponto de saturação antes de 100% de utilização"
+    ],
+    "strongSignals": [
+      "Relaciona W com tempo de posse de conexão",
+      "Backlog = (λ − μ) × t"
+    ],
+    "redFlags": [
+      "Dimensionar por média sem variabilidade"
+    ],
+    "followUps": [
+      {
+        "question": "Com 20 conexões e queries de 50 ms, qual a vazão teórica? E se a query for a 15 s?",
+        "answer": "≈ 20/0,05 = 400 ops/s; a 15 s, ≈ 1,3 ops/s — o pool não ficou pequeno, o W explodiu."
+      }
+    ],
+    "rubricDimensions": [
+      "capacity",
+      "reliability",
+      "communication"
     ]
   },
   {
@@ -2020,7 +2357,42 @@
         "source": "microservices.io",
         "locator": "patterns/data/database-per-service.html",
         "url": "https://microservices.io/patterns/data/database-per-service.html"
+      },
+      {
+        "kind": "reference",
+        "source": "Amazon DynamoDB docs — Using write sharding to distribute workloads evenly",
+        "locator": "docs.aws.amazon.com/amazondynamodb/latest/developerguide/bp-partition-key-sharding.html",
+        "note": "Sufixo aleatório vs calculado",
+        "url": "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/bp-partition-key-sharding.html"
       }
+    ],
+    "failureModes": [
+      "hot-key-partition",
+      "no-backpressure"
+    ],
+    "expectedSignals": [
+      "Tensão ordem vs distribuição",
+      "Chave de alta cardinalidade",
+      "Sub-chaveamento com custo"
+    ],
+    "strongSignals": [
+      "Lag por partição para detectar hotspot",
+      "Diferencia hot key de leitura e escrita",
+      "Impacto em ordem e agregação"
+    ],
+    "redFlags": [
+      "Sufixo aleatório para contador/saldo sem discutir exatidão"
+    ],
+    "followUps": [
+      {
+        "question": "E se uma única chave receber 40% do tráfego?",
+        "answer": "O shard/partição dela satura sozinho: replicar leitura, dividir escrita (perdendo ordem estrita) ou isolar a entidade."
+      }
+    ],
+    "rubricDimensions": [
+      "data-consistency",
+      "capacity",
+      "trade-offs"
     ]
   },
   {
@@ -2341,6 +2713,33 @@
         "locator": "statement/consumer.go",
         "url": "https://github.com/msfidelis/event-source-distributed-ledger"
       }
+    ],
+    "relatedQuestions": [
+      "q02",
+      "q35",
+      "q36"
+    ],
+    "failureModes": [
+      "missing-idempotency"
+    ],
+    "expectedSignals": [
+      "Duplicata é normal",
+      "EOS não cobre sink externo",
+      "Mesma chave em todas as camadas"
+    ],
+    "strongSignals": [
+      "Custo por camada (WCU, pré-filtro)",
+      "Reconciliação ponta a ponta"
+    ],
+    "redFlags": [
+      "Hash cego de todos os campos",
+      "Chaves diferentes por camada"
+    ],
+    "rubricDimensions": [
+      "data-consistency",
+      "capacity",
+      "trade-offs",
+      "observability"
     ]
   },
   {
@@ -2517,6 +2916,631 @@
         "source": "morling.dev",
         "locator": "On idempotency keys",
         "url": "https://morling.dev/blog/on-idempotency-keys/"
+      }
+    ],
+    "relatedQuestions": [
+      "q02",
+      "q36",
+      "q31"
+    ],
+    "failureModes": [
+      "missing-idempotency"
+    ],
+    "keywords": [
+      "mensagem entregue mais de uma vez",
+      "evento duplicado no consumidor",
+      "at-least-once duplicata"
+    ]
+  },
+  {
+    "id": "q36",
+    "question": "Como você garante idempotência em uma API financeira quando o cliente pode repetir a mesma requisição por timeout, double-click ou retry concorrente?",
+    "difficulty": "senior",
+    "shortAnswer": "Trato o POST como uma intenção que pode chegar mais de uma vez. O cliente envia uma Idempotency-Key com escopo definido; o servidor calcula o fingerprint da intenção normalizada e faz o claim atômico da chave por UNIQUE/conditional write ANTES do efeito — nunca `exists()` seguido de `insert`. A vencedora executa e grava o resultado na mesma transação; mesma chave + mesma intenção recebe replay sem novo efeito, mesma chave + intenção diferente é conflito, e o contrato define o que acontece enquanto a primeira ainda processa. Com retenção e métricas de replay/conflict.",
+    "detailedAnswer": "## 1. O problema: a mesma intenção atravessa a rede duas vezes\n\n```text\nPOST /transactions\nIdempotency-Key: abc123\n{ \"amount\": \"500.00\", \"currency\": \"BRL\", \"destinationAccount\": \"987\" }\n```\n\n```text\nClient ── POST abc123 ──▶ API ── debita R$500 ──▶ DB (commit)\nClient ◀──────X───────── API        (resposta perdida)\nClient: \"deu timeout\" → retry ↓\nClient ── POST abc123 ──▶ API   ... sem idempotência: debita de novo\nR$500 + R$500 = DOUBLE CHARGE\n```\n\nO ponto central: **o cliente não sabe** se a primeira tentativa não chegou, falhou, ou **chegou, executou e só a resposta se perdeu**. Duplo clique, retry de SDK e retry de gateway produzem a mesma situação. A única estratégia segura para o cliente é repetir **a mesma intenção com a mesma chave**; a responsabilidade de não repetir o efeito é do servidor.\n\n## 2. Os quatro caminhos (não é só \"existe / não existe\")\n\n**Caso A — chave nova.** `key nova + fingerprint novo → claim atômico → processa → débito → persiste resultado → COMPLETED`. Resposta normal (ex.: `201 Created`).\n\n**Caso B — mesma chave + mesma intenção.** Retry semanticamente equivalente, mesmo que o JSON venha diferente:\n\n```json\n{ \"amount\": \"500.00\", \"currency\": \"BRL\" }\n{ \"currency\": \"BRL\", \"amount\": \"500.000\" }\n```\n\n`same key + same fingerprint + COMPLETED → NÃO processa de novo → replay do resultado anterior`. **O efeito de negócio não acontece de novo.** Qual status devolver é **decisão de contrato**: uma estratégia forte é gravar `response_status`, `response_body` e headers relevantes e reproduzir a resposta original (primeira execução `201` → retry `201` com a mesma representação, sem novo efeito) — a Stripe documenta que guarda status e corpo da primeira requisição, inclusive erros. Uma API também pode definir `200` no replay; o que não pode é ser implícito ou inconsistente.\n\n**Caso C — mesma chave + intenção diferente.** `abc123, amount=500` e depois `abc123, amount=900`. **Isso não é replay: é reutilização incorreta da chave.** `same key + different fingerprint → CONFLITO`. Um `409 Conflict` (ou `422`) é apropriado quando é o contrato da API — o draft da IETF sobre `Idempotency-Key`, hoje **expirado e não padronizado**, sugeria `422` para esse caso. **Nunca** devolver silenciosamente o resultado da operação de R$ 500 para quem pediu R$ 900: o cliente acharia que transferiu R$ 900.\n\n**Caso D — duas requests simultâneas com a mesma chave.** É o caso que separa conhecimento superficial de produção:\n\n```java\nif (!repository.existsByKey(key)) {   // A: false     B: false\n    process();                         // A: debita    B: debita\n}\n```\n\n```text\nRequest A                  Request B\nexists(key)? → false       exists(key)? → false\nprocess → debit 500        process → debit 500\n```\n\n`existsByKey()` é **observação**, não exclusão mútua: entre o CHECK e o ACT existe uma janela concorrente. Nenhum dos dois viu o outro.\n\n## 3. Atomic claim: a constraint é o árbitro\n\nA garantia forte fica no armazenamento transacional:\n\n```sql\nCREATE TABLE idempotency_record (\n  client_id            VARCHAR(64)  NOT NULL,\n  endpoint             VARCHAR(128) NOT NULL,\n  idempotency_key      VARCHAR(255) NOT NULL,\n  request_fingerprint  CHAR(64)     NOT NULL,   -- SHA-256 hex\n  status               VARCHAR(16)  NOT NULL,   -- PROCESSING | COMPLETED | FAILED\n  transaction_id       UUID,\n  response_status      INTEGER,\n  response_body        JSONB,\n  created_at           TIMESTAMPTZ  NOT NULL,\n  updated_at           TIMESTAMPTZ  NOT NULL,\n  expires_at           TIMESTAMPTZ,\n  UNIQUE (client_id, endpoint, idempotency_key)\n);\n\nINSERT INTO idempotency_record (client_id, endpoint, idempotency_key, request_fingerprint, status, created_at, updated_at, expires_at)\nVALUES ($1, $2, $3, $4, 'PROCESSING', now(), now(), now() + interval '24 hours')\nON CONFLICT (client_id, endpoint, idempotency_key) DO NOTHING\nRETURNING idempotency_key;   -- 0 linhas = alguém já fez o claim\n```\n\n**UNIQUE + INSERT atômico**: só uma request consegue o claim daquela identidade; as concorrentes detectam o conflito (o `RETURNING` não devolve linha para o insert ignorado) e passam a tratar o registro existente. No PostgreSQL, se o vencedor ainda não comitou, o segundo insert **espera** o desfecho daquela transação: se ela comitar, há conflito; se abortar, não há — ou seja, o perdedor nunca decide em cima de um estado pela metade. A aplicação **pode** fazer um lookup antes (inclusive em cache) como otimização, mas **a correção não depende de check-then-act**: a constraint/conditional write é o árbitro final.\n\n## 4. Escopo da chave\n\n`customer A, key=payment-001` e `customer B, key=payment-001` **não** são necessariamente a mesma operação. Escopos típicos: `(client_id, endpoint, idempotency_key)` ou `(tenant_id, operation_type, idempotency_key)`. O escopo deve **impedir colisão entre operações/clientes independentes sem permitir que a mesma tentativa seja reinterpretada** (por exemplo, por chegar por uma rota equivalente).\n\n## 5. Fingerprint da intenção (não do corpo bruto)\n\n`SHA-256(raw HTTP body)` **não** é regra: JSON equivalente pode mudar ordem de propriedades, whitespace, representação numérica e campos default omitidos. Pipeline: `Request → parse → normalizar a intenção de domínio → representação canônica → SHA-256`.\n\n```text\namountMinorUnits = 50000   currency = BRL   destinationAccount = 987   operation = TRANSFER\nSHA-256(\"operation=TRANSFER|amount=50000|currency=BRL|destination=987\")\n```\n\n**Dinheiro:** nunca `double`/`float`. Em Java, `BigDecimal` (construído a partir de `String`) ou unidades mínimas em `long`. Cuidado: `BigDecimal.equals` considera a escala (`100.5` ≠ `100.50`), enquanto `compareTo` os considera iguais — normalize para a escala da moeda (BRL: 2 casas) antes do hash. `100.5`, `100.50` e `100.5000` podem ser a mesma intenção **segundo a regra da moeda**; um valor com casas além do permitido deve ser **rejeitado na validação**, não arredondado em silêncio.\n\n**RFC 8785 (JCS)** é um mecanismo formal de canonicalização de JSON para hash/assinatura (ordena propriedades, remove whitespace, serializa números no modelo IEEE-754 do ECMAScript). Mas ela **não substitui** a canonicalização **semântica** do domínio: a própria RFC recomenda levar como string números sem lugar natural no JSON — e `\"500.00\"` e `\"500.000\"` como strings canonicalizam diferente embora sejam a mesma intenção financeira.\n\n## 6. Estados do registro — dois desenhos\n\n**Desenho simples (tudo no mesmo PostgreSQL).** Se claim + débito + registro da transação + resultado cabem na **mesma transação**:\n\n```text\nBEGIN\n  claim key (INSERT ... ON CONFLICT DO NOTHING)\n  debit account\n  insert transaction\n  store result (status, body) → COMPLETED\nCOMMIT\n```\n\nCrash **antes** do COMMIT → rollback de tudo (nenhum débito, nenhuma chave). Crash **depois** → o resultado existe e o retry faz replay. Um concorrente fica esperando o índice único e, após o commit, faz replay. É a solução mais forte quando todo o efeito relevante está no mesmo banco.\n\n**Desenho com efeito externo/longo** (antifraude, outro serviço, gateway, broker, processamento assíncrono): o efeito não cabe na transação, então o estado precisa ser explícito: `PROCESSING → COMPLETED` ou `PROCESSING → FAILED`. O claim `PROCESSING` é comitado sozinho (para os outros enxergarem), o efeito externo acontece, e o resultado é gravado depois. Se chega uma segunda request enquanto a primeira está `PROCESSING`, o contrato decide **deterministicamente** entre: esperar um tempo curto, responder \"em andamento\" (`202` + polling), ou erro de requisição em progresso (o draft expirado sugeria `409`; a Stripe não salva resultado para a requisição que conflita com outra em execução e permite repeti-la). Não existe resposta universal — o invariante é **não executar o efeito de novo**. Registros presos em `PROCESSING` (dono caiu) precisam de expiração/lease e de **reconciliação com o sistema externo** antes de qualquer reexecução — de preferência propagando uma chave de idempotência derivada para o provedor externo.\n\n## 7. Crash windows (staff)\n\n```text\nreserve key → debit → CRASH → ?\n```\n\nO que acontece se a aplicação cair **entre o efeito financeiro e a gravação do resultado idempotente**? Se forem transações separadas, fica `debit commitado + idempotency record perdido (ou preso)` e o retry duplica (ou fica bloqueado para sempre). Regra: **a marca de idempotência e o efeito devem compartilhar a mesma atomicidade sempre que possível** (desenho simples). Quando o efeito cruza sistemas, surge o problema de **dual-write** (q07): publique o efeito via **Transactional Outbox** na mesma transação, trate a sequência longa como **Saga** e garanta **Idempotent Consumer** do outro lado (q02/q35), porque o outbox entrega at-least-once.\n\n## 8. ID gerado pela aplicação (detalhe secundário)\n\n`UUID transactionId = UUID.randomUUID()` faz o `transaction_id` existir **antes** do INSERT, o que simplifica gravar o resultado e referenciar a transação no registro de idempotência. O contraste correto é \"ID gerado pela aplicação vs IDs cujo valor só fica disponível após persistência\" (ex.: identity retornada pelo INSERT) — não \"sequence só gera ID depois do INSERT\", o que não é universal (uma sequence pode ser consumida antes). E **UUID sozinho não cria idempotência**: um UUID novo a cada retry é, justamente, uma chave diferente.\n\n## 9. Retenção (TTL)\n\nA tabela não precisa crescer para sempre: `created_at`/`expires_at` e uma **janela contratual** (\"idempotência garantida por N horas/dias\"). Depois dela a chave pode ser removida e um reuso futuro pode ser tratado como nova operação — conforme o contrato (a Stripe, por exemplo, pode remover chaves com pelo menos 24 h; isso é decisão dela, não regra universal). Retenção **longa** → mais proteção contra retry tardio e mais storage; **curta** → menos storage e retry muito tardio escapando da janela. A retenção precisa ser **maior que a janela real de retries** de todos os clientes (SDK, filas de reenvio, jobs noturnos).\n\n## 10. Observabilidade\n\nMétricas: `idempotency.new.count`, `idempotency.replay.count`, `idempotency.conflict.count`, `idempotency.in_progress.count`, `idempotency.expired.count`; transações criadas vs requests aceitos; mutações de saldo; conflitos de chave duplicada no banco; latência de lookup/claim; duração do processamento. Logs estruturados com `trace_id`, `client_id`, **hash/redação da chave**, `transaction_id`, fingerprint e `idempotency_result` (new/replay/conflict/in_progress) — **sem payload financeiro nem PII** no log.\n\n## 11. Como provar (testes com PostgreSQL real, ex.: Testcontainers)\n\nBanco em memória não reproduz a espera do índice único nem o isolamento real; use o PostgreSQL de verdade.\n\n1. **Nova chave** — key A + payload X → resposta normal (201), **1 transação**, saldo alterado **uma vez**.\n2. **Replay** — key A + payload X repetido N vezes → mesma operação lógica, **1 transação**, saldo alterado uma vez, resultado original reproduzido.\n3. **Chave reutilizada com payload diferente** — key A + X, depois key A + Y → **conflito**, 1 transação, saldo refletindo só X.\n4. **Chaves diferentes + mesmo payload** — key A + X e key B + X → **2 operações** (intenções independentes; não deduplicar por payload).\n5. **Concorrência** — 20 requests simultâneas com o mesmo cliente, endpoint, chave e payload → **gate final: transactions = 1 e saldo mutado 1×**; as outras replayam/aguardam/recebem in-progress conforme o contrato, nenhuma produz efeito extra. É o teste que prova que não existe a corrida `exists → process`.\n6. **Concorrência com payload diferente** — key A amount 500 e key A amount 900 simultâneas → uma intenção vence o claim, a outra é conflito, **nunca as duas**.\n7. **Rollback** — falha forçada antes do commit → saldo original, contagem de transações original e estado de idempotência coerente (sem chave presa, sem débito parcial).\n\n## 12. Onde isso se encaixa\n\n```text\nHTTP client retry → q36 Idempotent Request\n      ↓ efeito vira mensagem/evento\nq02 / q35 Idempotent Consumer\n      ↓ pipeline distribuído de alto throughput\nq31 deduplicação ponta a ponta\n\nq36 → Transactional Outbox → at-least-once → Idempotent Consumer\n```",
+    "mentalModel": "Uma catraca com um único bilhete por (cliente, endpoint, chave). Quatro pessoas chegam com o mesmo bilhete: a primeira passa (claim) e faz a compra; quem chega com o bilhete E o mesmo pedido recebe a nota fiscal já emitida (replay); quem chega com o mesmo bilhete e outro pedido é barrado (conflito); quem chega enquanto a primeira ainda está no caixa espera ou recebe 'em andamento'. A catraca é a constraint UNIQUE — não um funcionário olhando se o bilhete 'parece usado' (existsByKey).",
+    "patterns": [
+      "idempotent-request",
+      "idempotent-consumer",
+      "transactional-outbox",
+      "saga",
+      "api-gateway"
+    ],
+    "risks": [
+      "❌ existsByKey() → process() como garantia de concorrência (janela check-then-act)",
+      "❌ armazenar a key depois do débito em uma transação separada",
+      "❌ usar payload bruto como hash sem canonicalização",
+      "❌ usar apenas o payload como identidade e deduplicar duas compras legítimas iguais",
+      "❌ mesma key com payload diferente retornar silenciosamente o primeiro resultado",
+      "❌ achar que UUID sozinho cria idempotência",
+      "❌ confiar em retry sem proteger side effects",
+      "❌ guardar idempotency keys eternamente sem política",
+      "❌ TTL menor que a janela real de retries",
+      "❌ logar payload financeiro sensível inteiro",
+      "❌ tratar HTTP idempotency e consumer idempotency como exatamente a mesma implementação"
+    ],
+    "tradeOffs": [
+      {
+        "dimension": "Escopo da chave",
+        "pro": "(client_id, endpoint, key) evita colisão entre clientes/operações independentes",
+        "con": "Escopo errado reinterpreta tentativas independentes como iguais ou deixa a mesma tentativa escapar por outra rota"
+      },
+      {
+        "dimension": "Transação única vs PROCESSING explícito",
+        "pro": "Mesma transação: claim + efeito + resultado atômicos, sem estado preso",
+        "con": "Efeito externo não cabe na transação: exige PROCESSING, lease/recuperação, outbox e reconciliação"
+      },
+      {
+        "dimension": "Replay do resultado armazenado",
+        "pro": "Cliente recebe a mesma resposta (ex.: 201) e o contrato é previsível",
+        "con": "Guarda corpo de resposta (espaço, dados sensíveis); a escolha de status no replay precisa ser explícita"
+      },
+      {
+        "dimension": "Retenção",
+        "pro": "Longa protege retries tardios",
+        "con": "Mais storage; curta deixa retry muito tardio virar operação nova"
+      },
+      {
+        "dimension": "Fingerprint semântico vs JSON canônico",
+        "pro": "Semântico reconhece a mesma intenção financeira (500.00 = 500.000 em centavos)",
+        "con": "Exige código de normalização por operação e versionamento quando o contrato muda"
+      }
+    ],
+    "repoExample": "O `msc-transactions-api` declara suporte a idempotência nas movimentações e o fluxo `transactional-debit-credit` desta base descreve checar a chave antes da transação. A leitura do repositório foi por README (OQ-1), então não afirmo como a concorrência é tratada lá; o desenho desta resposta (claim por UNIQUE antes do efeito, na mesma transação do débito no PostgreSQL) é o que resiste ao Caso D. O `event-source-distributed-ledger` mostra o lado do consumidor: `movimentacao_id` único e escrita condicional — o par q02/q35.",
+    "howToAnswerInInterview": "Resposta forte (~1 min): 'Para uma operação financeira eu trato POST como uma intenção que pode atravessar a rede mais de uma vez. O cliente envia uma Idempotency-Key com escopo definido. No servidor eu calculo um fingerprint da intenção normalizada e tento reservar a key atomicamente usando uma unique constraint ou conditional write — nunca dependo de exists() seguido de insert, porque duas requests concorrentes podem passar pelo check. A request vencedora executa o efeito e persiste o resultado dentro da mesma fronteira transacional sempre que possível. Um replay com a mesma key e mesmo fingerprint recebe o resultado anterior sem novo efeito; a mesma key com fingerprint diferente é conflito. Também defino retenção, comportamento para PROCESSING e métricas de replay/conflict.' Depois eleve para staff: 'Se o efeito atravessa outro sistema, a atomicidade local deixa de resolver tudo; aí conecto com Outbox/Saga e idempotência também nos consumidores.' Desenhe os quatro caminhos e o Caso D com dois timelines lado a lado.",
+    "keywords": [
+      "cliente clicou duas vezes e cobrou duas vezes",
+      "cobrança duplicada",
+      "double charge",
+      "retry depois de timeout",
+      "mesma idempotency key payload diferente",
+      "same idempotency key different payload",
+      "duas requests simultâneas mesma chave",
+      "Idempotency-Key",
+      "check then act idempotency",
+      "existsByKey race",
+      "request repetida pagamento",
+      "atomic claim",
+      "replay 201"
+    ],
+    "productionExample": "Exemplo didático: 100 mil pagamentos/dia, timeout do app 10 s, pico do adquirente a 12 s em 1% das chamadas → ~1.000 retries/dia do mesmo POST. Sem idempotência: até ~1.000 cobranças duplicadas/dia. Com Idempotency-Key + claim atômico: ~1.000 `idempotency.replay.count`, 0 débitos extras — o mesmo incidente de latência vira apenas uma métrica de replay subindo.",
+    "followUps": [
+      {
+        "question": "(Staff) E se o débito chama um gateway externo que leva 8 s?",
+        "answer": "O efeito não cabe na transação local: claim PROCESSING comitado, chamada ao gateway com uma chave de idempotência derivada, resultado gravado em seguida; concorrentes recebem 'em andamento' conforme contrato; registros presos em PROCESSING expiram por lease e são reconciliados consultando o gateway antes de qualquer reexecução."
+      },
+      {
+        "question": "(Staff) O que acontece se a aplicação cair entre o débito e a gravação do resultado?",
+        "answer": "Se estiverem em transações separadas, o débito fica sem marca e o retry duplica (ou a chave fica presa). Por isso claim + efeito + resultado na mesma transação sempre que possível; quando cruza sistemas, outbox na mesma transação e consumidor idempotente do outro lado."
+      },
+      {
+        "question": "(Staff) Por que não SHA-256 do corpo bruto?",
+        "answer": "Ordem de campos, whitespace, representação numérica e defaults mudam o hash sem mudar a intenção. Normalize a intenção de domínio (valor em centavos, moeda, destino, operação) e só então faça o hash; RFC 8785 ajuda a canonicalizar JSON, mas não resolve equivalência semântica de dinheiro."
+      },
+      {
+        "question": "(Staff) Qual status devolver no replay: 200 ou 201?",
+        "answer": "Decisão de contrato. Reproduzir a resposta original gravada (201 + mesmo corpo) é forte e previsível; 200 no replay também é válido se documentado. Inaceitável é variar sem regra."
+      },
+      {
+        "question": "(Staff) Idempotency-Key tem que estar no header?",
+        "answer": "Header é a convenção natural porque a chave é metadado da tentativa, não dado de negócio — mas a propriedade fundamental é o servidor reconhecer a mesma intenção; um identificador de negócio gerado pelo cliente e protegido por UNIQUE atinge o mesmo objetivo."
+      },
+      {
+        "question": "(Staff) Como a idempotência continua depois da API?",
+        "answer": "q36 garante um efeito na borda; o efeito vira evento via outbox (at-least-once), e cada consumidor precisa ser idempotente (q02/q35); em pipeline de alto throughput, a mesma chave ancora a deduplicação ponta a ponta (q31)."
+      }
+    ],
+    "redFlags": [
+      "existsByKey() → process() como garantia de concorrência",
+      "Gravar a chave depois do débito em transação separada",
+      "Hash do payload bruto sem canonicalização",
+      "Deduplicar só pelo payload (duas compras legítimas iguais viram uma)",
+      "Mesma key com payload diferente devolvendo o primeiro resultado",
+      "'UUID resolve' sem chave estável entre retries",
+      "Sem política de retenção ou TTL menor que a janela de retries",
+      "Logar payload financeiro sensível",
+      "Tratar idempotência HTTP e de consumidor como a mesma implementação"
+    ],
+    "strongSignals": [
+      "Client-generated idempotency key",
+      "Scope da key",
+      "Semantic fingerprint",
+      "Atomic claim",
+      "DB UNIQUE / conditional write",
+      "Race condition do check-then-act",
+      "Same key + same intent = replay",
+      "Same key + different intent = conflict",
+      "Transaction boundary",
+      "Stored original result",
+      "Concorrência (teste com N requests simultâneas)",
+      "Retention/TTL",
+      "Observability",
+      "Outbox quando há side effect externo",
+      "Idempotent Consumer downstream"
+    ],
+    "whatToMonitor": [
+      "idempotency.new.count / replay.count / conflict.count / in_progress.count / expired.count",
+      "transações criadas vs requests aceitos",
+      "mutações de saldo por operação lógica",
+      "conflitos de chave duplicada no banco",
+      "latência do lookup/claim e duração do processamento",
+      "registros presos em PROCESSING além do lease"
+    ],
+    "failureModes": [
+      "missing-idempotency",
+      "retry-storm"
+    ],
+    "relatedQuestions": [
+      "q18",
+      "q02",
+      "q35",
+      "q31",
+      "q07"
+    ],
+    "relatedTopics": [
+      "resilience-patterns",
+      "sync-communication",
+      "cap-acid-base",
+      "messaging-streaming"
+    ],
+    "diagrams": [
+      "financial-http-idempotency",
+      "transactional-api-flow"
+    ],
+    "sourceRefs": [
+      {
+        "kind": "reference",
+        "source": "Stripe API — Idempotent requests",
+        "locator": "docs.stripe.com/api/idempotent_requests",
+        "note": "Status e corpo da primeira requisição salvos e devolvidos (inclusive erros); parâmetros diferentes geram erro; resultado não salvo em conflito com requisição concorrente (pode repetir); remoção após ≥24 h e reuso vira nova requisição; V4 UUID; até 255 caracteres; sem dado sensível na chave",
+        "url": "https://docs.stripe.com/api/idempotent_requests"
+      },
+      {
+        "kind": "reference",
+        "source": "Stripe Blog — Designing robust and predictable APIs with idempotency (B. Leach, 2017)",
+        "locator": "stripe.com/blog/idempotency",
+        "note": "Falha ambígua: conexão cai depois de o servidor concluir; retry seguro com Idempotency-Key",
+        "url": "https://stripe.com/blog/idempotency"
+      },
+      {
+        "kind": "reference",
+        "source": "PostgreSQL docs — INSERT ... ON CONFLICT",
+        "locator": "www.postgresql.org/docs/current/sql-insert.html",
+        "note": "INSERT ... ON CONFLICT DO NOTHING com arbiter unique index; RETURNING não devolve linhas ignoradas",
+        "url": "https://www.postgresql.org/docs/current/sql-insert.html"
+      },
+      {
+        "kind": "reference",
+        "source": "PostgreSQL docs — Index Uniqueness Checks",
+        "locator": "www.postgresql.org/docs/current/index-unique-checks.html",
+        "note": "Insert conflitante com transação não comitada espera: commit → conflito; abort → sem conflito",
+        "url": "https://www.postgresql.org/docs/current/index-unique-checks.html"
+      },
+      {
+        "kind": "reference",
+        "source": "RFC 8785 — JSON Canonicalization Scheme (Informational)",
+        "locator": "www.rfc-editor.org/rfc/rfc8785.html",
+        "note": "JCS: ordenação de propriedades, sem whitespace, números no modelo IEEE-754/ECMAScript; números sem lugar natural (ex.: monetários) como string — por isso não substitui normalização semântica",
+        "url": "https://www.rfc-editor.org/rfc/rfc8785.html"
+      },
+      {
+        "kind": "reference",
+        "source": "Java SE 21 API — java.math.BigDecimal",
+        "locator": "docs.oracle.com/en/java/javase/21/docs/api/java.base/java/math/BigDecimal.html",
+        "note": "equals considera escala; compareTo não; construtor por String é previsível",
+        "url": "https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/math/BigDecimal.html"
+      },
+      {
+        "kind": "reference",
+        "source": "IETF HTTPAPI — The Idempotency-Key HTTP Header Field (Internet-Draft EXPIRADO, não é RFC)",
+        "locator": "datatracker.ietf.org/doc/draft-ietf-httpapi-idempotency-key-header/",
+        "note": "Internet-Draft EXPIRADO, não é RFC: sugeria 422 para conteúdo diferente e 409 para requisição em processamento — citado só como referência histórica",
+        "url": "https://datatracker.ietf.org/doc/draft-ietf-httpapi-idempotency-key-header/"
+      },
+      {
+        "kind": "reference",
+        "source": "microservices.io",
+        "locator": "patterns/data/transactional-outbox.html",
+        "note": "Outbox quando o efeito precisa virar mensagem na mesma transação",
+        "url": "https://microservices.io/patterns/data/transactional-outbox.html"
+      },
+      {
+        "kind": "reference",
+        "source": "microservices.io",
+        "locator": "patterns/communication-style/idempotent-consumer.html",
+        "note": "Idempotência do lado do consumidor",
+        "url": "https://microservices.io/patterns/communication-style/idempotent-consumer.html"
+      },
+      {
+        "kind": "pdf",
+        "source": "System Design Workbook",
+        "locator": "p.504",
+        "note": "Retry exige idempotência; chave de idempotência verificada antes de processar"
+      }
+    ],
+    "expectedSignals": [
+      "Chave de idempotência gerada pelo cliente com escopo",
+      "Claim atômico por UNIQUE/conditional write antes do efeito",
+      "Replay para mesma intenção e conflito para intenção diferente"
+    ],
+    "failureInjections": [
+      {
+        "injection": "Duas requests com a mesma chave chegam ao mesmo tempo e a implementação usa existsByKey antes de processar.",
+        "expectedReasoning": "Ambas veem false e debitam; só um claim atômico (UNIQUE + INSERT ON CONFLICT) arbitra."
+      },
+      {
+        "injection": "A aplicação cai entre o débito e a gravação do resultado idempotente.",
+        "expectedReasoning": "Se estiverem em transações separadas, o retry duplica ou a chave fica presa; claim + efeito + resultado na mesma transação, ou outbox quando cruza sistemas."
+      },
+      {
+        "injection": "O cliente reutiliza abc123 com R$ 900 depois de R$ 500.",
+        "expectedReasoning": "Fingerprint diferente → conflito explícito; nunca devolver o resultado dos R$ 500."
+      }
+    ],
+    "acceptableSolutions": [
+      "Tabela idempotency_record com UNIQUE(client_id, endpoint, key) + INSERT ON CONFLICT e resultado na mesma transação do débito",
+      "Identificador de negócio gerado pelo cliente protegido por UNIQUE, com o mesmo contrato de replay/conflito",
+      "Estado PROCESSING explícito + lease + reconciliação quando há efeito externo"
+    ],
+    "decisionCriteria": [
+      "Todo o efeito cabe numa transação local? → desenho simples",
+      "Há efeito externo/longo? → PROCESSING + outbox/saga",
+      "Janela real de retries dos clientes → retenção"
+    ],
+    "rubricDimensions": [
+      "data-consistency",
+      "reliability",
+      "architecture",
+      "trade-offs",
+      "observability",
+      "communication"
+    ]
+  },
+  {
+    "id": "q37",
+    "question": "Como você implementaria o cache da página de produto de um e-commerce? (entrevista progressiva: 100k req/s, chave com 40% do tráfego, expiração e queda do Redis)",
+    "difficulty": "staff",
+    "shortAnswer": "Cache-aside com TTL e invalidação na escrita como base; em 100k req/s, cache em camadas (L1 local + Redis + CDN para o que é estático) dimensionado pelo hit ratio; para a chave com 40% do tráfego, réplicas do valor e cache local (hot key); na expiração, single-flight + stale-while-revalidate + jitter (stampede); e com o Redis fora, proteção da origem — limite de concorrência, degradação e L1 — porque a origem foi dimensionada para o regime com cache (avalanche).",
+    "detailedAnswer": "Esta pergunta é deliberadamente **progressiva**: cada etapa invalida parte da resposta anterior.\n\n## Etapa 1 — 'Como você implementaria cache?'\nCache-aside: lê do cache, no miss vai à origem e popula; TTL como rede de segurança e **invalidação na escrita** (atualizar preço/estoque apaga a chave). Evicção LRU/LFU com `maxmemory`. A resposta júnior para aqui.\n\n## Etapa 2 — 'E com 100k req/s?'\nA origem passa a depender do hit ratio: com 97% de hit ela vê 3k req/s; com 80%, 20k. **Cache virou capacidade**, não só otimização. Camadas: CDN para o conteúdo público cacheável, L1 em memória por pod com TTL curto e **limite de tamanho** (sem bound é vazamento de memória), Redis como L2 compartilhado. Métricas: hit ratio por prefixo, backend request rate, evictions.\n\n## Etapa 3 — 'E se uma única chave tiver 40% do tráfego?'\n40k req/s numa chave vão para um shard do Redis: **hot key**. Capacidade total do cluster não ajuda. Réplicas do valor (várias cópias da chave), L1 local absorvendo a maior parte e CDN com `stale-while-revalidate`. Se fosse escrita (contador), dividir a chave com custo de leitura agregada.\n\n## Etapa 4 — 'E quando essa chave expirar?'\nTaxa × tempo de recomputação: 40k req/s × 200 ms ≈ 8.000 recomputações iguais — **cache stampede**. Single-flight (Caffeine `get(key, loader)` no pod; lease distribuído se necessário), soft TTL servindo o valor anterior enquanto um único request recomputa e jitter/expiração probabilística. Trade-off: freshness vs proteção da origem — preço exibido tolera segundos; reserva de estoque não.\n\n## Etapa 5 — 'E se o Redis cair?'\nTodas as chaves viram miss: **avalanche**. A origem que aguentava 3k recebe 100k. L1 local segura parte; o resto precisa de **proteção explícita**: limite de concorrência nas rotas que recomputam, load shedding, circuit breaker para o Redis (falhar rápido em vez de esperar timeout em cada request), servir versão degradada/estática e reaquecer com taxa limitada. Retries dos clientes precisam de jitter e budget, senão viram retry storm.\n\n## O fio da meada\nCada etapa corresponde a um failure mode: memória sem limite → hot key → stampede → avalanche → retry storm/cascata. A resposta staff não é 'mais cache', é **conhecer o modo de falha de cada camada e a degradação desejada**.",
+    "mentalModel": "Uma escada de cinco degraus com um failure mode em cada: (1) cache-aside + TTL; (2) 100k → camadas e hit ratio como capacidade; (3) 40% numa chave → réplicas/L1/CDN; (4) expira → single-flight + stale; (5) Redis cai → proteger a origem e degradar.",
+    "patterns": [
+      "circuit-breaker",
+      "bulkhead",
+      "consistent-hashing"
+    ],
+    "risks": [
+      "Cache sem limite de tamanho no L1",
+      "TTL fixo e idêntico para chaves quentes",
+      "Origem dimensionada só para o regime com cache",
+      "Stale para dado que não tolera atraso",
+      "Retries sem jitter durante o cache frio"
+    ],
+    "tradeOffs": [
+      {
+        "dimension": "Freshness vs proteção da origem",
+        "pro": "Stale-while-revalidate elimina picos de recomputação",
+        "con": "Usuário vê preço/estoque alguns segundos atrasado"
+      },
+      {
+        "dimension": "L1 local",
+        "pro": "Absorve hot keys e sobrevive à queda do Redis",
+        "con": "Memória por pod e inconsistência entre pods"
+      },
+      {
+        "dimension": "Réplicas do valor quente",
+        "pro": "Divide carga de leitura",
+        "con": "Invalidação em N cópias"
+      }
+    ],
+    "repoExample": "O `msc-transactions-api` usa Redis como cache sobre PostgreSQL para saldo/limite; a discussão desta pergunta generaliza o cache-aside desse repositório para uma página pública de alto tráfego.",
+    "howToAnswerInInterview": "Responda cada etapa sem antecipar todas: o entrevistador quer ver você mudar o desenho quando o requisito muda. Em cada degrau, diga o mecanismo com um número (40k × 200 ms), a mitigação e o trade-off. Termine conectando os failure modes.",
+    "keywords": [
+      "entrevista progressiva de cache",
+      "cache página de produto",
+      "e se o redis cair",
+      "chave com 40% do tráfego"
+    ],
+    "productionExample": "Exemplo didático: 100k req/s, hit ratio 97% → origem vê 3k req/s; uma chave com 40% (40k req/s) e recomputação de 200 ms → ~8.000 queries iguais por expiração sem single-flight; Redis fora → origem recebe ~100k req/s contra capacidade de ~5k.",
+    "followUps": [
+      {
+        "question": "E com 100k req/s?",
+        "answer": "Hit ratio vira capacidade da origem; camadas L1/L2/CDN com limite de tamanho e métricas por prefixo."
+      },
+      {
+        "question": "E se um único key tiver 40% do tráfego?",
+        "answer": "Hot key: réplicas do valor, L1 local e CDN; escrita exigiria dividir a chave."
+      },
+      {
+        "question": "E quando expirar?",
+        "answer": "Stampede: single-flight + stale-while-revalidate + jitter."
+      },
+      {
+        "question": "E se o Redis cair?",
+        "answer": "Avalanche: L1, limite de concorrência, load shedding, circuit breaker para o Redis e degradação; reaquecer com taxa limitada."
+      }
+    ],
+    "redFlags": [
+      "'Aumento a memória do Redis' para qualquer etapa",
+      "Não perceber que a origem depende do hit ratio",
+      "Lock distribuído sem TTL",
+      "Nenhum plano para o Redis fora"
+    ],
+    "strongSignals": [
+      "Muda o desenho a cada restrição",
+      "Números em cada etapa",
+      "Nomeia hot key, stampede e avalanche pelo mecanismo",
+      "Define degradação desejada"
+    ],
+    "expectedSignals": [
+      "Cache-aside com invalidação",
+      "Limite de tamanho e evicção",
+      "Single-flight/stale na expiração",
+      "Proteção da origem sem cache"
+    ],
+    "failureInjections": [
+      {
+        "injection": "Redis indisponível por 10 minutos no pico.",
+        "expectedReasoning": "Origem recebe tráfego cheio; L1 + limite de concorrência + degradação + circuit breaker + reaquecimento controlado."
+      },
+      {
+        "injection": "Todos os pods reiniciam juntos por OOM do L1.",
+        "expectedReasoning": "Cache L1 sem limite; bound por tamanho; rolling restart; avalanche local."
+      }
+    ],
+    "acceptableSolutions": [
+      "Cache em camadas com single-flight e stale-while-revalidate",
+      "CDN para conteúdo público + Redis para dados personalizados com proteção da origem"
+    ],
+    "decisionCriteria": [
+      "Tolerância a dado atrasado por tipo de campo",
+      "Distribuição de acesso por chave",
+      "Capacidade da origem sem cache"
+    ],
+    "whatToMonitor": [
+      "hit ratio por prefixo e por chave quente",
+      "backend request rate",
+      "evictions e tamanho do L1",
+      "recomputações em voo",
+      "estado do circuit breaker do Redis"
+    ],
+    "failureModes": [
+      "cache-stampede",
+      "hot-key-partition",
+      "cache-avalanche",
+      "unbounded-cache",
+      "retry-storm"
+    ],
+    "relatedQuestions": [
+      "q10",
+      "q24",
+      "q38"
+    ],
+    "rubricDimensions": [
+      "requirements",
+      "capacity",
+      "architecture",
+      "data-consistency",
+      "reliability",
+      "trade-offs",
+      "observability",
+      "communication"
+    ],
+    "relatedTopics": [
+      "caching",
+      "resilience-patterns",
+      "capacity-queueing",
+      "sharding-partitioning"
+    ],
+    "diagrams": [
+      "fm-cache-stampede",
+      "fm-hot-partition"
+    ],
+    "sourceRefs": [
+      {
+        "kind": "pdf",
+        "source": "System Design Workbook",
+        "locator": "p.128-140",
+        "note": "Cache: TTL, evicção, cache distribuído, CDN e cache-aside"
+      },
+      {
+        "kind": "reference",
+        "source": "Amazon Builders' Library — Caching challenges and strategies",
+        "locator": "aws.amazon.com/builders-library/caching-challenges-and-strategies/",
+        "note": "Comportamento modal, request coalescing, soft TTL e negative caching",
+        "url": "https://aws.amazon.com/builders-library/caching-challenges-and-strategies/"
+      },
+      {
+        "kind": "reference",
+        "source": "Vattani, Chierichetti, Lowenstein — Optimal Probabilistic Cache Stampede Prevention (VLDB 2015)",
+        "locator": "www.vldb.org/pvldb/vol8/p886-vattani.pdf",
+        "note": "Stampede e expiração probabilística",
+        "url": "https://www.vldb.org/pvldb/vol8/p886-vattani.pdf"
+      },
+      {
+        "kind": "reference",
+        "source": "Nishtala et al. — Scaling Memcache at Facebook (NSDI 2013)",
+        "locator": "www.usenix.org/conference/nsdi13/technical-sessions/presentation/nishtala",
+        "note": "Leases e replicação de chaves quentes",
+        "url": "https://www.usenix.org/conference/nsdi13/technical-sessions/presentation/nishtala"
+      },
+      {
+        "kind": "reference",
+        "source": "Caffeine wiki — Population",
+        "locator": "github.com/ben-manes/caffeine/wiki/Population",
+        "note": "Computação única por chave no processo",
+        "url": "https://github.com/ben-manes/caffeine/wiki/Population"
+      },
+      {
+        "kind": "reference",
+        "source": "Redis docs — Key eviction",
+        "locator": "redis.io/docs/latest/develop/reference/eviction/",
+        "note": "maxmemory e políticas de evicção",
+        "url": "https://redis.io/docs/latest/develop/reference/eviction/"
+      }
+    ]
+  },
+  {
+    "id": "q38",
+    "question": "API → Redis → PostgreSQL funciona bem hoje. Como esse sistema quebra com 100× a carga? (Break this system)",
+    "difficulty": "staff",
+    "shortAnswer": "Não quebra de um jeito só: quebra no primeiro recurso compartilhado que satura e propaga. Candidatos em ordem típica: hot key/stampede no cache, pool de conexões esgotado por tempo de posse, réplica atrasada quebrando read-your-writes, retries amplificando e cascata. Eu estimo a carga por componente, aponto o primeiro gargalo, a propagação e a defesa de cada degrau.",
+    "detailedAnswer": "## Método\n1. **Carga por componente**, não total: tráfego × fração que chega em cada camada (hit ratio, escrita vs leitura, fan-out).\n2. **Primeiro gargalo**: o recurso compartilhado de menor folga (pool, shard, CPU do banco, conexões do Redis).\n3. **Propagação**: como a saturação dele vira espera, timeout e retry nas camadas de cima.\n4. **Defesa por degrau** e o que medir.\n\n## Onde tipicamente quebra (exemplo didático: 1k → 100k req/s)\n- **Cache**: a origem via 3% de 1k = 30 req/s; a 100k vê 3k — e uma chave popular expira com 100× mais leitores (**cache stampede**); uma chave com fração grande do tráfego satura um shard do Redis (**hot key**).\n- **Pool de conexões**: se W = 20 ms e o pool total é 200, a vazão teórica é ~10k ops/s; qualquer degradação de W derruba essa vazão (**connection pool exhaustion**); escalar pods multiplica conexões no banco.\n- **Banco**: queries que eram rápidas em tabela pequena fazem scan com o volume (**slow query**); N+1 escondido vira milhares de queries/s (**N+1**).\n- **Réplicas**: mais escrita → mais lag → leitura pós-escrita desatualizada (**read replica lag**).\n- **Clientes**: timeouts viram retries (**retry storm**) e restarts em massa viram reconexão sincronizada (**thundering herd**).\n- **Resultado**: sem bulkhead/load shedding, a saturação num ponto vira **cascading failure**.\n\n## Resposta forte\nNão listar tudo: escolher o primeiro gargalo com números, mostrar a cadeia até a cascata e propor as defesas na ordem em que se aplicam (single-flight e L1 no cache, pool dimensionado pelo banco e statement_timeout, réplicas com consciência de lag, retries com budget, bulkhead e load shedding na borda), com o sinal de observabilidade de cada uma.",
+    "mentalModel": "Três caixas (API, Redis, Postgres) com um multiplicador de 100× entrando pela esquerda; em cada seta, o número que chega e um 'fusível' desenhado: hit ratio, pool, lag, retry. O fusível mais fraco queima primeiro e a fumaça sobe pelas setas.",
+    "patterns": [
+      "bulkhead",
+      "circuit-breaker",
+      "cell-based-architecture"
+    ],
+    "risks": [
+      "Listar tecnologias em vez de gargalos",
+      "Escalar pods sem somar conexões no banco",
+      "Ignorar hot keys e distribuição desigual",
+      "Não propor degradação"
+    ],
+    "tradeOffs": [
+      {
+        "dimension": "Load shedding na borda",
+        "pro": "Mantém o núcleo vivo sob 100×",
+        "con": "Recusa deliberada de parte do tráfego"
+      },
+      {
+        "dimension": "Mais camadas de cache",
+        "pro": "Tiram carga da origem",
+        "con": "Mais modos de falha (stampede, avalanche, inconsistência)"
+      }
+    ],
+    "repoExample": "O msc-transactions-api (API Go + PostgreSQL + Redis) é exatamente essa topologia; o exercício aplica os failure modes da base a ela.",
+    "howToAnswerInInterview": "Comece pelo método (carga por componente → primeiro gargalo → propagação → defesas). Faça uma conta por camada. Escolha o primeiro gargalo e siga a cadeia até a cascata. Não enumere 15 problemas sem ordem.",
+    "keywords": [
+      "break this system",
+      "como o sistema quebra com 100x",
+      "onde quebra primeiro",
+      "api redis postgres 100x"
+    ],
+    "productionExample": "Exemplo didático: pool total de 200 conexões com W = 20 ms → ~10k ops/s teóricos; a 100× (100k req/s, 30% indo ao banco) = 30k ops/s necessários → o pool é o primeiro gargalo antes de a CPU do banco saturar.",
+    "followUps": [
+      {
+        "question": "Qual quebra primeiro e como você sabe?",
+        "answer": "O recurso compartilhado com menor folga pela conta de carga por componente; confirmo com teste de carga até a quebra e métricas de saturação (pending do pool, CPU por shard)."
+      },
+      {
+        "question": "E se todos os pods reiniciarem juntos no pico?",
+        "answer": "Reconexões sincronizadas e cache L1 frio: thundering herd + avalanche local."
+      },
+      {
+        "question": "E se o downstream ficar lento sem retornar erro?",
+        "answer": "Tudo vira timeout → retry → cascata; deadlines e circuit breaker por latência."
+      }
+    ],
+    "redFlags": [
+      "'Coloco Kafka' sem requisito assíncrono",
+      "'Escalo horizontalmente' sem citar o gargalo compartilhado"
+    ],
+    "strongSignals": [
+      "Conta por componente",
+      "Primeiro gargalo e propagação",
+      "Defesa com sinal de observabilidade por degrau"
+    ],
+    "expectedSignals": [
+      "Pelo menos três failure modes pelo mecanismo",
+      "Estimativa numérica",
+      "Degradação planejada"
+    ],
+    "failureInjections": [
+      {
+        "injection": "Query principal degrada 10× durante o pico.",
+        "expectedReasoning": "W sobe 10×, pool esgota, retries amplificam: statement_timeout, load shedding, circuit breaker."
+      },
+      {
+        "injection": "Uma chave concentra 30% das leituras.",
+        "expectedReasoning": "Hot key no Redis: réplicas do valor e L1."
+      }
+    ],
+    "acceptableSolutions": [
+      "Cache em camadas com proteção de stampede + pool dimensionado pelo banco + bulkhead + load shedding",
+      "Arquitetura celular para limitar blast radius quando 100× vier de muitos tenants"
+    ],
+    "decisionCriteria": [
+      "Onde está a menor folga",
+      "Leitura vs escrita",
+      "Tolerância a degradação por feature"
+    ],
+    "whatToMonitor": [
+      "pending/acquisition time do pool",
+      "hit ratio por chave e backend request rate",
+      "replay_lag",
+      "retry rate",
+      "saturação por shard"
+    ],
+    "failureModes": [
+      "cache-stampede",
+      "hot-key-partition",
+      "connection-pool-exhaustion",
+      "slow-query",
+      "n-plus-one-queries",
+      "read-replica-lag",
+      "retry-storm",
+      "thundering-herd",
+      "cascading-failure"
+    ],
+    "relatedQuestions": [
+      "q24",
+      "q37",
+      "q25"
+    ],
+    "rubricDimensions": [
+      "requirements",
+      "capacity",
+      "architecture",
+      "data-consistency",
+      "reliability",
+      "trade-offs",
+      "observability",
+      "communication"
+    ],
+    "relatedTopics": [
+      "capacity-queueing",
+      "performance-scalability",
+      "resilience-patterns",
+      "load-stress-testing"
+    ],
+    "diagrams": [
+      "fm-cascading-failure",
+      "fm-connection-pool-exhaustion"
+    ],
+    "sourceRefs": [
+      {
+        "kind": "pdf",
+        "source": "System Design Workbook",
+        "locator": "p.609-638",
+        "note": "Menor gargalo da cadeia define o throughput sistêmico; Lei de Little"
+      },
+      {
+        "kind": "pdf",
+        "source": "System Design Workbook",
+        "locator": "p.639-666",
+        "note": "Teste de carga até o breakpoint"
+      },
+      {
+        "kind": "reference",
+        "source": "Google SRE Book — Addressing Cascading Failures",
+        "locator": "sre.google/sre-book/addressing-cascading-failures/",
+        "note": "Gatilhos de cascata e resposta",
+        "url": "https://sre.google/sre-book/addressing-cascading-failures/"
+      },
+      {
+        "kind": "reference",
+        "source": "HikariCP wiki — About Pool Sizing",
+        "locator": "github.com/brettwooldridge/HikariCP/wiki/About-Pool-Sizing",
+        "note": "Dimensionamento de pool",
+        "url": "https://github.com/brettwooldridge/HikariCP/wiki/About-Pool-Sizing"
+      },
+      {
+        "kind": "reference",
+        "source": "Amazon Builders' Library — Caching challenges and strategies",
+        "locator": "aws.amazon.com/builders-library/caching-challenges-and-strategies/",
+        "note": "Cache como dependência de capacidade",
+        "url": "https://aws.amazon.com/builders-library/caching-challenges-and-strategies/"
       }
     ]
   }

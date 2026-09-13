@@ -442,8 +442,17 @@
     ],
     "interviewAngle": "Recorrente em qualquer dimensionamento de leitura. Espera-se que você proponha cache para read-intensive, escolha a estratégia (cache-aside é o default) e — ponto-chave — explique a invalidação: como o cache é atualizado quando o dado muda na origem. Saber calcular hit rate, escolher a política de evicção (LRU costuma ser o default) e posicionar CDN para estáticos demonstra domínio. Não esqueça: TTL e invalidação são onde os bugs moram.",
     "example": "O msc-transactions-api usa Redis 7.2.4 como cache distribuído sobre o PostgreSQL para servir leituras de saldo/limite com baixa latência — um padrão cache-aside clássico: consulta o Redis, no miss vai ao Postgres e popula o cache. Como o saldo é sensível, as escritas de débito/crédito precisam invalidar/atualizar a chave para não servir saldo obsoleto. Para read-intensive em geral, combina-se primário consistente + réplicas de leitura + cache + CQRS.",
+    "keywords": ["cache expirou","hit ratio caiu","redis caiu"],
+    "productionExample": "**Exemplo didático.** Normal: 20k req/s, hit ratio 97% → a origem vê ~600 queries/s (capacidade ~2.000). Trigger: 2 milhões de chaves escritas às 00:00 com TTL de 1 h. Degradado: à 01:00 o hit ratio cai para ~10% e a origem recebe ~18.000 queries/s. Consequência: pools esgotam e o cache não reaquece porque as recomputações dão timeout. Impacto: catálogo indisponível por minutos. O mesmo cache, numa chave de 5.000 req/s com recomputação de 200 ms, gera ~1.000 queries iguais a cada expiração. Ver failure modes *cache-avalanche* e *cache-stampede*.",
     "diagrams": [],
     "sourceRefs": [
+      {
+        "kind": "reference",
+        "source": "Amazon Builders' Library — Caching challenges and strategies",
+        "locator": "aws.amazon.com/builders-library/caching-challenges-and-strategies/",
+        "note": "Comportamento modal: downstream dimensionado para o hit rate; cache frio sobrecarrega a origem",
+        "url": "https://aws.amazon.com/builders-library/caching-challenges-and-strategies/"
+      },
       {
         "kind": "pdf",
         "source": "System Design Workbook",
@@ -1009,11 +1018,27 @@
     ],
     "interviewAngle": "Pergunta típica: 'fila ou tópico?' / 'mensagem ou evento?' — frase-chave: imperativo 1:1 (faça algo) vs reativo 1:N (aconteceu algo). 'Como você garante ordem?' puxa FIFO + chave de partição (e o risco de hot partition). 'Como escalar o consumo no Kafka?' testa se você sabe que partição é o teto do paralelismo. DLQ, idempotência e o trade-off acks↔throughput são pontos que demonstram experiência operacional real.",
     "example": "No event-source-distributed-ledger, comandos chegam por tópicos Kafka (conta_criada, conta_movimentacao) e, após o commit no Event Store, confirmações são publicadas em tópicos de saída (ledger_saldo_atualizado → ScyllaDB, ledger_nova_transacao_confirmada → Mongo) — fanout de evento de domínio 1:N para múltiplos ingestores, com idempotência por movimentacao_id evitando reprocessamento de duplicatas.",
+    "keywords": ["kafka acumulando mensagem","consumer lag","mensagem duplicada"],
+    "productionExample": "**Exemplo didático.** Normal: 8k msg/s produzidas, 10k consumidas, 12 partições. Trigger: campanha leva a produção a 50k msg/s e o banco do read model desacelera. Degradado: lag cresce 40k msg/s; escalar para 48 consumidores não ajuda porque cada partição tem um consumidor por grupo. Consequência: lotes lentos estouram `max.poll.interval.ms` e geram rebalances. Impacto: dados horas atrasados e risco de perda por retenção. Ver *no-backpressure* e *poison-message*.",
     "diagrams": [
       "event-sourced-ledger-flow",
       "read-model-update"
     ],
     "sourceRefs": [
+      {
+        "kind": "reference",
+        "source": "Apache Kafka 4.0 — KafkaConsumer javadoc",
+        "locator": "kafka.apache.org/40/javadoc/org/apache/kafka/clients/consumer/KafkaConsumer.html",
+        "note": "Uma partição por consumidor do grupo; max.poll.interval.ms",
+        "url": "https://kafka.apache.org/40/javadoc/org/apache/kafka/clients/consumer/KafkaConsumer.html"
+      },
+      {
+        "kind": "reference",
+        "source": "Azure Architecture Center — Queue-Based Load Leveling pattern",
+        "locator": "learn.microsoft.com/en-us/azure/architecture/patterns/queue-based-load-leveling",
+        "note": "Fila cresce quando produtor excede consumidor",
+        "url": "https://learn.microsoft.com/en-us/azure/architecture/patterns/queue-based-load-leveling"
+      },
       {
         "kind": "pdf",
         "source": "System Design Workbook",
@@ -1132,10 +1157,19 @@
     ],
     "interviewAngle": "O coração é 'qual sua sharding key e por quê?' — defenda alta cardinalidade e acesso frequente, e antecipe hot partitions com exemplo concreto. A pegadinha clássica: 'o que acontece quando você adiciona um shard?' — quem responde 'hash % N reembaralha tudo, por isso hashing consistente' ganha pontos. Para resiliência, citar shuffle sharding e blast radius mostra leitura avançada.",
     "example": "O msc-shard-router implementa exatamente isto: hash consistente (SHA-512 default, com SHA-256/SHA-1/MurmurHash3 configuráveis) sobre a sharding key (header id_client), com réplicas virtuais para evitar hotspots e busca binária O(log n) no ring — estável quando shards são adicionados/removidos. Cada shard isolado funciona como bulkhead, contendo falhas (blast radius reduzido), como descrito no workbook.",
+    "keywords": ["um shard muito mais quente","hot shard"],
+    "productionExample": "**Exemplo didático.** Normal: 10 shards de ~100k req/s cada recebendo ~5k req/s. Trigger: notícia viral. Degradado: uma chave leva o shard 7 a 500k req/s enquanto os outros seguem a 5k. Consequência: todas as chaves do shard 7 dão timeout e retries voltam para o mesmo shard. Impacto: o cluster tem 90% de capacidade ociosa e ainda assim falha — capacidade total ≠ capacidade útil. Ver *hot-key-partition*.",
     "diagrams": [
       "shard-router-flow"
     ],
     "sourceRefs": [
+      {
+        "kind": "reference",
+        "source": "Amazon DynamoDB docs — Best practices for designing partition keys",
+        "locator": "docs.aws.amazon.com/amazondynamodb/latest/developerguide/bp-partition-key-design.html",
+        "note": "Limite por partição independente da capacidade da tabela",
+        "url": "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/bp-partition-key-design.html"
+      },
       {
         "kind": "pdf",
         "source": "System Design Workbook",
@@ -1203,11 +1237,27 @@
     ],
     "interviewAngle": "Conecta direto com CAP/PACELC: 'replicação síncrona vs assíncrona' é escolher consistência vs latência. 'Como evitar o SPOF do primário?' puxa multi-master + conflitos (LWW/CRDT). Saber que Kafka/Raft replicam por log (não por estado) e citar CDC como motor de CQRS/Event-Carried State Transfer demonstra que você liga replicação a arquiteturas event-driven reais.",
     "example": "O event-source-distributed-ledger usa o Postgres (Event Store, append-only) como golden source e replica o estado para read models assíncronos via Kafka — ScyllaDB (saldo) e MongoDB (extrato). É replicação assíncrona com consistência eventual, alimentada por eventos pós-commit (parente do CDC/Event-Carried State Transfer); a unicidade movimentacao_id + LWT por versão no ScyllaDB resolve a ordenação descrita no modelo de logs.",
+    "keywords": ["replica dado velho","salvei e não mudou","read your writes"],
+    "productionExample": "**Exemplo didático.** Normal: lag ~50 ms entre primário e réplicas. Trigger: job de escrita em lote. Degradado: lag de ~1,5 s. Consequência: `POST /profile` comita às 12:00:00.000 e o `GET` das 12:00:00.300 vai para a réplica, que só aplica às 12:00:01.500 — o usuário vê o valor antigo e repete a ação. Impacto: 'bug de não salvar' e escritas duplicadas. Garantia desejada: read-your-writes (fixar a sessão no primário após escrever ou esperar a réplica alcançar). Ver *read-replica-lag*.",
     "diagrams": [
       "event-sourced-ledger-flow",
       "read-model-update"
     ],
     "sourceRefs": [
+      {
+        "kind": "reference",
+        "source": "PostgreSQL docs — Monitoring Database Activity (pg_stat_activity, pg_stat_replication)",
+        "locator": "www.postgresql.org/docs/current/monitoring-stats.html",
+        "note": "replay_lag aproxima o atraso até ficar visível no standby",
+        "url": "https://www.postgresql.org/docs/current/monitoring-stats.html"
+      },
+      {
+        "kind": "reference",
+        "source": "Werner Vogels — Eventually Consistent, Revisited (2008)",
+        "locator": "www.allthingsdistributed.com/2008/12/eventually_consistent.html",
+        "note": "Read-your-writes",
+        "url": "https://www.allthingsdistributed.com/2008/12/eventually_consistent.html"
+      },
       {
         "kind": "pdf",
         "source": "System Design Workbook",
@@ -1469,10 +1519,26 @@
     ],
     "interviewAngle": "Quase toda entrevista de System Design termina em 'e se essa dependência cair?'. A resposta forte combina camadas: timeout curto → retry com backoff+jitter → circuit breaker → fallback (cache/snapshot ou fila async) → graceful degradation das funções não-críticas. Sempre amarre cada retry à idempotência no consumidor, senão você duplica. Mencione blast radius como a lente para decidir ONDE investir.",
     "example": "O `msc-shard-router` traz um circuit breaker parametrizado (`CB_FAILURE_THRESHOLD=5`, `CB_OPEN_TIMEOUT_SEC=30`, `CB_HALF_OPEN_SUCCESS_THRESHOLD=2`) por shard de backend, exatamente nos três estados descritos. O `msc-transactions-api` usa chaves de idempotência para garantir que uma cobrança reenviada após falha de rede seja cobrada uma única vez, e mantém um `ENV=shadow` para cenários de rollback — fallback de dados via Redis cache reduz a carga sobre o Postgres em picos.",
+    "keywords": ["retries pioram o serviço","dependência lenta derrubou tudo"],
+    "productionExample": "**Exemplo didático.** Normal: Payment → Fraud a 1.000 req/s, Fraud responde em 100 ms (≈100 requisições em voo). Trigger: deploy leva o Fraud a 3 s, sem erro. Degradado: timeout de 1 s + 3 retries imediatos → até 4.000 tentativas/s e ~12.000 em voo. Consequência: threads e conexões do Fraud esgotam e o Payment trava esperando. Impacto: checkout inteiro fora. Ferramentas na ordem: timeout com deadline, retry limitado com backoff+jitter e budget, circuit breaker com fallback de negócio, bulkhead e load shedding — e idempotência para o retry não duplicar. Ver *retry-storm* e *cascading-failure*.",
     "diagrams": [
       "shard-router-flow"
     ],
     "sourceRefs": [
+      {
+        "kind": "reference",
+        "source": "Google SRE Book — Addressing Cascading Failures",
+        "locator": "sre.google/sre-book/addressing-cascading-failures/",
+        "note": "Retries amplificam carga; budget, backoff randomizado, deadlines",
+        "url": "https://sre.google/sre-book/addressing-cascading-failures/"
+      },
+      {
+        "kind": "reference",
+        "source": "Google SRE Book — Handling Overload",
+        "locator": "sre.google/sre-book/handling-overload/",
+        "note": "Budget de retry de 10% e retry numa camada",
+        "url": "https://sre.google/sre-book/handling-overload/"
+      },
       {
         "kind": "pdf",
         "source": "System Design Workbook",
@@ -1787,10 +1853,26 @@
     ],
     "interviewAngle": "Sobe a régua de qualquer pergunta de escala: em vez de 'adiciono mais réplicas', mostre que você modela com Lei de Little (L=λ×W) para dimensionar concorrência e com a Curva do Joelho para saber que o sistema degrada antes dos 100% de CPU (~80-85%). Saber dizer 'aumento pequeno em W explode L e a fila' e 'o gargalo sistêmico é o menor gargalo da cadeia' demonstra raciocínio quantitativo, não chute.",
     "example": "Para o `msc-transactions-api` processando débito/crédito: se ele recebe λ=500 transações/s com W=300ms (consulta de saldo no Postgres + validação de limite), a Lei de Little prevê L=150 transações concorrentes em voo — número que dimensiona o connection pool e os workers. Se o lock contention no saldo elevar W para 400ms, L salta para 200 e o pool satura; o cache Redis existe justamente para baixar W e manter o sistema no ponto saudável, antes da curva do joelho.",
+    "keywords": ["pool esgotado","fila crescendo","backlog"],
+    "productionExample": "**Exemplo didático.** Pool: 20 conexões com queries de 50 ms atendem ~400 ops/s (20 / 0,05); se a query degrada para 15 s, ~1,3 ops/s — o W explodiu, não o pool ficou pequeno. Fila: produtor a 50k msg/s e consumidor a 10k msg/s acumulam 40k msg/s → 2,4 milhões em 1 minuto; drenar 24 milhões com μ − λ = 10k msg/s leva 40 minutos. Simplificações: regime médio, sem variabilidade. Ver *connection-pool-exhaustion* e *no-backpressure*.",
     "diagrams": [
       "transactional-api-flow"
     ],
     "sourceRefs": [
+      {
+        "kind": "reference",
+        "source": "HikariCP wiki — About Pool Sizing",
+        "locator": "github.com/brettwooldridge/HikariCP/wiki/About-Pool-Sizing",
+        "note": "Pools pequenos e tempo de posse",
+        "url": "https://github.com/brettwooldridge/HikariCP/wiki/About-Pool-Sizing"
+      },
+      {
+        "kind": "reference",
+        "source": "Azure Architecture Center — Queue-Based Load Leveling pattern",
+        "locator": "learn.microsoft.com/en-us/azure/architecture/patterns/queue-based-load-leveling",
+        "note": "Produtor acima do consumidor faz a fila crescer",
+        "url": "https://learn.microsoft.com/en-us/azure/architecture/patterns/queue-based-load-leveling"
+      },
       {
         "kind": "pdf",
         "source": "System Design Workbook",

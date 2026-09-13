@@ -16,3 +16,9 @@
 - **Consequências:** simples, determinístico, versionável, diffável; o gate de schema +
   integridade impede “invenção”. Custo: sem busca/query no servidor (feita no front) e
   recarga só no restart. Trocar para um banco depois é só um novo adapter (ADR-0002).
+
+- **Atualização (2026-09):** com o BFF aposentado, a trava mudou de lugar mas continua no build:
+  `frontend/test/kb-schema.test.mjs` valida TODA a base contra o JSON Schema (antes o schema não era
+  checado por teste), `kb-integrity.test.mjs` e `kb-graph.test.mjs` garantem fontes, ids únicos e
+  que toda aresta resolve. O MCP e o frontend leem os mesmos JSON; não há adapter/banco. As novas
+  coleções (ADR-0005) seguem a mesma decisão: JSON versionado, sem banco.

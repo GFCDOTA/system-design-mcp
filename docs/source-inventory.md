@@ -213,3 +213,28 @@ Registradas também em `docs/open-questions.md`.
 
 > Esta matriz é o núcleo. A versão completa e por-item vive em
 > `knowledge-base/evidence.json` e é servida pelo endpoint `GET /api/evidence`.
+
+---
+
+## 9. Fontes adicionadas em 2026-09 (Failure Modes at Scale e idempotência HTTP)
+
+Todas lidas diretamente (WebFetch/pdf) em 2026-09-13 e com `url` respondendo 200. Usadas com
+paráfrase; citações curtas apenas em `note`. Números reais citados **só** quando a fonte os publica
+(ex.: memcache do Facebook: pico de 17K → 1,3K queries/s com leases; HikariCP: 2.048 → 96 conexões
+com resposta ~100 ms → ~2 ms; Azure Chatty I/O: 410 → 3.970 req/min no teste deles).
+
+| # | Fonte | Tipo | Usada para |
+|---|-------|------|------------|
+| S6 | Google SRE Book — Addressing Cascading Failures / Handling Overload | livro online (Google) | cascata, retries (limites, budget 10%, 64× entre camadas), deadlines, load shedding, latência bimodal, cache frio |
+| S7 | Azure Architecture Center — Retry Storm, Chatty I/O, Queue-Based Load Leveling | docs oficiais (Microsoft) | retry storm, N+1, backlog quando produtor > consumidor, DLQ |
+| S8 | AWS — Exponential Backoff And Jitter (blog), Caching challenges (Builders' Library), DynamoDB partition keys/write sharding, RDS read replicas | docs/blog oficiais | jitter, comportamento modal do cache, negative caching, limites por partição, sufixo aleatório vs calculado, réplicas assíncronas |
+| S9 | Vattani et al., VLDB 2015 — Optimal Probabilistic Cache Stampede Prevention | paper | definição de cache stampede, locking vs expiração probabilística (XFetch) |
+| S10 | Nishtala et al., NSDI 2013 — Scaling Memcache at Facebook | paper | leases contra thundering herds, pool Gutter, chaves quentes, réplicas atrasadas |
+| S11 | PostgreSQL docs — INSERT ON CONFLICT, Index Uniqueness Checks, EXPLAIN, pg_stat_statements, monitoring stats, client/WAL config, admin functions, CREATE INDEX, explicit locking | docs oficiais | claim atômico, espera no índice único, diagnóstico de query/pool/réplica, timeouts, locks |
+| S12 | Stripe — Idempotent requests (API) e blog de idempotência | docs/blog oficiais | contrato de idempotency key (exemplo de fornecedor, não regra universal) |
+| S13 | RFC 8785 (Informational) e RFC 5861 | RFCs | canonicalização JSON (e seus limites para dinheiro); stale-while-revalidate/stale-if-error |
+| S14 | IETF HTTPAPI — Idempotency-Key header | Internet-Draft **expirado** (rev. 07) | referência histórica de códigos 409/422 — nunca apresentado como padrão |
+| S15 | HikariCP (README e wiki About Pool Sizing), Caffeine wiki, Go singleflight, Redis docs (eviction, redis-cli, Bloom filter), Kafka 4.x (KafkaConsumer, consumer configs, design), Hibernate 6.6 user guide, Java SE 21 (memory leaks, BigDecimal), Reactive Streams, gRPC retry, Amazon SQS DLQ, Werner Vogels (Eventually Consistent) | docs oficiais/primárias | detalhes de implementação separados do conceito |
+
+Não utilizadas por não ser possível ler o conteúdo: páginas do Amazon Builders' Library migradas
+para `builder.aws.com` (SPA sem texto no fetch) — ver `open-questions.md` OQ-8.

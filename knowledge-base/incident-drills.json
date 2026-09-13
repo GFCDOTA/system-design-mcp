@@ -1,0 +1,1439 @@
+[
+  {
+    "id": "drill-api-timeouts-after-deploy",
+    "title": "Timeouts em toda a API logo após um deploy",
+    "format": "incident",
+    "difficulty": "senior",
+    "keywords": [
+      "hikari pending subindo",
+      "p99 disparou depois do deploy",
+      "api toda com timeout"
+    ],
+    "scenario": {
+      "dataKind": "didactic",
+      "context": "API Spring Boot com HikariCP na frente de um PostgreSQL compartilhado; 10 pods atrás de um balanceador.",
+      "setup": [
+        "Tráfego: 2.000 req/s no total (~200 por pod)",
+        "HikariCP: maximumPoolSize = 20, connectionTimeout = 30 s",
+        "Query principal antes do deploy: ~50 ms",
+        "Clientes mobile fazem retry automático em timeout"
+      ],
+      "timeline": [
+        {
+          "t": "14:00",
+          "event": "Deploy de uma versão que altera o filtro da consulta de pedidos."
+        },
+        {
+          "t": "14:01",
+          "event": "p99 sobe de 80 ms para 12 s."
+        },
+        {
+          "t": "14:02",
+          "event": "Primeiros erros 500 em rotas que nem usam a consulta de pedidos."
+        },
+        {
+          "t": "14:03",
+          "event": "Volume de requests na borda sobe 60% sem campanha nem aumento de usuários."
+        }
+      ],
+      "signals": [
+        {
+          "metric": "hikaricp active connections",
+          "value": "20/20 em todos os pods",
+          "trend": "saturated"
+        },
+        {
+          "metric": "hikaricp pending threads",
+          "value": "300+ por pod",
+          "trend": "up"
+        },
+        {
+          "metric": "CPU da aplicação",
+          "value": "~15%",
+          "trend": "flat"
+        },
+        {
+          "metric": "latência da query de pedidos (pg_stat_statements mean)",
+          "value": "50 ms → 15 s",
+          "trend": "spike"
+        },
+        {
+          "metric": "requests por segundo na borda",
+          "value": "+60%",
+          "trend": "up"
+        },
+        {
+          "metric": "CPU do banco",
+          "value": "85%",
+          "trend": "up"
+        }
+      ]
+    },
+    "question": "O que provavelmente está acontecendo, qual é a causa raiz e o que você faz agora?",
+    "hints": [
+      "CPU da aplicação baixa com latência alta: as threads estão calculando ou esperando?",
+      "Quanto tempo cada conexão fica emprestada agora? Quantas operações por segundo 20 conexões atendem nesse tempo?",
+      "Por que o tráfego na borda subiu sem mais usuários?"
+    ],
+    "answer": {
+      "diagnosis": "Connection pool exhaustion causado por uma query que regrediu no deploy, amplificado por retries dos clientes.",
+      "rootCause": "A mudança de filtro fez a consulta de pedidos parar de usar índice (50 ms → 15 s); o tempo de posse das conexões explodiu.",
+      "reasoning": "20 conexões a 50 ms atendem ~400 ops/s; a 15 s, ~1,3 ops/s. Todas ficam presas na query nova e os requests seguintes esperam o pool (CPU baixa = threads bloqueadas). Rotas saudáveis falham porque dividem o mesmo pool. O +60% sem usuários novos são retries dos timeouts.",
+      "ruledOut": [
+        {
+          "failureMode": "n-plus-one-queries",
+          "why": "N+1 teria muitas queries rápidas (mean baixo); aqui uma query tem mean de 15 s."
+        },
+        {
+          "failureMode": "no-backpressure",
+          "why": "Não há fila/broker envolvido; o acúmulo é na fila do pool."
+        },
+        {
+          "failureMode": "hot-key-partition",
+          "why": "Todos os pods e todas as rotas degradaram juntos, não um shard."
+        }
+      ],
+      "confirmWith": [
+        "pg_stat_activity: muitas sessões active na mesma query com query_start antigo.",
+        "pg_stat_statements: mean_exec_time da query antes e depois das 14:00.",
+        "EXPLAIN (ANALYZE, BUFFERS) mostrando Seq Scan.",
+        "Razão requests na borda / usuários ativos e retry rate no cliente."
+      ],
+      "immediateMitigation": [
+        "Rollback do deploy (ou feature flag desligando a consulta nova).",
+        "pg_cancel_backend nas sessões presas na query lenta.",
+        "Desligar/reduzir retries automáticos e aplicar rate limit na rota afetada até estabilizar."
+      ],
+      "permanentFix": [
+        "Corrigir a consulta/índice e revisar planos das queries críticas em toda mudança.",
+        "statement_timeout e connectionTimeout curtos para falhar rápido.",
+        "Bulkhead: pool separado para a rota de pedidos/relatórios.",
+        "Retry com backoff, jitter e budget no cliente."
+      ],
+      "wouldMakeItWorse": [
+        "Aumentar maximumPoolSize para 100 (10 pods = 1.000 conexões no banco já a 85% de CPU).",
+        "Aumentar connectionTimeout ou remover statement_timeout.",
+        "Escalar mais pods (mais conexões executando a mesma query lenta).",
+        "Reiniciar todos os pods ao mesmo tempo."
+      ],
+      "whatToMonitor": [
+        "active/idle/pending do pool",
+        "tempo de aquisição de conexão",
+        "mean_exec_time das top queries",
+        "retry rate e razão tentativas/requests",
+        "CPU/IO e sessões ativas do banco"
+      ]
+    },
+    "failureModes": [
+      "connection-pool-exhaustion",
+      "slow-query",
+      "retry-storm"
+    ],
+    "sourceRefs": [
+      {
+        "kind": "reference",
+        "source": "HikariCP — README (configuração)",
+        "locator": "github.com/brettwooldridge/HikariCP",
+        "note": "maximumPoolSize, connectionTimeout e SQLException ao estourar",
+        "url": "https://github.com/brettwooldridge/HikariCP"
+      },
+      {
+        "kind": "reference",
+        "source": "HikariCP wiki — About Pool Sizing",
+        "locator": "github.com/brettwooldridge/HikariCP/wiki/About-Pool-Sizing",
+        "note": "Pools menores costumam performar melhor que pools grandes",
+        "url": "https://github.com/brettwooldridge/HikariCP/wiki/About-Pool-Sizing"
+      },
+      {
+        "kind": "reference",
+        "source": "PostgreSQL docs — Monitoring Database Activity (pg_stat_activity, pg_stat_replication)",
+        "locator": "www.postgresql.org/docs/current/monitoring-stats.html",
+        "note": "pg_stat_activity: state, query_start",
+        "url": "https://www.postgresql.org/docs/current/monitoring-stats.html"
+      },
+      {
+        "kind": "reference",
+        "source": "PostgreSQL docs — System Administration Functions (pg_cancel_backend)",
+        "locator": "www.postgresql.org/docs/current/functions-admin.html",
+        "note": "pg_cancel_backend",
+        "url": "https://www.postgresql.org/docs/current/functions-admin.html"
+      },
+      {
+        "kind": "reference",
+        "source": "Google SRE Book — Addressing Cascading Failures",
+        "locator": "sre.google/sre-book/addressing-cascading-failures/",
+        "note": "Retries amplificam sobrecarga",
+        "url": "https://sre.google/sre-book/addressing-cascading-failures/"
+      }
+    ]
+  },
+  {
+    "id": "drill-metrics-db-cpu-normal",
+    "title": "Detetive de métricas: banco tranquilo, aplicação travada",
+    "format": "metrics-detective",
+    "difficulty": "staff",
+    "keywords": [
+      "cpu do banco normal e pool cheio",
+      "conexões ocupadas sem carga no banco",
+      "idle in transaction"
+    ],
+    "scenario": {
+      "dataKind": "didactic",
+      "context": "Serviço de checkout; você só tem acesso aos dashboards. Nenhum deploy no banco hoje; o serviço de checkout ganhou uma chamada ao antifraude ontem.",
+      "setup": [
+        "Pool de 30 conexões por pod",
+        "Timeout do cliente HTTP do antifraude: 20 s",
+        "Antifraude reportando instabilidade na página de status"
+      ],
+      "signals": [
+        {
+          "metric": "CPU do banco",
+          "value": "22%",
+          "trend": "flat"
+        },
+        {
+          "metric": "active connections do pool",
+          "value": "30/30",
+          "trend": "saturated"
+        },
+        {
+          "metric": "pending threads",
+          "value": "crescendo",
+          "trend": "up"
+        },
+        {
+          "metric": "latência p99 do checkout",
+          "value": "18 s",
+          "trend": "spike"
+        },
+        {
+          "metric": "CPU da aplicação",
+          "value": "10%",
+          "trend": "flat"
+        },
+        {
+          "metric": "sessões 'idle in transaction' no PostgreSQL",
+          "value": "~280",
+          "trend": "up"
+        },
+        {
+          "metric": "latência do antifraude",
+          "value": "15–20 s",
+          "trend": "spike"
+        }
+      ]
+    },
+    "question": "Qual hipótese é mais provável? Por que NÃO é uma query lenta?",
+    "hints": [
+      "Se o banco estivesse executando queries caras, como estaria a CPU dele?",
+      "O que significa uma sessão 'idle in transaction'?",
+      "O que mudou ontem no fluxo do checkout?"
+    ],
+    "answer": {
+      "diagnosis": "Esgotamento do pool causado por transações abertas esperando uma chamada HTTP lenta (antifraude) dentro da transação — as conexões estão presas, não trabalhando.",
+      "rootCause": "A chamada ao antifraude foi colocada dentro do escopo transacional; com o antifraude a 15–20 s, cada checkout segura uma conexão ociosa por esse tempo.",
+      "reasoning": "CPU do banco baixa descarta query cara. Centenas de sessões 'idle in transaction' significam transações abertas esperando o cliente mandar o próximo comando — a aplicação está parada no meio da transação, esperando o antifraude. O pool fica cheio de conexões ociosas e os requests novos esperam.",
+      "ruledOut": [
+        {
+          "failureMode": "slow-query",
+          "why": "Query cara apareceria como sessões active e CPU/IO altos no banco; aqui o banco está ocioso."
+        },
+        {
+          "failureMode": "n-plus-one-queries",
+          "why": "N+1 gera muitas queries (CPU/queries/s altos), não sessões ociosas."
+        },
+        {
+          "failureMode": "cache-stampede",
+          "why": "Não há pico de queries idênticas nem correlação com TTL."
+        }
+      ],
+      "confirmWith": [
+        "pg_stat_activity com state = 'idle in transaction' e a última query executada.",
+        "Traces do checkout: span do antifraude aninhado dentro do span da transação.",
+        "Correlação temporal entre latência do antifraude e pending do pool."
+      ],
+      "immediateMitigation": [
+        "Reduzir o timeout da chamada ao antifraude e abrir circuit breaker com fallback de negócio.",
+        "idle_in_transaction_session_timeout para derrubar transações presas.",
+        "Feature flag para tirar a chamada do escopo transacional se já existir o caminho alternativo."
+      ],
+      "permanentFix": [
+        "Nunca fazer I/O externo dentro da transação: chamar o antifraude antes/depois e persistir em transações curtas.",
+        "Efeitos pós-commit via transactional outbox.",
+        "Bulkhead e circuit breaker por dependência externa."
+      ],
+      "wouldMakeItWorse": [
+        "Aumentar o pool (mais conexões ociosas presas e mais sessões no banco).",
+        "Aumentar o timeout do antifraude.",
+        "Escalar o banco (ele não é o gargalo)."
+      ],
+      "whatToMonitor": [
+        "sessões idle in transaction",
+        "tempo de transação p99",
+        "latência de dependências externas",
+        "pending/acquisition time do pool",
+        "estado do circuit breaker"
+      ]
+    },
+    "failureModes": [
+      "connection-pool-exhaustion",
+      "cascading-failure"
+    ],
+    "sourceRefs": [
+      {
+        "kind": "reference",
+        "source": "PostgreSQL docs — Monitoring Database Activity (pg_stat_activity, pg_stat_replication)",
+        "locator": "www.postgresql.org/docs/current/monitoring-stats.html",
+        "note": "state 'idle in transaction': dentro de transação, esperando comando do cliente",
+        "url": "https://www.postgresql.org/docs/current/monitoring-stats.html"
+      },
+      {
+        "kind": "reference",
+        "source": "PostgreSQL docs — Client Connection Defaults (statement_timeout, lock_timeout)",
+        "locator": "www.postgresql.org/docs/current/runtime-config-client.html",
+        "note": "idle_in_transaction_session_timeout encerra sessões ociosas em transação",
+        "url": "https://www.postgresql.org/docs/current/runtime-config-client.html"
+      },
+      {
+        "kind": "reference",
+        "source": "microservices.io",
+        "locator": "patterns/reliability/circuit-breaker.html",
+        "note": "Circuit breaker para dependência lenta",
+        "url": "https://microservices.io/patterns/reliability/circuit-breaker.html"
+      },
+      {
+        "kind": "reference",
+        "source": "microservices.io",
+        "locator": "patterns/data/transactional-outbox.html",
+        "note": "Efeitos pós-commit sem dual write",
+        "url": "https://microservices.io/patterns/data/transactional-outbox.html"
+      }
+    ]
+  },
+  {
+    "id": "drill-incident-timeline-root-cause",
+    "title": "Linha do tempo: onde o incidente começou?",
+    "format": "timeline",
+    "difficulty": "staff",
+    "keywords": [
+      "causa raiz vs sintoma",
+      "linha do tempo do incidente",
+      "qual alerta veio primeiro"
+    ],
+    "scenario": {
+      "dataKind": "didactic",
+      "context": "Post-mortem de um incidente de checkout. Os alertas chegaram na ordem abaixo; o time de plantão começou investigando a CPU do banco (último alerta, o mais barulhento).",
+      "setup": [
+        "Checkout → Order Service → PostgreSQL",
+        "Clientes com retry automático",
+        "Migração de schema executada às 11:58"
+      ],
+      "timeline": [
+        {
+          "t": "11:58",
+          "event": "Migração altera o tipo de uma coluna usada no filtro de pedidos (índice antigo descartado)."
+        },
+        {
+          "t": "12:00",
+          "event": "p99 do checkout sobe de 150 ms para 2 s."
+        },
+        {
+          "t": "12:01",
+          "event": "Pending connections do pool sobem."
+        },
+        {
+          "t": "12:02",
+          "event": "Timeouts de aquisição de conexão começam."
+        },
+        {
+          "t": "12:03",
+          "event": "Retry rate sobe 5×."
+        },
+        {
+          "t": "12:04",
+          "event": "CPU do banco a 100%."
+        }
+      ],
+      "signals": [
+        {
+          "metric": "mean_exec_time da query de pedidos",
+          "value": "4 ms → 3 s a partir de 11:58",
+          "trend": "spike"
+        },
+        {
+          "metric": "p99 checkout",
+          "value": "2 s → 20 s",
+          "trend": "up"
+        },
+        {
+          "metric": "retry rate",
+          "value": "5×",
+          "trend": "up"
+        },
+        {
+          "metric": "CPU do banco",
+          "value": "100%",
+          "trend": "saturated"
+        }
+      ]
+    },
+    "question": "Em qual evento o incidente começou de fato? Quais eventos são sintomas e quais são amplificadores?",
+    "hints": [
+      "Qual é o evento mais antigo e mais profundo na cadeia de dependência?",
+      "A CPU do banco a 100% é causa ou consequência dos retries?"
+    ],
+    "answer": {
+      "diagnosis": "Slow query por índice perdido na migração → pool exhaustion → timeouts → retry storm → banco saturado.",
+      "rootCause": "A migração das 11:58 invalidou o índice usado pelo filtro de pedidos.",
+      "rootCauseAt": 0,
+      "reasoning": "Ordenando por tempo e profundidade: a migração (11:58) muda o custo da query; p99 (12:00) é o primeiro sintoma; pending/timeouts (12:01–12:02) são o efeito no pool; retries (12:03) são amplificador; CPU do banco a 100% (12:04) é consequência da soma de queries lentas e retries. Investigar a CPU do banco primeiro é caçar o sintoma mais barulhento.",
+      "ruledOut": [
+        {
+          "failureMode": "thundering-herd",
+          "why": "Não houve restart/desconexão em massa antes do pico; os retries vieram de timeouts."
+        },
+        {
+          "failureMode": "cache-avalanche",
+          "why": "Nenhuma queda de hit ratio ou restart de cache na linha do tempo."
+        }
+      ],
+      "confirmWith": [
+        "Diff de planos (EXPLAIN) antes/depois da migração",
+        "pg_stat_statements com mean_exec_time por período",
+        "Linha do tempo de deploys/migrações correlacionada aos alertas"
+      ],
+      "immediateMitigation": [
+        "Criar o índice com CREATE INDEX CONCURRENTLY (ou reverter a migração)",
+        "Conter retries e aplicar rate limit",
+        "Cancelar execuções presas"
+      ],
+      "permanentFix": [
+        "Revisão de plano obrigatória em migrações",
+        "Alertas por regressão de mean_exec_time",
+        "Retry budget e statement_timeout"
+      ],
+      "wouldMakeItWorse": [
+        "Escalar o banco verticalmente com reboot no meio do pico",
+        "Aumentar timeouts",
+        "Reiniciar todos os pods juntos"
+      ],
+      "whatToMonitor": [
+        "mudanças de schema como eventos no dashboard",
+        "mean_exec_time das top queries",
+        "pending do pool",
+        "retry rate",
+        "CPU do banco"
+      ]
+    },
+    "failureModes": [
+      "slow-query",
+      "connection-pool-exhaustion",
+      "retry-storm",
+      "cascading-failure"
+    ],
+    "sourceRefs": [
+      {
+        "kind": "reference",
+        "source": "PostgreSQL docs — pg_stat_statements",
+        "locator": "www.postgresql.org/docs/current/pgstatstatements.html",
+        "note": "mean_exec_time por query normalizada",
+        "url": "https://www.postgresql.org/docs/current/pgstatstatements.html"
+      },
+      {
+        "kind": "reference",
+        "source": "PostgreSQL docs — CREATE INDEX (Building Indexes Concurrently)",
+        "locator": "www.postgresql.org/docs/current/sql-createindex.html",
+        "note": "CREATE INDEX CONCURRENTLY não bloqueia escritas",
+        "url": "https://www.postgresql.org/docs/current/sql-createindex.html"
+      },
+      {
+        "kind": "reference",
+        "source": "Google SRE Book — Addressing Cascading Failures",
+        "locator": "sre.google/sre-book/addressing-cascading-failures/",
+        "note": "Gatilhos de cascata incluem mudanças/rollouts; retries amplificam",
+        "url": "https://sre.google/sre-book/addressing-cascading-failures/"
+      }
+    ]
+  },
+  {
+    "id": "drill-periodic-spikes-product-page",
+    "title": "Picos periódicos na página do produto mais vendido",
+    "format": "incident",
+    "difficulty": "senior",
+    "keywords": [
+      "pico a cada minuto",
+      "página do produto lenta de tempos em tempos",
+      "cache miss periódico"
+    ],
+    "scenario": {
+      "dataKind": "didactic",
+      "context": "Noite de promoção. Página de produto com Redis (cache-aside) na frente do PostgreSQL.",
+      "setup": [
+        "5.000 req/s no produto em destaque",
+        "TTL fixo de 60 s para todas as chaves de produto",
+        "Query de montagem do produto: ~200 ms"
+      ],
+      "timeline": [
+        {
+          "t": "20:00:00",
+          "event": "p99 da página sobe para 6 s por ~5 s e volta."
+        },
+        {
+          "t": "20:01:00",
+          "event": "Mesmo pico."
+        },
+        {
+          "t": "20:02:00",
+          "event": "Mesmo pico, agora com 5xx em outras páginas."
+        }
+      ],
+      "signals": [
+        {
+          "metric": "hit ratio da chave product:123",
+          "value": "99% → 0% por alguns segundos a cada 60 s",
+          "trend": "spike"
+        },
+        {
+          "metric": "queries idênticas no banco (mesmo queryid)",
+          "value": "~1.000–10.000 em segundos",
+          "trend": "spike"
+        },
+        {
+          "metric": "hit ratio global",
+          "value": "95%",
+          "trend": "flat"
+        },
+        {
+          "metric": "active connections",
+          "value": "no máximo durante os picos",
+          "trend": "saturated"
+        }
+      ]
+    },
+    "question": "Por que um cache com 95% de hit ratio global derruba o banco a cada minuto? O que você muda?",
+    "hints": [
+      "Qual é o período dos picos? O que tem esse período na configuração?",
+      "Quantos requests chegam enquanto a primeira recomputação ainda roda?"
+    ],
+    "answer": {
+      "diagnosis": "Cache stampede na chave quente a cada expiração do TTL fixo.",
+      "rootCause": "Cache-aside sem coalizão de recomputação e TTL fixo em chave muito acessada.",
+      "reasoning": "O pico tem período de 60 s = TTL. Na janela de 200 ms após expirar, ~1.000 requests veem miss e recomputam o mesmo valor; a origem desacelera, a janela cresce e mais requests entram. O hit ratio global alto esconde o miss concentrado de uma chave.",
+      "ruledOut": [
+        {
+          "failureMode": "cache-avalanche",
+          "why": "Só a chave quente perde hit; o hit ratio global não despenca."
+        },
+        {
+          "failureMode": "cache-penetration",
+          "why": "A chave existe; o miss é momentâneo."
+        }
+      ],
+      "confirmWith": [
+        "Miss por chave alinhado ao TTL",
+        "Mesmo queryid explodindo no pg_stat_statements",
+        "Traces simultâneos de miss com o mesmo parâmetro"
+      ],
+      "immediateMitigation": [
+        "Re-SET da chave quente com TTL maior temporariamente",
+        "Limitar concorrência de recomputação na rota"
+      ],
+      "permanentFix": [
+        "Single-flight/request coalescing (local e, se preciso, lease distribuído)",
+        "Stale-while-revalidate (soft/hard TTL) para dado que tolera atraso",
+        "TTL com jitter ou expiração probabilística antecipada"
+      ],
+      "wouldMakeItWorse": [
+        "Aumentar o banco e manter o TTL fixo",
+        "Lock distribuído sem TTL",
+        "Reduzir o TTL para 'deixar mais fresco'"
+      ],
+      "whatToMonitor": [
+        "hit ratio por chave quente",
+        "backend request rate",
+        "recomputações em voo",
+        "p99 da query de recomputação"
+      ]
+    },
+    "failureModes": [
+      "cache-stampede",
+      "connection-pool-exhaustion"
+    ],
+    "sourceRefs": [
+      {
+        "kind": "reference",
+        "source": "Vattani, Chierichetti, Lowenstein — Optimal Probabilistic Cache Stampede Prevention (VLDB 2015)",
+        "locator": "www.vldb.org/pvldb/vol8/p886-vattani.pdf",
+        "note": "Cache stampede: taxa de acesso × tempo de recomputação",
+        "url": "https://www.vldb.org/pvldb/vol8/p886-vattani.pdf"
+      },
+      {
+        "kind": "reference",
+        "source": "Amazon Builders' Library — Caching challenges and strategies",
+        "locator": "aws.amazon.com/builders-library/caching-challenges-and-strategies/",
+        "note": "Request coalescing e soft TTL",
+        "url": "https://aws.amazon.com/builders-library/caching-challenges-and-strategies/"
+      }
+    ]
+  },
+  {
+    "id": "drill-restart-loop-websocket",
+    "title": "Serviço que não consegue voltar depois do restart",
+    "format": "incident",
+    "difficulty": "senior",
+    "keywords": [
+      "loop de restart",
+      "não volta depois do deploy",
+      "picos de conexão a cada segundo"
+    ],
+    "scenario": {
+      "dataKind": "didactic",
+      "context": "Serviço de notificações em tempo real com WebSocket.",
+      "setup": [
+        "20.000 clientes conectados",
+        "Capacidade de aceitar ~2.000 conexões novas/s",
+        "SDK do cliente: reconnectDelay = 1 s fixo",
+        "Liveness probe falha se o handshake demorar > 1 s"
+      ],
+      "timeline": [
+        {
+          "t": "T+0",
+          "event": "Deploy reinicia todos os pods de uma vez."
+        },
+        {
+          "t": "T+1s",
+          "event": "Pico de novas conexões; CPU a 100%."
+        },
+        {
+          "t": "T+2s",
+          "event": "Liveness falha; pods reiniciam."
+        },
+        {
+          "t": "T+3s",
+          "event": "Novo pico idêntico."
+        }
+      ],
+      "signals": [
+        {
+          "metric": "novas conexões por segundo",
+          "value": "0 → 20.000 → 0 → 20.000 (dente de serra de 1 s)",
+          "trend": "spike"
+        },
+        {
+          "metric": "restarts por liveness",
+          "value": "dezenas em 5 min",
+          "trend": "up"
+        },
+        {
+          "metric": "tráfego total de usuários",
+          "value": "igual ao de ontem",
+          "trend": "flat"
+        }
+      ]
+    },
+    "question": "Qual o mecanismo e quais três defesas (cliente, servidor, processo) você aplica?",
+    "hints": [
+      "O tráfego total mudou ou só o momento em que ele chega?",
+      "O que o intervalo de 1 s fixo faz com 20.000 clientes que caíram juntos?"
+    ],
+    "answer": {
+      "diagnosis": "Thundering herd de reconexão sincronizada, realimentado por liveness que reinicia pods sobrecarregados.",
+      "rootCause": "Reconexão com intervalo fixo idêntico + restart de todos os pods ao mesmo tempo.",
+      "reasoning": "A carga total não aumentou; ela chega toda no mesmo segundo. 20.000 handshakes num servidor que aceita 2.000/s satura, a liveness mata o pod e o ciclo reinicia. Backoff sem jitter só espaçaria as ondas.",
+      "ruledOut": [
+        {
+          "failureMode": "retry-storm",
+          "why": "Não há amplificação de requests por falha; o volume total é o mesmo, só sincronizado."
+        },
+        {
+          "failureMode": "unbounded-cache",
+          "why": "Não há crescimento de memória ao longo do tempo."
+        }
+      ],
+      "confirmWith": [
+        "Histograma de novas conexões por segundo com período = reconnectDelay",
+        "Configuração do SDK",
+        "Correlação entre restarts e ondas"
+      ],
+      "immediateMitigation": [
+        "Admissão limitada de conexões com rejeição rápida e Retry-After",
+        "Afrouxar liveness (usar readiness para sobrecarga)"
+      ],
+      "permanentFix": [
+        "Backoff exponencial com full jitter no SDK",
+        "Rolling deploy em lotes",
+        "Readiness após aquecimento"
+      ],
+      "wouldMakeItWorse": [
+        "Dobrar réplicas e reiniciar todas juntas de novo",
+        "Backoff exponencial sem jitter",
+        "Liveness mais agressiva"
+      ],
+      "whatToMonitor": [
+        "novas conexões/s com granularidade de 1 s",
+        "handshakes/s",
+        "restarts por probe",
+        "conexões rejeitadas por admissão"
+      ]
+    },
+    "failureModes": [
+      "thundering-herd",
+      "cascading-failure"
+    ],
+    "sourceRefs": [
+      {
+        "kind": "reference",
+        "source": "AWS Architecture Blog — Exponential Backoff And Jitter (Marc Brooker, 2015)",
+        "locator": "aws.amazon.com/blogs/architecture/exponential-backoff-and-jitter/",
+        "note": "Backoff sem jitter mantém rajadas; jitter espalha",
+        "url": "https://aws.amazon.com/blogs/architecture/exponential-backoff-and-jitter/"
+      },
+      {
+        "kind": "reference",
+        "source": "Google SRE Book — Addressing Cascading Failures",
+        "locator": "sre.google/sre-book/addressing-cascading-failures/",
+        "note": "Backoff randomizado; cache frio e partida lenta; não matar instâncias sobrecarregadas por health check",
+        "url": "https://sre.google/sre-book/addressing-cascading-failures/"
+      }
+    ]
+  },
+  {
+    "id": "drill-kafka-one-partition-stuck",
+    "title": "Detetive de métricas: lag em uma partição só",
+    "format": "metrics-detective",
+    "difficulty": "senior",
+    "keywords": [
+      "lag em uma partição",
+      "offset parado",
+      "consumer preso"
+    ],
+    "scenario": {
+      "dataKind": "didactic",
+      "context": "Tópico de pedidos com 12 partições e 12 consumidores.",
+      "setup": [
+        "Produção estável em ~2k msg/s",
+        "Chave de partição = customer_id",
+        "Consumidor faz retry infinito em qualquer exceção"
+      ],
+      "signals": [
+        {
+          "metric": "lag partição 5",
+          "value": "0 → 50k em 5 min",
+          "trend": "up"
+        },
+        {
+          "metric": "lag demais partições",
+          "value": "~0",
+          "trend": "flat"
+        },
+        {
+          "metric": "offset comitado partição 5",
+          "value": "88.120 (parado)",
+          "trend": "flat"
+        },
+        {
+          "metric": "CPU do consumidor da partição 5",
+          "value": "alta",
+          "trend": "up"
+        },
+        {
+          "metric": "logs",
+          "value": "mesma NumberFormatException milhares de vezes",
+          "trend": "up"
+        }
+      ]
+    },
+    "question": "É falta de capacidade, hot partition ou outra coisa? Como você tira a partição do lugar?",
+    "hints": [
+      "O offset comitado está avançando devagar ou parado?",
+      "A exceção muda ou é sempre a mesma?"
+    ],
+    "answer": {
+      "diagnosis": "Poison message bloqueando a partição 5 (head-of-line blocking) com retry infinito.",
+      "rootCause": "Mensagem malformada (valor com vírgula) + consumidor que repete qualquer exceção sem limite nem DLQ.",
+      "reasoning": "Offset parado com consumidor ocupado e a mesma exceção repetida indicam loop numa mensagem, não lentidão. Hot partition teria offset avançando (devagar) e mais tráfego naquela partição; capacidade insuficiente afetaria todas as partições.",
+      "ruledOut": [
+        {
+          "failureMode": "hot-key-partition",
+          "why": "Na hot partition o consumidor progride (offset anda), só não acompanha; aqui o offset está parado."
+        },
+        {
+          "failureMode": "no-backpressure",
+          "why": "As outras 11 partições estão sem lag; a produção é estável."
+        }
+      ],
+      "confirmWith": [
+        "Offset comitado sem mudar",
+        "Inspecionar a mensagem no offset 88.120",
+        "Contagem de exceções por offset"
+      ],
+      "immediateMitigation": [
+        "Publicar a mensagem em tópico de erro (dead letter) e avançar o offset",
+        "Corrigir/rollback do produtor que gerou a mensagem"
+      ],
+      "permanentFix": [
+        "Limite de tentativas + DLQ monitorada",
+        "Erros permanentes direto para DLQ",
+        "Validação de schema no produtor",
+        "Reprocessamento idempotente"
+      ],
+      "wouldMakeItWorse": [
+        "Escalar consumidores (a partição continua presa)",
+        "Pular a mensagem sem registro",
+        "Aumentar partições"
+      ],
+      "whatToMonitor": [
+        "offset comitado por partição",
+        "lag por partição",
+        "taxa de DLQ",
+        "exceções por tipo"
+      ]
+    },
+    "failureModes": [
+      "poison-message",
+      "no-backpressure"
+    ],
+    "sourceRefs": [
+      {
+        "kind": "reference",
+        "source": "Apache Kafka 4.0 — KafkaConsumer javadoc",
+        "locator": "kafka.apache.org/40/javadoc/org/apache/kafka/clients/consumer/KafkaConsumer.html",
+        "note": "Partição consumida por um consumidor do grupo; offsets comitados após processamento",
+        "url": "https://kafka.apache.org/40/javadoc/org/apache/kafka/clients/consumer/KafkaConsumer.html"
+      },
+      {
+        "kind": "pdf",
+        "source": "System Design Workbook",
+        "locator": "p.305",
+        "note": "DLQ tira a mensagem da fila principal sem tentativas infinitas"
+      },
+      {
+        "kind": "reference",
+        "source": "Amazon SQS docs — Using dead-letter queues",
+        "locator": "docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-dead-letter-queues.html",
+        "note": "Limite de recebimentos antes da DLQ",
+        "url": "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-dead-letter-queues.html"
+      }
+    ]
+  },
+  {
+    "id": "drill-kafka-backlog-campaign",
+    "title": "Backlog crescendo durante campanha de marketing",
+    "format": "incident",
+    "difficulty": "staff",
+    "keywords": [
+      "kafka acumulando mensagem",
+      "fila crescendo",
+      "consumidores ociosos"
+    ],
+    "scenario": {
+      "dataKind": "didactic",
+      "context": "Eventos de pagamento em Kafka consumidos e gravados num PostgreSQL de read model.",
+      "setup": [
+        "Tópico com 12 partições",
+        "Produção: 50k msg/s na campanha",
+        "Consumo: 10k msg/s",
+        "Retenção do tópico: 2 h",
+        "Time escalou consumidores de 12 para 48"
+      ],
+      "timeline": [
+        {
+          "t": "T+0",
+          "event": "Campanha começa."
+        },
+        {
+          "t": "T+1 min",
+          "event": "Lag ≈ 2,4 milhões."
+        },
+        {
+          "t": "T+15 min",
+          "event": "48 consumidores rodando; consumo continua ~10k msg/s."
+        },
+        {
+          "t": "T+20 min",
+          "event": "Rebalances frequentes; CPU do banco do read model a 95%."
+        }
+      ],
+      "signals": [
+        {
+          "metric": "produced/s vs consumed/s",
+          "value": "50k vs 10k",
+          "trend": "flat"
+        },
+        {
+          "metric": "lag total",
+          "value": "cresce ~40k/s",
+          "trend": "up"
+        },
+        {
+          "metric": "consumidores com partição atribuída",
+          "value": "12 de 48",
+          "trend": "flat"
+        },
+        {
+          "metric": "latência de escrita no read model",
+          "value": "3× o normal",
+          "trend": "up"
+        },
+        {
+          "metric": "rebalances/h",
+          "value": "30",
+          "trend": "up"
+        }
+      ]
+    },
+    "question": "Quanto tempo até perder dados por retenção se nada mudar? Por que escalar para 48 não ajudou? O que você prioriza?",
+    "hints": [
+      "Quantas partições existem?",
+      "Qual é o gargalo real do consumo: o consumidor ou o banco a jusante?",
+      "Retenção de 2 h com mensagens esperando quanto tempo?"
+    ],
+    "answer": {
+      "diagnosis": "Falta de backpressure: produção sustentada acima do consumo, com paralelismo preso ao número de partições e o banco a jusante como gargalo real.",
+      "rootCause": "λ (50k) > μ (10k) sem mecanismo de admissão/limite e com μ limitado por 12 partições e pela escrita no PostgreSQL.",
+      "reasoning": "Backlog cresce 40k/s. Mensagens produzidas agora só serão consumidas depois do backlog acumulado; quando a espera passar de 2 h, a retenção apaga mensagens ainda não lidas. Consumidores além de 12 não recebem partição. Lotes lentos por causa do banco estouram max.poll.interval.ms e geram rebalances, reduzindo μ ainda mais.",
+      "ruledOut": [
+        {
+          "failureMode": "poison-message",
+          "why": "Todas as partições têm lag e os offsets avançam."
+        },
+        {
+          "failureMode": "hot-key-partition",
+          "why": "O lag é distribuído entre as partições."
+        }
+      ],
+      "confirmWith": [
+        "produced/s vs consumed/s por tópico",
+        "partições atribuídas por consumidor",
+        "latência de escrita no destino",
+        "rebalances e tempo entre polls"
+      ],
+      "immediateMitigation": [
+        "Priorizar/limitar a entrada: eventos não críticos da campanha descartados ou adiados",
+        "Voltar para 12 consumidores estáveis e reduzir lote para evitar rebalances",
+        "pause/resume quando o banco saturar em vez de acumular em memória"
+      ],
+      "permanentFix": [
+        "Partições dimensionadas pelo pico por consumidor (com planejamento de chave)",
+        "Escrita em lote no read model",
+        "Admissão/load shedding na borda baseada em lag",
+        "Alertas por lag em segundos"
+      ],
+      "wouldMakeItWorse": [
+        "Mais consumidores sem mais partições",
+        "Aumentar partições no meio do incidente sem considerar ordem por chave",
+        "Autoscaling de consumidores contra o banco já a 95%",
+        "Aumentar max.poll.records"
+      ],
+      "whatToMonitor": [
+        "lag em segundos",
+        "produced/s vs consumed/s",
+        "rebalances",
+        "latência do destino",
+        "consumidores ociosos"
+      ]
+    },
+    "failureModes": [
+      "no-backpressure",
+      "cascading-failure"
+    ],
+    "sourceRefs": [
+      {
+        "kind": "reference",
+        "source": "Azure Architecture Center — Queue-Based Load Leveling pattern",
+        "locator": "learn.microsoft.com/en-us/azure/architecture/patterns/queue-based-load-leveling",
+        "note": "Produtor acima do consumidor faz a fila crescer; escalar sem limitar a jusante move a sobrecarga",
+        "url": "https://learn.microsoft.com/en-us/azure/architecture/patterns/queue-based-load-leveling"
+      },
+      {
+        "kind": "reference",
+        "source": "Apache Kafka 4.0 — KafkaConsumer javadoc",
+        "locator": "kafka.apache.org/40/javadoc/org/apache/kafka/clients/consumer/KafkaConsumer.html",
+        "note": "Uma partição por consumidor do grupo; max.poll.interval.ms",
+        "url": "https://kafka.apache.org/40/javadoc/org/apache/kafka/clients/consumer/KafkaConsumer.html"
+      },
+      {
+        "kind": "reference",
+        "source": "Apache Kafka 4.1 — Consumer Configs",
+        "locator": "kafka.apache.org/41/configuration/consumer-configs/",
+        "note": "max.poll.records e max.poll.interval.ms",
+        "url": "https://kafka.apache.org/41/configuration/consumer-configs/"
+      }
+    ]
+  },
+  {
+    "id": "drill-double-charges-peak",
+    "title": "Reclamações de cobrança duplicada no pico",
+    "format": "incident",
+    "difficulty": "senior",
+    "keywords": [
+      "cliente cobrado duas vezes",
+      "cobrança duplicada no pico",
+      "double charge"
+    ],
+    "scenario": {
+      "dataKind": "didactic",
+      "context": "App de pagamentos com retry automático; API sem Idempotency-Key.",
+      "setup": [
+        "Timeout do app: 10 s",
+        "Latência do adquirente no pico: 12 s em ~1% das chamadas",
+        "POST /payments debita e chama o adquirente"
+      ],
+      "signals": [
+        {
+          "metric": "pares de pagamentos iguais (cliente, valor, destino) em < 30 s",
+          "value": "~1.000/dia no pico",
+          "trend": "up"
+        },
+        {
+          "metric": "timeout rate do app",
+          "value": "1%",
+          "trend": "up"
+        },
+        {
+          "metric": "latência p99 do adquirente",
+          "value": "12 s",
+          "trend": "spike"
+        },
+        {
+          "metric": "erros 5xx da API",
+          "value": "normais",
+          "trend": "flat"
+        }
+      ]
+    },
+    "question": "Por que há cobrança dupla sem erro na API? Que desenho elimina o problema mesmo com o mesmo pico de latência?",
+    "hints": [
+      "O que o app sabe quando estoura o timeout de 10 s?",
+      "O que acontece se duas tentativas chegarem ao mesmo tempo com uma checagem 'já existe?'"
+    ],
+    "answer": {
+      "diagnosis": "Missing idempotency: retry de uma operação que já tinha executado (resposta perdida no timeout).",
+      "rootCause": "POST com efeito exposto a retry automático sem chave de idempotência nem claim atômico.",
+      "reasoning": "A API conclui em ~12 s, depois do timeout de 10 s do app; o app repete e a API trata como nova operação. Nenhum erro aparece porque as duas execuções funcionaram. Uma checagem 'já existe?' separada da escrita ainda falharia com tentativas concorrentes.",
+      "ruledOut": [
+        {
+          "failureMode": "retry-storm",
+          "why": "O volume de retries é pequeno (1%) e não degrada o serviço; o dano é o efeito duplicado."
+        },
+        {
+          "failureMode": "read-replica-lag",
+          "why": "A duplicação vem do retry automático do app, não de o usuário ver dado antigo."
+        }
+      ],
+      "confirmWith": [
+        "Logs do app: timeout seguido de retry com o mesmo corpo",
+        "Traces com duas execuções completas da mesma intenção",
+        "Reconciliação: soma de débitos maior que intenções"
+      ],
+      "immediateMitigation": [
+        "Desligar retry automático do POST de pagamento",
+        "Timeout do app acima da latência do pico",
+        "Reconciliar e estornar duplicidades com auditoria"
+      ],
+      "permanentFix": [
+        "Idempotency-Key com escopo + fingerprint da intenção + claim atômico por UNIQUE antes do efeito (q36)",
+        "Resultado gravado na mesma transação do débito e replay nas repetições",
+        "Chave de idempotência propagada ao adquirente",
+        "Consumidores idempotentes a jusante"
+      ],
+      "wouldMakeItWorse": [
+        "Deduplicar só por payload (bloqueia compras legítimas iguais)",
+        "if (!exists(key)) process()",
+        "Guardar a chave depois do débito em outra transação"
+      ],
+      "whatToMonitor": [
+        "idempotency.replay.count / conflict.count",
+        "duplicidades na reconciliação",
+        "timeout rate",
+        "latência do adquirente"
+      ]
+    },
+    "failureModes": [
+      "missing-idempotency",
+      "retry-storm"
+    ],
+    "relatedQuestions": [
+      "q36",
+      "q18"
+    ],
+    "sourceRefs": [
+      {
+        "kind": "reference",
+        "source": "Stripe Blog — Designing robust and predictable APIs with idempotency (B. Leach, 2017)",
+        "locator": "stripe.com/blog/idempotency",
+        "note": "Falha ambígua quando a conexão cai depois do servidor concluir",
+        "url": "https://stripe.com/blog/idempotency"
+      },
+      {
+        "kind": "reference",
+        "source": "Stripe API — Idempotent requests",
+        "locator": "docs.stripe.com/api/idempotent_requests",
+        "note": "Idempotency keys para retry seguro",
+        "url": "https://docs.stripe.com/api/idempotent_requests"
+      },
+      {
+        "kind": "reference",
+        "source": "PostgreSQL docs — INSERT ... ON CONFLICT",
+        "locator": "www.postgresql.org/docs/current/sql-insert.html",
+        "note": "ON CONFLICT DO NOTHING para claim atômico",
+        "url": "https://www.postgresql.org/docs/current/sql-insert.html"
+      }
+    ]
+  },
+  {
+    "id": "drill-profile-shows-old-value",
+    "title": "'Salvei e não mudou'",
+    "format": "incident",
+    "difficulty": "senior",
+    "keywords": [
+      "salvei e continua o valor antigo",
+      "replica dado velho",
+      "não salva o perfil"
+    ],
+    "scenario": {
+      "dataKind": "didactic",
+      "context": "App com PostgreSQL primário e duas read replicas; SELECT sempre vai para réplica.",
+      "setup": [
+        "Lag normal ~50 ms",
+        "Job de importação em lote roda às 12:00",
+        "Tela recarrega o perfil 300 ms após salvar"
+      ],
+      "signals": [
+        {
+          "metric": "replay_lag das réplicas",
+          "value": "50 ms → 1,5 s às 12:00",
+          "trend": "spike"
+        },
+        {
+          "metric": "chamados 'não salva'",
+          "value": "picos entre 12:00 e 12:30",
+          "trend": "up"
+        },
+        {
+          "metric": "erros na escrita",
+          "value": "0",
+          "trend": "flat"
+        },
+        {
+          "metric": "escritas repetidas do mesmo usuário em < 5 s",
+          "value": "3×",
+          "trend": "up"
+        }
+      ]
+    },
+    "question": "Por que só nesse horário? Como garantir que o usuário veja o que acabou de salvar sem mandar todas as leituras ao primário?",
+    "hints": [
+      "O que acontece com o lag durante o job em lote?",
+      "A leitura de 300 ms depois cai antes ou depois da réplica aplicar?"
+    ],
+    "answer": {
+      "diagnosis": "Read replica lag quebrando read-your-writes durante carga de escrita em lote.",
+      "rootCause": "Leitura pós-escrita roteada para réplica assíncrona sem consciência de lag.",
+      "reasoning": "Com lag de 50 ms a leitura de 300 ms depois quase sempre vê a escrita; às 12:00 o lag vai a 1,5 s e a leitura cai na janela de inconsistência. As escritas repetidas são usuários tentando de novo.",
+      "ruledOut": [
+        {
+          "failureMode": "unbounded-cache",
+          "why": "Não há cache envolvido nem crescimento de memória."
+        },
+        {
+          "failureMode": "missing-idempotency",
+          "why": "É consequência (repetição), não a causa do valor antigo."
+        }
+      ],
+      "confirmWith": [
+        "pg_stat_replication (replay_lag) no horário",
+        "Traces: escrita no primário seguida de leitura em réplica em menos tempo que o lag"
+      ],
+      "immediateMitigation": [
+        "Ler do primário nas telas de edição",
+        "Reagendar/limitar o job em lote"
+      ],
+      "permanentFix": [
+        "Sessão fixada no primário por janela após escrita ou até a réplica alcançar a posição da escrita",
+        "Remover do pool réplicas acima do SLO de lag",
+        "Tela renderiza a resposta da escrita",
+        "Idempotência na operação para repetições"
+      ],
+      "wouldMakeItWorse": [
+        "Adicionar mais réplicas assíncronas",
+        "Cachear o perfil lido da réplica",
+        "Mandar todas as leituras ao primário sem medir a capacidade"
+      ],
+      "whatToMonitor": [
+        "replay_lag por réplica",
+        "fração de leituras roteadas ao primário",
+        "escritas repetidas"
+      ]
+    },
+    "failureModes": [
+      "read-replica-lag",
+      "missing-idempotency"
+    ],
+    "sourceRefs": [
+      {
+        "kind": "reference",
+        "source": "PostgreSQL docs — Monitoring Database Activity (pg_stat_activity, pg_stat_replication)",
+        "locator": "www.postgresql.org/docs/current/monitoring-stats.html",
+        "note": "replay_lag",
+        "url": "https://www.postgresql.org/docs/current/monitoring-stats.html"
+      },
+      {
+        "kind": "reference",
+        "source": "Werner Vogels — Eventually Consistent, Revisited (2008)",
+        "locator": "www.allthingsdistributed.com/2008/12/eventually_consistent.html",
+        "note": "Read-your-writes",
+        "url": "https://www.allthingsdistributed.com/2008/12/eventually_consistent.html"
+      },
+      {
+        "kind": "reference",
+        "source": "Amazon RDS docs — Working with DB instance read replicas",
+        "locator": "docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_ReadRepl.html",
+        "note": "Réplicas assíncronas podem ter dado desatualizado",
+        "url": "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_ReadRepl.html"
+      }
+    ]
+  },
+  {
+    "id": "drill-weekly-oom",
+    "title": "O serviço que reinicia toda quinta-feira",
+    "format": "metrics-detective",
+    "difficulty": "senior",
+    "keywords": [
+      "OOM toda semana",
+      "heap cresce até reiniciar",
+      "lento antes de cair"
+    ],
+    "scenario": {
+      "dataKind": "didactic",
+      "context": "Serviço de preços em Java; pods com heap de 2 GB.",
+      "setup": [
+        "Cache local implementado como Map estático",
+        "Chave do cache inclui sku, região, moeda e parâmetro de campanha",
+        "Time aumentou o heap de 1 GB para 2 GB no mês passado"
+      ],
+      "signals": [
+        {
+          "metric": "heap usado após full GC",
+          "value": "cresce ~300 MB/dia",
+          "trend": "up"
+        },
+        {
+          "metric": "tempo em GC",
+          "value": "2% → 35% da CPU ao longo da semana",
+          "trend": "up"
+        },
+        {
+          "metric": "p99",
+          "value": "30 ms → 700 ms antes do restart",
+          "trend": "up"
+        },
+        {
+          "metric": "restarts",
+          "value": "OOMKilled a cada ~6 dias",
+          "trend": "flat"
+        },
+        {
+          "metric": "tráfego",
+          "value": "estável",
+          "trend": "flat"
+        }
+      ]
+    },
+    "question": "Por que a latência piora dias antes do OOM, por que aumentar o heap só adiou e qual a correção?",
+    "hints": [
+      "Tráfego estável e heap crescendo: o que está sendo retido?",
+      "O que aumenta com o tempo, o tráfego ou o número de chaves distintas?"
+    ],
+    "answer": {
+      "diagnosis": "Unbounded cache (vazamento de memória por estrutura sem limite) causando GC pressure e OOM periódico.",
+      "rootCause": "Map estático sem política de remoção com chave de alta cardinalidade (parâmetro de campanha).",
+      "reasoning": "Heap após GC subindo com tráfego estável = live set crescendo = objetos retidos. Antes do OOM, o GC trabalha cada vez mais para recuperar pouco (latência sobe). Heap maior só alonga o ciclo.",
+      "ruledOut": [
+        {
+          "failureMode": "cache-avalanche",
+          "why": "O cache não perde dados; ele nunca os perde."
+        },
+        {
+          "failureMode": "no-backpressure",
+          "why": "Não há fila crescendo; é um cache."
+        }
+      ],
+      "confirmWith": [
+        "jcmd GC.class_histogram mostrando a classe das entradas dominando",
+        "Heap dump com caminho até o Map estático",
+        "Tamanho do mapa ao longo do tempo"
+      ],
+      "immediateMitigation": [
+        "Endpoint/flag para limpar o cache",
+        "Rolling restart escalonado"
+      ],
+      "permanentFix": [
+        "Cache limitado por tamanho (Caffeine maximumSize) + TTL",
+        "Remover o parâmetro de campanha da chave",
+        "Métricas de tamanho, hit e eviction"
+      ],
+      "wouldMakeItWorse": [
+        "Aumentar o heap para 4 GB",
+        "Só adicionar TTL longo",
+        "Reiniciar todos os pods ao mesmo tempo (cache frio geral)"
+      ],
+      "whatToMonitor": [
+        "live set após GC",
+        "tempo em GC",
+        "tamanho do cache",
+        "evictions"
+      ]
+    },
+    "failureModes": [
+      "unbounded-cache",
+      "cache-avalanche"
+    ],
+    "sourceRefs": [
+      {
+        "kind": "reference",
+        "source": "Oracle — Java SE 21 Troubleshooting Guide: Troubleshoot Memory Leaks",
+        "locator": "docs.oracle.com/en/java/javase/21/troubleshoot/troubleshooting-memory-leaks.html",
+        "note": "Heap após GC crescendo indica vazamento; histograma, heap dump e JFR",
+        "url": "https://docs.oracle.com/en/java/javase/21/troubleshoot/troubleshooting-memory-leaks.html"
+      },
+      {
+        "kind": "reference",
+        "source": "Caffeine wiki — Eviction",
+        "locator": "github.com/ben-manes/caffeine/wiki/Eviction",
+        "note": "maximumSize e expiração",
+        "url": "https://github.com/ben-manes/caffeine/wiki/Eviction"
+      }
+    ]
+  },
+  {
+    "id": "drill-one-shard-saturated",
+    "title": "Cluster a 50% e um shard a 100%",
+    "format": "metrics-detective",
+    "difficulty": "staff",
+    "keywords": [
+      "um shard muito mais quente",
+      "hot shard",
+      "cluster ocioso e um nó saturado"
+    ],
+    "scenario": {
+      "dataKind": "didactic",
+      "context": "Cache distribuído com 10 shards durante um evento ao vivo.",
+      "setup": [
+        "Capacidade por shard: ~100k req/s",
+        "Particionamento por hash do id do artigo"
+      ],
+      "signals": [
+        {
+          "metric": "CPU média do cluster",
+          "value": "~50%",
+          "trend": "flat"
+        },
+        {
+          "metric": "CPU do shard 7",
+          "value": "100%",
+          "trend": "saturated"
+        },
+        {
+          "metric": "requests no shard 7",
+          "value": "500k req/s",
+          "trend": "spike"
+        },
+        {
+          "metric": "requests nos demais",
+          "value": "~5k req/s cada",
+          "trend": "flat"
+        },
+        {
+          "metric": "top-1 chave",
+          "value": "article:final = 92% do tráfego do shard 7",
+          "trend": "up"
+        },
+        {
+          "metric": "timeouts",
+          "value": "em todas as chaves do shard 7",
+          "trend": "up"
+        }
+      ]
+    },
+    "question": "Por que adicionar mais shards não resolve? Qual a mitigação para essa leitura e o que mudaria se fosse escrita?",
+    "hints": [
+      "Para onde vai a chave article:final se houver 20 shards?",
+      "Leitura pode ser replicada; escrita concentrada pode?"
+    ],
+    "answer": {
+      "diagnosis": "Hot key / hot partition: uma chave concentra tráfego num shard e capacidade total ≠ capacidade útil.",
+      "rootCause": "Distribuição de acesso extremamente assimétrica numa única chave de leitura durante o evento.",
+      "reasoning": "Hashing espalha chaves, não carga: com 20 shards a chave continua inteira num só dono. Para leitura, réplicas do valor, cache L1 e CDN tiram a carga do shard; para escrita, só dividir a chave (sufixo calculado/aleatório) com custo de leitura agregada.",
+      "ruledOut": [
+        {
+          "failureMode": "cache-stampede",
+          "why": "Não há correlação com expiração; a carga é contínua."
+        },
+        {
+          "failureMode": "no-backpressure",
+          "why": "Não é fila; é concentração de requests síncronos."
+        }
+      ],
+      "confirmWith": [
+        "Métricas por shard",
+        "Top-N chaves (redis-cli --hotkeys com LFU ou amostragem no proxy)"
+      ],
+      "immediateMitigation": [
+        "Cache L1 por pod/CDN para article:final",
+        "Conter retries dos clientes do shard 7",
+        "Isolar a chave em nó dedicado"
+      ],
+      "permanentFix": [
+        "Replicação automática de chaves quentes de leitura",
+        "Detecção de hot keys",
+        "Write sharding quando for escrita (sabendo o custo de fan-out)",
+        "Planejar capacidade pelo pior shard"
+      ],
+      "wouldMakeItWorse": [
+        "Rebalancear o cluster no pico",
+        "Adicionar shards",
+        "Salting aleatório de um contador que precisa ser exato"
+      ],
+      "whatToMonitor": [
+        "CPU/throughput por shard",
+        "top-N chaves",
+        "p99 por shard"
+      ]
+    },
+    "failureModes": [
+      "hot-key-partition",
+      "retry-storm"
+    ],
+    "sourceRefs": [
+      {
+        "kind": "reference",
+        "source": "Amazon DynamoDB docs — Best practices for designing partition keys",
+        "locator": "docs.aws.amazon.com/amazondynamodb/latest/developerguide/bp-partition-key-design.html",
+        "note": "Limites por partição e distribuição uniforme",
+        "url": "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/bp-partition-key-design.html"
+      },
+      {
+        "kind": "reference",
+        "source": "Amazon DynamoDB docs — Using write sharding to distribute workloads evenly",
+        "locator": "docs.aws.amazon.com/amazondynamodb/latest/developerguide/bp-partition-key-sharding.html",
+        "note": "Sufixo aleatório vs calculado",
+        "url": "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/bp-partition-key-sharding.html"
+      },
+      {
+        "kind": "reference",
+        "source": "Redis docs — redis-cli",
+        "locator": "redis.io/docs/latest/develop/tools/cli/",
+        "note": "--hotkeys com política LFU",
+        "url": "https://redis.io/docs/latest/develop/tools/cli/"
+      },
+      {
+        "kind": "reference",
+        "source": "Nishtala et al. — Scaling Memcache at Facebook (NSDI 2013)",
+        "locator": "www.usenix.org/conference/nsdi13/technical-sessions/presentation/nishtala",
+        "note": "Replicar chaves quentes entre servidores",
+        "url": "https://www.usenix.org/conference/nsdi13/technical-sessions/presentation/nishtala"
+      }
+    ]
+  }
+]

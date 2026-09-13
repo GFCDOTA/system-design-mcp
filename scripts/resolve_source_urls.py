@@ -20,7 +20,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 KB = ROOT / "knowledge-base"
 FILES = ["topics.json", "patterns.json", "flows.json", "interview-questions.json",
-         "diagrams.json", "evidence.json", "ai-agents-glossary.json"]
+         "diagrams.json", "evidence.json", "ai-agents-glossary.json", "databases.json",
+         "failure-modes.json", "incident-drills.json", "comparisons.json", "learning-paths.json",
+         "rubrics.json"]
 
 REPO_ROOTS = {
     "msc-shard-router": "https://github.com/msfidelis/msc-shard-router",

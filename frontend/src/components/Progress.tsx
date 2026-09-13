@@ -56,6 +56,13 @@ const SECTION_LABEL: Record<string, string> = {
   "ai-agents": "IA & Agentes",
   entrevista: "Modo Entrevista",
   estudos: "Modo Estudos",
+  "failure-modes": "Failure modes",
+  drills: "Incident drills",
+  chains: "Cadeias de falha",
+  search: "Buscar",
+  paths: "Trilhas de System Design",
+  quiz: "Quiz",
+  review: "Revisão",
 };
 
 const INTERVIEW_LABEL: Record<string, string> = {

@@ -13,6 +13,12 @@
 
 ---
 
+> **Novo (2026-09): Failure Modes at Scale.** Este mapa cobre os pilares conceituais. Como esses
+> sistemas **quebram em produção** — cache stampede, hot partition, retry storm, pool exhaustion,
+> replica lag, backpressure, idempotência ausente e as cadeias entre eles — está em
+> `knowledge-base/failure-modes.json` (no app: Produção & Falhas), com drills em
+> `incident-drills.json` e comparações em `comparisons.json`.
+
 ## Sumário
 
 1. [Sharding e Hash Consistente](#1-sharding-e-hash-consistente)
