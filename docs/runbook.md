@@ -1,113 +1,65 @@
 # Runbook — System Design Specialist Lab
 
-Como rodar, testar e operar o Lab localmente. Sem segredos, sem serviços pagos.
+Como rodar, testar e operar o Lab localmente. Sem segredos, sem serviços pagos, sem backend.
 
 ## Pré-requisitos
 
-- **JDK 21** (validado com Temurin 21.0.11). Confirme: `java -version`.
-- **Node 20+** e npm (validado com Node 24 / npm 11).
-- Maven **não** é necessário: o BFF inclui o wrapper `./mvnw` (baixa o Maven 3.9.9).
+- **Node 20+** (validado com Node 24). Python 3 só para scripts de manutenção de fontes.
 
-## Rodar o BFF
-
-```bash
-cd bff
-./mvnw spring-boot:run
-# → http://localhost:8080 ; health em /actuator/health
-```
-
-Validar:
-```bash
-curl localhost:8080/api/meta/stats
-curl localhost:8080/api/topics/cqrs | jq '.title, .sourceRefs[0]'
-```
-
-### Gotcha: `Selector.open() EINVAL` / app não sobe
-
-Em máquinas Windows onde o antivírus bloqueia AF_UNIX/loopback para `java.exe`, o
-conector NIO do Tomcat falha no boot. Workaround (força TCP):
-
-```bash
-export JAVA_TOOL_OPTIONS="-Djdk.net.unixdomain.tmpdir=Z:\\nope"
-./mvnw spring-boot:run
-```
-
-A causa-raiz é o antivírus; o conserto definitivo é colocar `java.exe` na whitelist.
-(Os testes usam ambiente web MOCK, sem socket, então `./mvnw test` não é afetado.)
-
-### Apontar para conteúdo vivo (sem rebuild)
-
-Por padrão o BFF lê a cópia da base no classpath (empacotada de `../knowledge-base` no
-build). Para editar o JSON e ver na hora:
-```bash
-SDSL_KNOWLEDGE_BASE_DIR=../knowledge-base ./mvnw spring-boot:run
-```
-
-## Rodar o frontend
+## Frontend
 
 ```bash
 cd frontend
 npm install
-npm run dev      # → http://localhost:5173 (proxy /api e /actuator para :8080)
+npm run dev              # http://localhost:5173 (predev copia knowledge-base/*.json -> public/kb/)
+npm run dev -- --host    # exposto na LAN (celular)
+npm test                 # schema, integridade, grafo, busca, lógica de estudo, rotas
+npm run build            # tsc strict + vite (prebuild sincroniza a KB)
+npm run build:deploy     # dist-deploy/ enxuto
 ```
 
-O BFF precisa estar no ar para o conteúdo carregar; senão as telas mostram o erro
-“O BFF está rodando em :8080?”.
+Se uma tela mostrar "Erro ao carregar /kb/…", rode `npm run sync-kb` e recarregue.
 
-## Testar
+## MCP server
 
 ```bash
-# BFF: unit + contrato + integridade da base
-cd bff && ./mvnw test
-
-# Frontend: type-check (strict) + build de produção
-cd frontend && npm run build
+cd mcp
+npm install
+npm run build            # dist/server.js
+npm run smoke            # sobe via stdio e exercita overview/search/list/get/related
 ```
 
-Ou os atalhos: `scripts/test.sh` (ambos) e `scripts/build.sh` (jar + dist).
+Registrar num harness: ver `docs/FOR-AGENTS.md` (o repo traz `.mcp.json`).
 
-## Empacotar
+## Atalhos
 
 ```bash
-cd bff && ./mvnw clean package      # gera target/system-design-lab-bff-0.1.0.jar
-java -jar target/system-design-lab-bff-0.1.0.jar
-
-cd frontend && npm run build        # gera frontend/dist/ (estático)
+scripts/test.sh          # frontend: npm test + build
+scripts/build.sh         # bundle estático
+scripts/run.sh           # dev server com --host
 ```
 
-## Docker
+## Editar a base
 
-```bash
-docker compose up --build
-# UI (nginx) em http://localhost:5173 ; API direta em :18080 (o nginx faz proxy de /api -> bff)
-docker compose down
-```
-No container Linux o BFF sobe sem o workaround AF_UNIX. O host 8080 costuma estar
-ocupado nesta máquina por outra stack Docker, então o BFF é publicado em **18080**
-(porta interna continua 8080; só muda o mapeamento de host).
+1. Edite `knowledge-base/<coleção>.json` (ver `CONTRIBUTING.md` para campos obrigatórios).
+2. `python scripts/resolve_source_urls.py` para (re)verificar `url` das fontes com curl.
+3. `cd frontend && npm test` — schema, integridade, grafo e busca.
+4. `cd mcp && npm run build && npm run smoke`.
 
-## Regenerar a base de conhecimento
+⚠️ `scripts/merge_validate_kb.py` regenera a partir de `knowledge-base/_parts/` (gitignored, pode
+estar desatualizado) — não rode sem sincronizar.
 
-A base versionada em `knowledge-base/*.json` já é o produto final. Para reconstruir a
-partir dos `_parts` (ex.: após editar um lote):
+## Gotchas
 
-```bash
-python scripts/merge_validate_kb.py    # usa o venv do workspace
-cd bff && ./mvnw test                  # gate de integridade
-```
-
-`_parts/` e `docs/_sources/` são intermediários (gitignored). O schema fica em
-`knowledge-base/schema/`.
+- **Service worker** (só em produção) pode servir o shell antigo após deploy: Ctrl+Shift+R.
+- Em dev, se o navegador ainda tiver um SW antigo registrado, desregistre-o (DevTools →
+  Application → Service Workers) — versões anteriores registravam SW também em dev.
+- `frontend/public/kb/` e `frontend/public/course/` são **gitignored** (derivado e conteúdo pago).
+  Antes de push: `git ls-files frontend/public/course frontend/public/kb` deve dar 0.
 
 ## Portas
 
 | Porta | Serviço |
 |-------|---------|
-| 8080 | BFF (API + actuator) |
-| 5173 | Frontend (Vite dev / nginx no Docker) |
-
-## Saúde / métricas
-
-- `GET /actuator/health` → status dos componentes.
-- `GET /actuator/prometheus` → métricas Micrometer (scrape Prometheus).
-- Cada resposta traz `X-Request-Id`; o mesmo id aparece nos logs (`reqId=…`).
+| 5173 | Frontend (Vite dev) |
+| — | MCP (stdio, spawnado pelo harness) |
