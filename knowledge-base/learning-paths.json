@@ -1,0 +1,536 @@
+[
+  {
+    "id": "resilience-path",
+    "title": "Resiliência: de timeout a cascading failure",
+    "track": "Resilience",
+    "level": "senior",
+    "goal": "Entender cada ferramenta de resiliência pelo problema que ela resolve e pelo jeito como ela mesma pode piorar um incidente.",
+    "steps": [
+      {
+        "ref": {
+          "kind": "topics",
+          "id": "resilience-patterns"
+        },
+        "why": "O mapa: timeout, retry, backoff, jitter, circuit breaker, fallback, degradação e backpressure."
+      },
+      {
+        "ref": {
+          "kind": "comparisons",
+          "id": "timeout-vs-circuit-breaker"
+        },
+        "why": "Timeout protege a chamada; circuit breaker protege o sistema de insistir."
+      },
+      {
+        "ref": {
+          "kind": "failure-modes",
+          "id": "retry-storm"
+        },
+        "why": "Retry é amplificação de carga: o laço timeout → retry → mais lentidão."
+      },
+      {
+        "ref": {
+          "kind": "failure-modes",
+          "id": "thundering-herd"
+        },
+        "why": "Por que jitter: sincronização vs amplificação."
+      },
+      {
+        "ref": {
+          "kind": "comparisons",
+          "id": "retry-storm-vs-thundering-herd"
+        },
+        "why": "Fixar a diferença de mecanismo e mitigação."
+      },
+      {
+        "ref": {
+          "kind": "patterns",
+          "id": "circuit-breaker"
+        },
+        "why": "Estados, limiar e fallback."
+      },
+      {
+        "ref": {
+          "kind": "patterns",
+          "id": "bulkhead"
+        },
+        "why": "Isolar recursos para conter blast radius."
+      },
+      {
+        "ref": {
+          "kind": "comparisons",
+          "id": "rate-limiting-vs-backpressure-vs-load-shedding"
+        },
+        "why": "Quatro respostas diferentes para 'mais trabalho que capacidade'."
+      },
+      {
+        "ref": {
+          "kind": "failure-modes",
+          "id": "cascading-failure"
+        },
+        "why": "Como tudo isso falha junto e por que o sistema não volta sozinho."
+      },
+      {
+        "ref": {
+          "kind": "incident-drills",
+          "id": "drill-incident-timeline-root-cause"
+        },
+        "why": "Treinar causa raiz vs sintoma numa linha do tempo."
+      }
+    ],
+    "sourceRefs": [
+      {
+        "kind": "pdf",
+        "source": "System Design Workbook",
+        "locator": "p.496-527",
+        "note": "Ordem conceitual das estratégias de resiliência no workbook"
+      },
+      {
+        "kind": "reference",
+        "source": "Google SRE Book — Addressing Cascading Failures",
+        "locator": "sre.google/sre-book/addressing-cascading-failures/",
+        "note": "Retries, deadlines, load shedding e cascata",
+        "url": "https://sre.google/sre-book/addressing-cascading-failures/"
+      }
+    ]
+  },
+  {
+    "id": "event-driven-path",
+    "title": "Event-driven: de at-least-once a saga",
+    "track": "Messaging",
+    "level": "senior",
+    "goal": "Assumir entrega at-least-once e construir consumo correto: idempotência, ordem, lag, mensagens venenosas, outbox e saga.",
+    "steps": [
+      {
+        "ref": {
+          "kind": "topics",
+          "id": "messaging-streaming"
+        },
+        "why": "Filas vs tópicos, Kafka, partições, DLQ."
+      },
+      {
+        "ref": {
+          "kind": "interview-questions",
+          "id": "q26"
+        },
+        "why": "Partições limitam o paralelismo de consumo."
+      },
+      {
+        "ref": {
+          "kind": "interview-questions",
+          "id": "q03"
+        },
+        "why": "Ordem por agregado sem ordem global."
+      },
+      {
+        "ref": {
+          "kind": "comparisons",
+          "id": "delivery-semantics"
+        },
+        "why": "At-most, at-least e exactly-once — e por que o destino precisa cooperar."
+      },
+      {
+        "ref": {
+          "kind": "patterns",
+          "id": "idempotent-consumer"
+        },
+        "why": "Duplicata é o caso normal."
+      },
+      {
+        "ref": {
+          "kind": "failure-modes",
+          "id": "no-backpressure"
+        },
+        "why": "Consumer lag, produtor mais rápido que consumidor."
+      },
+      {
+        "ref": {
+          "kind": "failure-modes",
+          "id": "poison-message"
+        },
+        "why": "Uma mensagem que para a partição; DLQ."
+      },
+      {
+        "ref": {
+          "kind": "comparisons",
+          "id": "outbox-vs-dual-write"
+        },
+        "why": "Publicar sem perder nem inventar eventos."
+      },
+      {
+        "ref": {
+          "kind": "comparisons",
+          "id": "saga-choreography-vs-orchestration"
+        },
+        "why": "Coordenação com compensação."
+      },
+      {
+        "ref": {
+          "kind": "incident-drills",
+          "id": "drill-kafka-backlog-campaign"
+        },
+        "why": "Treinar decisões sob backlog real."
+      }
+    ],
+    "sourceRefs": [
+      {
+        "kind": "pdf",
+        "source": "System Design Workbook",
+        "locator": "p.294-342",
+        "note": "Mensageria, eventos e streaming"
+      },
+      {
+        "kind": "pdf",
+        "source": "System Design Workbook",
+        "locator": "p.449-474",
+        "note": "Saga"
+      }
+    ]
+  },
+  {
+    "id": "database-scale-path",
+    "title": "Banco em escala: índice, pool, réplica e shard",
+    "track": "Database",
+    "level": "senior",
+    "goal": "Seguir o caminho real de um banco sob carga: query → pool → réplicas → particionamento, com o failure mode de cada degrau.",
+    "steps": [
+      {
+        "ref": {
+          "kind": "topics",
+          "id": "databases-indexing"
+        },
+        "why": "Estruturas de índice e cenários de carga."
+      },
+      {
+        "ref": {
+          "kind": "failure-modes",
+          "id": "slow-query"
+        },
+        "why": "Custo proporcional ao volume; o gatilho mais comum."
+      },
+      {
+        "ref": {
+          "kind": "failure-modes",
+          "id": "n-plus-one-queries"
+        },
+        "why": "Muitas queries rápidas também derrubam."
+      },
+      {
+        "ref": {
+          "kind": "failure-modes",
+          "id": "connection-pool-exhaustion"
+        },
+        "why": "Capacidade = conexões / tempo de posse; pool maior não é correção."
+      },
+      {
+        "ref": {
+          "kind": "topics",
+          "id": "data-replication"
+        },
+        "why": "Primário e réplicas, síncrono vs assíncrono."
+      },
+      {
+        "ref": {
+          "kind": "failure-modes",
+          "id": "read-replica-lag"
+        },
+        "why": "Read-your-writes e janela de inconsistência."
+      },
+      {
+        "ref": {
+          "kind": "comparisons",
+          "id": "replication-vs-sharding"
+        },
+        "why": "Escalar leitura vs escalar escrita."
+      },
+      {
+        "ref": {
+          "kind": "topics",
+          "id": "sharding-partitioning"
+        },
+        "why": "Chave de particionamento e hashing consistente."
+      },
+      {
+        "ref": {
+          "kind": "failure-modes",
+          "id": "hot-key-partition"
+        },
+        "why": "Capacidade total ≠ capacidade útil."
+      },
+      {
+        "ref": {
+          "kind": "incident-drills",
+          "id": "drill-api-timeouts-after-deploy"
+        },
+        "why": "Treinar o incidente clássico de pool esgotado."
+      }
+    ],
+    "sourceRefs": [
+      {
+        "kind": "pdf",
+        "source": "System Design Workbook",
+        "locator": "p.99-124",
+        "note": "Databases e indexação"
+      },
+      {
+        "kind": "pdf",
+        "source": "System Design Workbook",
+        "locator": "p.372-419",
+        "note": "Sharding e replicação"
+      }
+    ]
+  },
+  {
+    "id": "caching-path",
+    "title": "Cache sem ilusão: hit ratio não é o fim da conversa",
+    "track": "Caching",
+    "level": "senior",
+    "goal": "Usar cache sabendo como ele falha: stampede, avalanche, penetration, memória sem limite e dependência de capacidade.",
+    "steps": [
+      {
+        "ref": {
+          "kind": "topics",
+          "id": "caching"
+        },
+        "why": "TTL, evicção, hit rate, estratégias."
+      },
+      {
+        "ref": {
+          "kind": "failure-modes",
+          "id": "cache-stampede"
+        },
+        "why": "Expiração de chave quente e coalizão."
+      },
+      {
+        "ref": {
+          "kind": "failure-modes",
+          "id": "cache-avalanche"
+        },
+        "why": "Cache frio e comportamento modal."
+      },
+      {
+        "ref": {
+          "kind": "failure-modes",
+          "id": "cache-penetration"
+        },
+        "why": "Chaves inexistentes atravessam o cache."
+      },
+      {
+        "ref": {
+          "kind": "comparisons",
+          "id": "cache-stampede-vs-avalanche-vs-penetration"
+        },
+        "why": "Diagnóstico diferencial."
+      },
+      {
+        "ref": {
+          "kind": "failure-modes",
+          "id": "unbounded-cache"
+        },
+        "why": "Cache sem bound é vazamento de memória."
+      },
+      {
+        "ref": {
+          "kind": "failure-modes",
+          "id": "hot-key-partition"
+        },
+        "why": "Quando a chave quente não cabe num shard."
+      },
+      {
+        "ref": {
+          "kind": "interview-questions",
+          "id": "q37"
+        },
+        "why": "Entrevista progressiva de cache até o Redis cair."
+      }
+    ],
+    "sourceRefs": [
+      {
+        "kind": "pdf",
+        "source": "System Design Workbook",
+        "locator": "p.128-140",
+        "note": "Estratégias de cache"
+      },
+      {
+        "kind": "reference",
+        "source": "Amazon Builders' Library — Caching challenges and strategies",
+        "locator": "aws.amazon.com/builders-library/caching-challenges-and-strategies/",
+        "note": "Desafios de cache em produção",
+        "url": "https://aws.amazon.com/builders-library/caching-challenges-and-strategies/"
+      }
+    ]
+  },
+  {
+    "id": "consistency-idempotency-path",
+    "title": "Consistência e idempotência financeira",
+    "track": "Consistency",
+    "level": "staff",
+    "goal": "Garantir um único efeito financeiro da borda HTTP ao ledger, passando por réplicas, outbox e consumidores.",
+    "steps": [
+      {
+        "ref": {
+          "kind": "topics",
+          "id": "cap-acid-base"
+        },
+        "why": "Forte vs eventual como decisão por operação."
+      },
+      {
+        "ref": {
+          "kind": "failure-modes",
+          "id": "missing-idempotency"
+        },
+        "why": "O incidente: cobrança em dobro."
+      },
+      {
+        "ref": {
+          "kind": "interview-questions",
+          "id": "q36"
+        },
+        "why": "Deep-dive HTTP: claim atômico, fingerprint, replay, conflito, concorrência."
+      },
+      {
+        "ref": {
+          "kind": "patterns",
+          "id": "idempotent-request"
+        },
+        "why": "O padrão de borda."
+      },
+      {
+        "ref": {
+          "kind": "comparisons",
+          "id": "idempotent-request-vs-idempotent-consumer"
+        },
+        "why": "Mesmo problema, fronteiras diferentes."
+      },
+      {
+        "ref": {
+          "kind": "interview-questions",
+          "id": "q07"
+        },
+        "why": "Dual write e outbox."
+      },
+      {
+        "ref": {
+          "kind": "interview-questions",
+          "id": "q02"
+        },
+        "why": "Consumidor idempotente."
+      },
+      {
+        "ref": {
+          "kind": "interview-questions",
+          "id": "q31"
+        },
+        "why": "Dedup ponta a ponta em alto throughput."
+      },
+      {
+        "ref": {
+          "kind": "incident-drills",
+          "id": "drill-double-charges-peak"
+        },
+        "why": "Treinar o diagnóstico de cobrança duplicada."
+      }
+    ],
+    "sourceRefs": [
+      {
+        "kind": "reference",
+        "source": "Stripe API — Idempotent requests",
+        "locator": "docs.stripe.com/api/idempotent_requests",
+        "note": "Requisições idempotentes",
+        "url": "https://docs.stripe.com/api/idempotent_requests"
+      },
+      {
+        "kind": "reference",
+        "source": "microservices.io",
+        "locator": "patterns/communication-style/idempotent-consumer.html",
+        "note": "Consumidor idempotente",
+        "url": "https://microservices.io/patterns/communication-style/idempotent-consumer.html"
+      },
+      {
+        "kind": "pdf",
+        "source": "System Design Workbook",
+        "locator": "p.494",
+        "note": "Idempotência em domínios complexos"
+      }
+    ]
+  },
+  {
+    "id": "staff-interview-path",
+    "title": "Entrevista Staff: quebrar o sistema antes que ele quebre",
+    "track": "Interview Staff",
+    "level": "staff",
+    "goal": "Treinar o raciocínio adversarial de staff: capacidade, falhas, blast radius, trade-offs e operação.",
+    "steps": [
+      {
+        "ref": {
+          "kind": "interview-questions",
+          "id": "q38"
+        },
+        "why": "Como API → Redis → Postgres quebra em 100×."
+      },
+      {
+        "ref": {
+          "kind": "interview-questions",
+          "id": "q24"
+        },
+        "why": "O que muda em cada degrau de TPS."
+      },
+      {
+        "ref": {
+          "kind": "topics",
+          "id": "capacity-queueing"
+        },
+        "why": "Lei de Little e curva do joelho para números defensáveis."
+      },
+      {
+        "ref": {
+          "kind": "interview-questions",
+          "id": "q37"
+        },
+        "why": "Entrevista progressiva com 'e se...?'."
+      },
+      {
+        "ref": {
+          "kind": "failure-modes",
+          "id": "cascading-failure"
+        },
+        "why": "Blast radius e recuperação."
+      },
+      {
+        "ref": {
+          "kind": "incident-drills",
+          "id": "drill-metrics-db-cpu-normal"
+        },
+        "why": "Hipóteses a partir só de métricas."
+      },
+      {
+        "ref": {
+          "kind": "incident-drills",
+          "id": "drill-one-shard-saturated"
+        },
+        "why": "Capacidade útil vs total."
+      },
+      {
+        "ref": {
+          "kind": "interview-questions",
+          "id": "q30"
+        },
+        "why": "Comunicar trade-offs para quem decide."
+      }
+    ],
+    "sourceRefs": [
+      {
+        "kind": "pdf",
+        "source": "System Design Workbook",
+        "locator": "p.609-638",
+        "note": "Capacity planning e teoria das filas"
+      },
+      {
+        "kind": "reference",
+        "source": "Google SRE Book — Addressing Cascading Failures",
+        "locator": "sre.google/sre-book/addressing-cascading-failures/",
+        "note": "Gatilhos e resposta a cascata",
+        "url": "https://sre.google/sre-book/addressing-cascading-failures/"
+      }
+    ]
+  }
+]

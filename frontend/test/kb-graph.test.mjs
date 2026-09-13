@@ -106,3 +106,44 @@ test("failure modes: nenhum fica órfão (alguém aponta para ele)", () => {
   const orphans = [...incoming].filter(([, n]) => n === 0).map(([id]) => id);
   assert.deepEqual(orphans, [], "failure modes sem nenhuma aresta de entrada");
 });
+
+test("incident drills: título não entrega o diagnóstico e timeline aponta causa válida", () => {
+  const problems = [];
+  const fmTitles = fms.map((f) => f.title.toLowerCase().split(" (")[0]);
+  for (const d of collections["incident-drills"] ?? []) {
+    const title = d.title.toLowerCase();
+    for (const t of fmTitles) if (title.includes(t)) problems.push(`${d.id}: título revela '${t}'`);
+    if (d.format === "timeline") {
+      const n = d.scenario.timeline?.length ?? 0;
+      if (!(Number.isInteger(d.answer.rootCauseAt) && d.answer.rootCauseAt >= 0 && d.answer.rootCauseAt < n)) {
+        problems.push(`${d.id}: formato timeline exige answer.rootCauseAt dentro da timeline`);
+      }
+    }
+    if (!fmIds.has(d.failureModes[0])) problems.push(`${d.id}: diagnóstico principal inexistente`);
+  }
+  assert.deepEqual(problems, [], "\n" + problems.join("\n"));
+});
+
+test("rubrica: dimensões usadas pelas perguntas existem e a escala é 0..5", () => {
+  const rubric = (collections.rubrics ?? []).find((r) => r.id === "system-design-interview");
+  assert.ok(rubric, "rubrica system-design-interview ausente");
+  assert.deepEqual(rubric.scale.map((s) => s.score), [0, 1, 2, 3, 4, 5]);
+  const dims = new Set(rubric.dimensions.map((d) => d.id));
+  const problems = [];
+  for (const q of collections["interview-questions"]) {
+    for (const d of q.rubricDimensions ?? []) if (!dims.has(d)) problems.push(`${q.id}: dimensão '${d}' fora da rubrica`);
+  }
+  assert.deepEqual(problems, [], "\n" + problems.join("\n"));
+  const packages = collections["interview-questions"].filter((q) => q.rubricDimensions?.length && q.redFlags?.length && q.strongSignals?.length && q.followUps?.length);
+  assert.ok(packages.length >= 8, `só ${packages.length} perguntas têm pacote completo para mock interview`);
+});
+
+test("comparações e trilhas: estrutura mínima útil", () => {
+  for (const c of collections.comparisons ?? []) {
+    assert.ok(c.options.length >= 2, `${c.id}: menos de 2 opções`);
+    assert.ok(c.options.some((o) => o.refs?.length), `${c.id}: nenhuma opção liga à KB`);
+  }
+  for (const p of collections["learning-paths"] ?? []) {
+    assert.ok(p.steps.some((s) => s.ref.kind === "failure-modes"), `${p.id}: trilha sem failure mode`);
+  }
+});

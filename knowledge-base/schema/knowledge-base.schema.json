@@ -6,8 +6,9 @@
   "type": "object",
   "additionalProperties": false,
   "required": [
-    "topics.json", "patterns.json", "flows.json", "interview-questions.json", "diagrams.json",
-    "evidence.json", "databases.json", "ai-agents-glossary.json", "failure-modes.json"
+    "topics.json", "patterns.json", "flows.json", "interview-questions.json", "diagrams.json", "evidence.json",
+    "databases.json", "ai-agents-glossary.json", "failure-modes.json", "incident-drills.json", "comparisons.json",
+    "learning-paths.json", "rubrics.json"
   ],
   "properties": {
     "topics.json": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/Topic" } },
@@ -18,7 +19,11 @@
     "evidence.json": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/Evidence" } },
     "databases.json": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/Database" } },
     "ai-agents-glossary.json": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/GlossaryEntry" } },
-    "failure-modes.json": { "type": "array", "minItems": 10, "items": { "$ref": "#/$defs/FailureMode" } }
+    "failure-modes.json": { "type": "array", "minItems": 10, "items": { "$ref": "#/$defs/FailureMode" } },
+    "incident-drills.json": { "type": "array", "minItems": 8, "items": { "$ref": "#/$defs/IncidentDrill" } },
+    "comparisons.json": { "type": "array", "minItems": 10, "items": { "$ref": "#/$defs/Comparison" } },
+    "learning-paths.json": { "type": "array", "minItems": 3, "items": { "$ref": "#/$defs/LearningPath" } },
+    "rubrics.json": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/Rubric" } }
   },
   "$defs": {
     "KbRef": {
@@ -396,6 +401,49 @@
         "sourceRefs": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/SourceRef" } }
       }
     },
+    "Rubric": {
+      "type": "object",
+      "description": "Rubrica de avaliação por critério (0–5) com evidência obrigatória do transcript.",
+      "required": ["id", "title", "level", "usage", "scale", "dimensions", "sourceRefs"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+        "title": { "type": "string" },
+        "level": { "enum": ["senior", "staff"] },
+        "usage": { "type": "string" },
+        "scale": {
+          "type": "array",
+          "minItems": 6,
+          "items": {
+            "type": "object",
+            "required": ["score", "label", "meaning"],
+            "additionalProperties": false,
+            "properties": {
+              "score": { "type": "integer" },
+              "label": { "type": "string" },
+              "meaning": { "type": "string" }
+            }
+          }
+        },
+        "dimensions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["id", "name", "whatGoodLooksLike", "evidenceExamples", "commonGaps"],
+            "additionalProperties": false,
+            "properties": {
+              "id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+              "name": { "type": "string" },
+              "whatGoodLooksLike": { "type": "string" },
+              "evidenceExamples": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+              "commonGaps": { "type": "array", "minItems": 1, "items": { "type": "string" } }
+            }
+          }
+        },
+        "sourceRefs": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/SourceRef" } }
+      }
+    },
     "GlossaryEntry": {
       "type": "object",
       "description": "Termo do glossário IA & Agentes (trilha separada, sourced a refs de IA).",
@@ -572,6 +620,11 @@
         "whatToMonitor": { "type": "array", "items": { "type": "string" } },
         "failureModes": { "type": "array", "items": { "type": "string" }, "description": "failure-mode ids que a pergunta exercita" },
         "relatedQuestions": { "type": "array", "items": { "type": "string" }, "description": "interview-question ids complementares" },
+        "expectedSignals": { "type": "array", "items": { "type": "string" }, "description": "o que uma resposta na barra senior precisa conter" },
+        "failureInjections": { "type": "array", "items": { "type": "object", "required": ["injection", "expectedReasoning"], "additionalProperties": false, "properties": { "injection": { "type": "string" }, "expectedReasoning": { "type": "string" } } }, "description": "falhas que o entrevistador injeta e o raciocínio esperado" },
+        "acceptableSolutions": { "type": "array", "items": { "type": "string" }, "description": "desenhos aceitáveis (não existe resposta de ouro única)" },
+        "decisionCriteria": { "type": "array", "items": { "type": "string" } },
+        "rubricDimensions": { "type": "array", "items": { "enum": ["requirements", "capacity", "architecture", "data-consistency", "reliability", "trade-offs", "observability", "communication"] }, "description": "dimensões da rubrica system-design-interview exercitadas" },
         "relatedTopics": { "type": "array", "items": { "type": "string" } },
         "diagrams": { "type": "array", "items": { "type": "string" } },
         "sourceRefs": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/SourceRef" } }

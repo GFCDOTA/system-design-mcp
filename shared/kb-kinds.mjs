@@ -13,6 +13,10 @@ export const COLLECTIONS = Object.freeze([
   { kind: "ai-glossary", file: "ai-agents-glossary.json", route: "/ai-agents", description: "Glossario IA & Agentes (pra dev backend)" },
   { kind: "databases", file: "databases.json", route: "/databases", description: "Bancos de dados AWS (Aurora, RDS, DynamoDB, DocumentDB, ElastiCache) com preco, CAP/PACELC e trade-offs" },
   { kind: "failure-modes", file: "failure-modes.json", route: "/failure-modes", description: "Failure modes at scale: como sistemas quebram em producao — cenario com numeros, cadeia de falha, sintomas, diagnostico, mitigacao agora vs correcao definitiva, observabilidade e resposta de entrevista" },
+  { kind: "incident-drills", file: "incident-drills.json", route: "/drills", description: "Incident drills: sinais de producao -> diagnostico -> mitigacao (treino deterministico, sem LLM)" },
+  { kind: "comparisons", file: "comparisons.json", route: "/compare", description: "Comparacoes lado a lado de conceitos que costumam ser confundidos (problema, quando usar/evitar, como falha, trade-off)" },
+  { kind: "learning-paths", file: "learning-paths.json", route: "/paths", description: "Trilhas de estudo curadas: conceito -> padrao -> falha -> treino" },
+  { kind: "rubrics", file: "rubrics.json", description: "Rubricas de avaliacao de entrevista por criterio (0-5) com evidencia obrigatoria do transcript" },
 ]);
 
 export const KINDS = Object.freeze(COLLECTIONS.map((c) => c.kind));

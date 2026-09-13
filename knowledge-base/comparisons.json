@@ -1,0 +1,1364 @@
+[
+  {
+    "id": "cache-stampede-vs-avalanche-vs-penetration",
+    "title": "Cache Stampede vs Cache Avalanche vs Cache Penetration",
+    "keywords": [
+      "diferença stampede avalanche penetration",
+      "tipos de falha de cache"
+    ],
+    "summary": "Três jeitos de o cache deixar de proteger a origem — por concorrência numa chave, por perda em massa ou por chaves que nunca existem.",
+    "keyDifference": "Stampede = UMA chave quente com muitos leitores recomputando junto; Avalanche = MUITAS chaves (ou o cache inteiro) somem ao mesmo tempo; Penetration = chaves que NÃO existem nunca viram hit.",
+    "options": [
+      {
+        "name": "Cache Stampede",
+        "refs": [
+          {
+            "kind": "failure-modes",
+            "id": "cache-stampede"
+          }
+        ],
+        "problemSolved": "Entender e evitar recomputação concorrente da mesma chave quente na expiração.",
+        "whenToUse": [
+          "Picos periódicos alinhados ao TTL de uma chave popular",
+          "Mesma query idêntica explodindo no banco em segundos"
+        ],
+        "whenToAvoid": [
+          "Hit ratio global despencou em muitas chaves (é avalanche)",
+          "Chave não existe na origem (é penetration)"
+        ],
+        "howItFails": "Miss concorrente → N recomputações iguais → origem desacelera → janela alarga → mais recomputações.",
+        "tradeOff": "Stale-while-revalidate protege a origem mas relaxa freshness; lock distribuído custa escrita extra e precisa de TTL.",
+        "example": "product:123 a 5.000 req/s com recomputação de 200 ms: ~1.000 queries iguais em cada expiração."
+      },
+      {
+        "name": "Cache Avalanche",
+        "refs": [
+          {
+            "kind": "failure-modes",
+            "id": "cache-avalanche"
+          }
+        ],
+        "problemSolved": "Evitar que perda em massa do cache (TTL igual, flush, restart, queda) jogue a carga cheia na origem.",
+        "whenToUse": [
+          "Queda brusca do hit ratio GLOBAL",
+          "Incidente após restart/flush do cache ou virada de horário de um job de warm-up"
+        ],
+        "whenToAvoid": [
+          "Só uma chave afetada"
+        ],
+        "howItFails": "Origem dimensionada para 97% de hit recebe 10× a capacidade; o cache não reaquece porque as recomputações não completam.",
+        "tradeOff": "Jitter no TTL e redundância do cache custam pouca previsibilidade/memória; proteger a origem exige aceitar degradação.",
+        "example": "2 milhões de chaves com TTL de 1 h escritas às 00:00 expiram juntas à 01:00."
+      },
+      {
+        "name": "Cache Penetration",
+        "refs": [
+          {
+            "kind": "failure-modes",
+            "id": "cache-penetration"
+          }
+        ],
+        "problemSolved": "Impedir que requests por chaves inexistentes atravessem o cache indefinidamente.",
+        "whenToUse": [
+          "Muitos 'não encontrado' na origem",
+          "Enumeração de IDs aleatórios / scraping"
+        ],
+        "whenToAvoid": [
+          "Chaves válidas expirando"
+        ],
+        "howItFails": "Negativos não são cacheados; cada ID inexistente vai ao banco, com hit ratio 0% por construção.",
+        "tradeOff": "Negative caching esconde itens recém-criados até o TTL negativo; filtro de existência aceita falso positivo.",
+        "example": "Scraper a 3k req/s com IDs inexistentes leva a origem de 100 para 3.100 queries/s."
+      }
+    ],
+    "howToChoose": "Pergunte: quantas chaves perderam hit (uma → stampede; muitas → avalanche) e se a chave existe na origem (não → penetration). As mitigações se somam: coalizão + stale para stampede; jitter + redundância + proteção da origem para avalanche; negative caching + rate limit para penetration.",
+    "sourceRefs": [
+      {
+        "kind": "reference",
+        "source": "Vattani, Chierichetti, Lowenstein — Optimal Probabilistic Cache Stampede Prevention (VLDB 2015)",
+        "locator": "www.vldb.org/pvldb/vol8/p886-vattani.pdf",
+        "note": "Definição de cache stampede",
+        "url": "https://www.vldb.org/pvldb/vol8/p886-vattani.pdf"
+      },
+      {
+        "kind": "reference",
+        "source": "Amazon Builders' Library — Caching challenges and strategies",
+        "locator": "aws.amazon.com/builders-library/caching-challenges-and-strategies/",
+        "note": "Comportamento modal do cache, soft TTL, request coalescing e negative caching",
+        "url": "https://aws.amazon.com/builders-library/caching-challenges-and-strategies/"
+      },
+      {
+        "kind": "pdf",
+        "source": "System Design Workbook",
+        "locator": "p.130",
+        "note": "TTL, evicção e picos de miss após limpeza total"
+      }
+    ]
+  },
+  {
+    "id": "retry-storm-vs-thundering-herd",
+    "title": "Retry Storm vs Thundering Herd",
+    "keywords": [
+      "diferença retry storm thundering herd",
+      "amplificação vs sincronização"
+    ],
+    "summary": "Os dois aparecem em recuperação de falhas e muitas fontes usam os nomes quase como sinônimos; o mecanismo é diferente e a mitigação também.",
+    "keyDifference": "Retry storm AMPLIFICA a carga (mais tentativas por falha); thundering herd SINCRONIZA a carga (as mesmas tentativas chegando no mesmo instante).",
+    "options": [
+      {
+        "name": "Retry Storm",
+        "refs": [
+          {
+            "kind": "failure-modes",
+            "id": "retry-storm"
+          }
+        ],
+        "problemSolved": "Evitar que a política de retry multiplique a carga sobre uma dependência degradada.",
+        "whenToUse": [
+          "Tentativas na dependência muito acima do tráfego de entrada",
+          "Dependência lenta (sem erro) e retries em várias camadas"
+        ],
+        "whenToAvoid": [
+          "Volume total igual, só concentrado no tempo (é herd)"
+        ],
+        "howItFails": "Timeout → retry → mais carga → mais lentidão → mais timeout; 3 camadas com 4 tentativas = 64×.",
+        "tradeOff": "Limitar retries e abrir circuit breaker aumenta falhas visíveis no curto prazo para o sistema se recuperar.",
+        "example": "Fraud Service de 100 ms para 3 s com timeout de 1 s e 3 retries: até 4.000 tentativas/s para 1.000 req/s."
+      },
+      {
+        "name": "Thundering Herd",
+        "refs": [
+          {
+            "kind": "failure-modes",
+            "id": "thundering-herd"
+          }
+        ],
+        "problemSolved": "Dessincronizar clientes que voltam juntos após um evento comum.",
+        "whenToUse": [
+          "Ondas periódicas de conexões após restart/deploy",
+          "Clientes com intervalo fixo idêntico"
+        ],
+        "whenToAvoid": [
+          "Carga total multiplicada por falhas (é retry storm)"
+        ],
+        "howItFails": "20.000 clientes com reconnect fixo de 1 s chegam juntos num servidor frio que aceita 2.000/s.",
+        "tradeOff": "Jitter aumenta o tempo médio de recuperação individual.",
+        "example": "Deploy derruba 20.000 WebSockets; a cada segundo chega uma onda de 20.000 handshakes."
+      }
+    ],
+    "howToChoose": "Meça a razão tentativas/requests: > 1 sustentado é amplificação (limite, budget, circuit breaker). Dente de serra com período fixo é sincronização (jitter, admissão, rollout gradual). Em incidentes reais costumam vir juntos — trate os dois.",
+    "diagrams": [
+      "fm-retry-storm"
+    ],
+    "sourceRefs": [
+      {
+        "kind": "reference",
+        "source": "Google SRE Book — Addressing Cascading Failures",
+        "locator": "sre.google/sre-book/addressing-cascading-failures/",
+        "note": "Retries amplificam; backoff randomizado evita que retries se agendem juntos",
+        "url": "https://sre.google/sre-book/addressing-cascading-failures/"
+      },
+      {
+        "kind": "reference",
+        "source": "Azure Architecture Center — Retry Storm antipattern",
+        "locator": "learn.microsoft.com/en-us/azure/architecture/antipatterns/retry-storm/",
+        "note": "Retry storm; nota que a situação às vezes é chamada de thundering herd",
+        "url": "https://learn.microsoft.com/en-us/azure/architecture/antipatterns/retry-storm/"
+      },
+      {
+        "kind": "reference",
+        "source": "AWS Architecture Blog — Exponential Backoff And Jitter (Marc Brooker, 2015)",
+        "locator": "aws.amazon.com/blogs/architecture/exponential-backoff-and-jitter/",
+        "note": "Jitter vs backoff sem jitter",
+        "url": "https://aws.amazon.com/blogs/architecture/exponential-backoff-and-jitter/"
+      }
+    ]
+  },
+  {
+    "id": "rate-limiting-vs-backpressure-vs-load-shedding",
+    "title": "Rate Limiting vs Backpressure vs Load Shedding (vs Buffering)",
+    "keywords": [
+      "diferença rate limit backpressure load shedding",
+      "controle de fluxo"
+    ],
+    "summary": "Quatro formas de lidar com mais trabalho do que a capacidade — com consequências muito diferentes para quem produz o trabalho.",
+    "keyDifference": "Buffering guarda o excedente; backpressure faz o produtor desacelerar pelo sinal do consumidor; rate limiting impõe um teto fixo de entrada; load shedding descarta trabalho para proteger o que foi aceito.",
+    "options": [
+      {
+        "name": "Buffering (fila)",
+        "refs": [
+          {
+            "kind": "failure-modes",
+            "id": "no-backpressure"
+          }
+        ],
+        "problemSolved": "Absorver picos curtos e desacoplar produtor e consumidor.",
+        "whenToUse": [
+          "Picos intermitentes com média abaixo da capacidade"
+        ],
+        "whenToAvoid": [
+          "Produção sustentada acima do consumo",
+          "Resposta síncrona de baixa latência"
+        ],
+        "howItFails": "Com λ > μ sustentado a fila cresce sem limite: latência, memória, retenção.",
+        "tradeOff": "Esconde excesso sustentado e adiciona latência.",
+        "example": "Fila entre checkout e envio de e-mail absorve o pico das 20h."
+      },
+      {
+        "name": "Backpressure",
+        "refs": [
+          {
+            "kind": "failure-modes",
+            "id": "no-backpressure"
+          },
+          {
+            "kind": "topics",
+            "id": "resilience-patterns"
+          }
+        ],
+        "problemSolved": "Manter o fluxo dentro da capacidade real do consumidor.",
+        "whenToUse": [
+          "Pipelines assíncronos/streaming",
+          "Produtor controlável (pode desacelerar ou bloquear)"
+        ],
+        "whenToAvoid": [
+          "Produtor não pode esperar (usuário final sem fila)"
+        ],
+        "howItFails": "Se o produtor ignora o sinal ou não pode desacelerar, a espera vira timeout na borda.",
+        "tradeOff": "Empurra a espera para o produtor.",
+        "example": "Consumidor Kafka pausa partições enquanto o banco a jusante está saturado."
+      },
+      {
+        "name": "Rate Limiting",
+        "refs": [
+          {
+            "kind": "topics",
+            "id": "api-gateway"
+          },
+          {
+            "kind": "patterns",
+            "id": "api-gateway"
+          }
+        ],
+        "problemSolved": "Limitar entrada por cliente/chave independentemente do estado momentâneo do sistema.",
+        "whenToUse": [
+          "Proteger contra abuso/cliente barulhento",
+          "Contratos de uso (quota)"
+        ],
+        "whenToAvoid": [
+          "Como único mecanismo contra degradação interna (o limite fixo não sabe que o sistema ficou lento)"
+        ],
+        "howItFails": "Limite estático alto demais não protege numa degradação; baixo demais recusa tráfego legítimo.",
+        "tradeOff": "Previsível e justo por cliente, mas cego à capacidade real no momento.",
+        "example": "100 req/s por API key no gateway com token bucket."
+      },
+      {
+        "name": "Load Shedding",
+        "refs": [
+          {
+            "kind": "failure-modes",
+            "id": "cascading-failure"
+          }
+        ],
+        "problemSolved": "Preservar a capacidade para o trabalho aceito/crítico quando o sistema passa do limite.",
+        "whenToUse": [
+          "Sobrecarga em curso",
+          "Existe critério de prioridade (crítico vs descartável)"
+        ],
+        "whenToAvoid": [
+          "Todo trabalho é igualmente crítico e não pode ser recusado sem alternativa"
+        ],
+        "howItFails": "Sem priorização descarta o tráfego errado; descartar tarde demais (após consumir recursos) não protege.",
+        "tradeOff": "Recusa deliberada de parte do tráfego para evitar indisponibilidade total.",
+        "example": "Retornar 503 quando requests em voo passam do limite, priorizando checkout sobre recomendações."
+      }
+    ],
+    "howToChoose": "Pico curto: buffering. Pipeline controlável: backpressure. Proteção por cliente/abuso: rate limiting. Sobrecarga em curso: load shedding com prioridade. Sistemas maduros combinam os quatro em camadas diferentes.",
+    "sourceRefs": [
+      {
+        "kind": "reference",
+        "source": "Azure Architecture Center — Queue-Based Load Leveling pattern",
+        "locator": "learn.microsoft.com/en-us/azure/architecture/patterns/queue-based-load-leveling",
+        "note": "Fila como buffer; produtor acima do consumidor faz a fila crescer; descartar no produtor",
+        "url": "https://learn.microsoft.com/en-us/azure/architecture/patterns/queue-based-load-leveling"
+      },
+      {
+        "kind": "reference",
+        "source": "Reactive Streams — especificação",
+        "locator": "www.reactive-streams.org/",
+        "note": "Backpressure por sinal de demanda do subscriber",
+        "url": "https://www.reactive-streams.org/"
+      },
+      {
+        "kind": "reference",
+        "source": "Google SRE Book — Addressing Cascading Failures",
+        "locator": "sre.google/sre-book/addressing-cascading-failures/",
+        "note": "Load shedding e graceful degradation; exemplo de 503 por requests em voo",
+        "url": "https://sre.google/sre-book/addressing-cascading-failures/"
+      },
+      {
+        "kind": "reference",
+        "source": "Google SRE Book — Handling Overload",
+        "locator": "sre.google/sre-book/handling-overload/",
+        "note": "Criticidade de requests para priorizar a rejeição",
+        "url": "https://sre.google/sre-book/handling-overload/"
+      },
+      {
+        "kind": "pdf",
+        "source": "System Design Workbook",
+        "locator": "p.194",
+        "note": "Rate limiting e throttling"
+      },
+      {
+        "kind": "pdf",
+        "source": "System Design Workbook",
+        "locator": "p.196",
+        "note": "Token Bucket e Leaky Bucket"
+      }
+    ]
+  },
+  {
+    "id": "timeout-vs-circuit-breaker",
+    "title": "Timeout vs Circuit Breaker",
+    "keywords": [
+      "diferença timeout circuit breaker",
+      "quando usar circuit breaker"
+    ],
+    "summary": "Timeout limita quanto UMA chamada pode esperar; circuit breaker decide se vale a pena chamar de novo com base no histórico recente.",
+    "keyDifference": "Timeout protege cada chamada individualmente; circuit breaker protege o sistema de insistir numa dependência que está falhando.",
+    "options": [
+      {
+        "name": "Timeout (com deadline)",
+        "refs": [
+          {
+            "kind": "topics",
+            "id": "resilience-patterns"
+          }
+        ],
+        "problemSolved": "Impedir que uma chamada presa segure threads/conexões indefinidamente.",
+        "whenToUse": [
+          "Toda chamada de rede",
+          "Com deadline propagado entre serviços"
+        ],
+        "whenToAvoid": [
+          "Nunca 'evite'; evite só valores longos demais ou ausentes"
+        ],
+        "howItFails": "Sozinho, cada chamada ainda espera o timeout inteiro: com a dependência lenta, todas as threads passam o tempo máximo esperando e retries amplificam.",
+        "tradeOff": "Timeout curto falha picos legítimos; longo segura recursos (latência bimodal).",
+        "example": "Chamada ao Fraud com 800 ms e deadline restante propagado."
+      },
+      {
+        "name": "Circuit Breaker",
+        "refs": [
+          {
+            "kind": "patterns",
+            "id": "circuit-breaker"
+          },
+          {
+            "kind": "failure-modes",
+            "id": "retry-storm"
+          }
+        ],
+        "problemSolved": "Parar de chamar uma dependência que está falhando/lenta e dar tempo para ela se recuperar.",
+        "whenToUse": [
+          "Dependência síncrona que pode degradar",
+          "Existe fallback aceitável"
+        ],
+        "whenToAvoid": [
+          "Chamada sem alternativa e sem benefício em falhar rápido",
+          "Sinal de falha muito ruidoso (abre à toa)"
+        ],
+        "howItFails": "Limiar mal calibrado abre cedo (rejeita tráfego bom) ou tarde; abrir em todas as instâncias ao mesmo tempo joga tudo no fallback.",
+        "tradeOff": "Rejeita chamadas que poderiam passar para evitar cascata.",
+        "example": "msc-shard-router: 5 falhas abrem o circuito por 30 s; 2 sucessos em half-open fecham."
+      }
+    ],
+    "howToChoose": "Use sempre timeout; adicione circuit breaker quando a dependência pode degradar por períodos e existe fallback. Os dois juntos com retry limitado e bulkhead formam a defesa padrão.",
+    "sourceRefs": [
+      {
+        "kind": "reference",
+        "source": "microservices.io",
+        "locator": "patterns/reliability/circuit-breaker.html",
+        "note": "Circuit breaker evita esgotar recursos e cascata",
+        "url": "https://microservices.io/patterns/reliability/circuit-breaker.html"
+      },
+      {
+        "kind": "reference",
+        "source": "Google SRE Book — Addressing Cascading Failures",
+        "locator": "sre.google/sre-book/addressing-cascading-failures/",
+        "note": "Deadlines e propagação; latência bimodal",
+        "url": "https://sre.google/sre-book/addressing-cascading-failures/"
+      },
+      {
+        "kind": "repo",
+        "source": "msc-shard-router",
+        "locator": "main.go",
+        "note": "CB_FAILURE_THRESHOLD=5, CB_OPEN_TIMEOUT_SEC=30, CB_HALF_OPEN_SUCCESS_THRESHOLD=2",
+        "url": "https://github.com/msfidelis/msc-shard-router"
+      },
+      {
+        "kind": "pdf",
+        "source": "System Design Workbook",
+        "locator": "p.496-527",
+        "note": "Timeouts e circuit breaker (fechado, aberto, semiaberto)"
+      }
+    ]
+  },
+  {
+    "id": "optimistic-vs-pessimistic-locking",
+    "title": "Optimistic Lock vs Pessimistic Lock",
+    "keywords": [
+      "lock otimista vs pessimista",
+      "select for update vs version",
+      "concorrência de escrita"
+    ],
+    "summary": "Duas formas de impedir lost update: detectar o conflito na escrita (otimista) ou impedir que ele aconteça bloqueando antes (pessimista).",
+    "keyDifference": "Otimista não bloqueia e falha quem chegar com versão velha; pessimista bloqueia a linha e faz os outros esperarem.",
+    "options": [
+      {
+        "name": "Optimistic locking (version)",
+        "refs": [
+          {
+            "kind": "topics",
+            "id": "event-sourcing"
+          },
+          {
+            "kind": "patterns",
+            "id": "event-sourcing"
+          }
+        ],
+        "problemSolved": "Detectar escrita concorrente sem segurar locks.",
+        "whenToUse": [
+          "Baixa contenção",
+          "Operações em que repetir após conflito é barato",
+          "Event Store com UNIQUE(aggregate_id, version)"
+        ],
+        "whenToAvoid": [
+          "Contenção alta na mesma linha (muitos conflitos e retries)"
+        ],
+        "howItFails": "Sob contenção alta vira laço de conflito → retry → conflito; retries sem jitter sincronizam.",
+        "tradeOff": "Sem espera, mas quem perde precisa reler e repetir.",
+        "example": "Ledger grava evento versão N+1; se outra escrita já gravou N+1, a UNIQUE falha e a transação é repetida."
+      },
+      {
+        "name": "Pessimistic locking (SELECT ... FOR UPDATE)",
+        "refs": [
+          {
+            "kind": "topics",
+            "id": "concurrency-parallelism"
+          }
+        ],
+        "problemSolved": "Garantir exclusão mútua sobre a linha durante a transação.",
+        "whenToUse": [
+          "Contenção alta e conflito caro",
+          "Sequência ler-validar-escrever curta dentro do banco"
+        ],
+        "whenToAvoid": [
+          "Transações longas ou que esperam I/O externo",
+          "Ordem de aquisição de locks inconsistente"
+        ],
+        "howItFails": "Transações longas seguram locks, outros esperam segurando conexões (pool exhaustion); ordens inconsistentes causam deadlock.",
+        "tradeOff": "Correção simples de raciocinar, custo em espera e throughput.",
+        "example": "Débito: `SELECT saldo ... FOR UPDATE`, valida limite e atualiza na mesma transação curta."
+      }
+    ],
+    "howToChoose": "Contenção baixa e retry barato → otimista. Contenção alta na mesma linha e seção crítica curta → pessimista, sempre com lock_timeout, transação curta e ordem consistente de locks.",
+    "sourceRefs": [
+      {
+        "kind": "reference",
+        "source": "PostgreSQL docs — Explicit Locking",
+        "locator": "www.postgresql.org/docs/current/explicit-locking.html",
+        "note": "FOR UPDATE bloqueia a linha até o fim da transação; deadlock detectado e abortado; adquirir locks em ordem consistente; advisory locks",
+        "url": "https://www.postgresql.org/docs/current/explicit-locking.html"
+      },
+      {
+        "kind": "repo",
+        "source": "event-source-distributed-ledger",
+        "locator": "ledger/, tabela events com UNIQUE(aggregate_id, version)",
+        "note": "Versão por agregado detecta escrita concorrente (optimistic locking)",
+        "url": "https://github.com/msfidelis/event-source-distributed-ledger"
+      },
+      {
+        "kind": "reference",
+        "source": "PostgreSQL docs — Client Connection Defaults (statement_timeout, lock_timeout)",
+        "locator": "www.postgresql.org/docs/current/runtime-config-client.html",
+        "note": "lock_timeout aborta a espera por lock",
+        "url": "https://www.postgresql.org/docs/current/runtime-config-client.html"
+      },
+      {
+        "kind": "pdf",
+        "source": "System Design Workbook",
+        "locator": "p.225-262",
+        "note": "Concorrência, sincronização e locks"
+      }
+    ]
+  },
+  {
+    "id": "replication-vs-sharding",
+    "title": "Replication vs Sharding",
+    "keywords": [
+      "diferença replicação sharding",
+      "escalar leitura vs escrita"
+    ],
+    "summary": "Replicação copia o MESMO dado em vários nós; sharding divide dados DIFERENTES entre nós.",
+    "keyDifference": "Replicação escala leitura e disponibilidade (não escala escrita no primário); sharding escala escrita e volume (não dá redundância sozinho).",
+    "options": [
+      {
+        "name": "Replication",
+        "refs": [
+          {
+            "kind": "topics",
+            "id": "data-replication"
+          },
+          {
+            "kind": "failure-modes",
+            "id": "read-replica-lag"
+          }
+        ],
+        "problemSolved": "Disponibilidade, durabilidade e escala de leitura.",
+        "whenToUse": [
+          "Leitura muito maior que escrita",
+          "Failover e DR"
+        ],
+        "whenToAvoid": [
+          "O gargalo é escrita ou volume total de dados"
+        ],
+        "howItFails": "Réplica assíncrona com lag quebra read-your-writes; failover pode perder o que não replicou.",
+        "tradeOff": "Leitura escala, consistência relaxa (ou latência de commit sobe se síncrona).",
+        "example": "Primário + 2 read replicas; perfil lido da réplica mostra valor antigo durante lag."
+      },
+      {
+        "name": "Sharding",
+        "refs": [
+          {
+            "kind": "topics",
+            "id": "sharding-partitioning"
+          },
+          {
+            "kind": "failure-modes",
+            "id": "hot-key-partition"
+          }
+        ],
+        "problemSolved": "Escalar escrita e volume dividindo o espaço de chaves.",
+        "whenToUse": [
+          "Um nó não comporta escrita ou dados",
+          "Chave de particionamento de alta cardinalidade disponível"
+        ],
+        "whenToAvoid": [
+          "Consultas que cruzam todos os dados com frequência",
+          "Sem boa chave de particionamento"
+        ],
+        "howItFails": "Hot partition satura um shard; consultas cross-shard e rebalanceamento são caros.",
+        "tradeOff": "Escala horizontal com complexidade de roteamento, joins e transações entre shards.",
+        "example": "msc-shard-router distribui clientes por hashing consistente sobre a sharding key."
+      }
+    ],
+    "howToChoose": "Leitura e disponibilidade → replicação. Escrita e volume → sharding. Em escala real os dois se combinam: cada shard replicado.",
+    "sourceRefs": [
+      {
+        "kind": "pdf",
+        "source": "System Design Workbook",
+        "locator": "p.372-405",
+        "note": "Sharding e particionamento"
+      },
+      {
+        "kind": "pdf",
+        "source": "System Design Workbook",
+        "locator": "p.406-419",
+        "note": "Replicação de dados"
+      },
+      {
+        "kind": "repo",
+        "source": "msc-shard-router",
+        "locator": "pkg/hashring/",
+        "note": "Hashing consistente sobre sharding key",
+        "url": "https://github.com/msfidelis/msc-shard-router"
+      },
+      {
+        "kind": "reference",
+        "source": "Amazon RDS docs — Working with DB instance read replicas",
+        "locator": "docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_ReadRepl.html",
+        "note": "Read replicas assíncronas escalam leitura",
+        "url": "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_ReadRepl.html"
+      }
+    ]
+  },
+  {
+    "id": "read-replica-vs-cache",
+    "title": "Read Replica vs Cache",
+    "keywords": [
+      "réplica de leitura ou cache",
+      "escalar leitura"
+    ],
+    "summary": "Ambos tiram leitura do primário; a réplica preserva o modelo de consulta completo, o cache serve respostas prontas muito mais rápido.",
+    "keyDifference": "Réplica = o banco inteiro, consultável, atrasado por lag; cache = resultados selecionados, sub-milissegundo, atrasado por TTL/invalidação.",
+    "options": [
+      {
+        "name": "Read Replica",
+        "refs": [
+          {
+            "kind": "topics",
+            "id": "data-replication"
+          },
+          {
+            "kind": "failure-modes",
+            "id": "read-replica-lag"
+          }
+        ],
+        "problemSolved": "Escalar consultas variadas (inclusive ad hoc/relatórios) sem mudar a aplicação.",
+        "whenToUse": [
+          "Consultas diversas e imprevisíveis",
+          "Relatórios fora do primário"
+        ],
+        "whenToAvoid": [
+          "Poucas leituras extremamente quentes e repetidas (cache é mais barato e rápido)"
+        ],
+        "howItFails": "Lag de replicação: leitura pós-escrita desatualizada.",
+        "tradeOff": "Custo de instância inteira; consistência eventual por lag.",
+        "example": "Dashboard de BI lendo de réplica."
+      },
+      {
+        "name": "Cache",
+        "refs": [
+          {
+            "kind": "topics",
+            "id": "caching"
+          },
+          {
+            "kind": "failure-modes",
+            "id": "cache-stampede"
+          }
+        ],
+        "problemSolved": "Servir leituras quentes repetidas com latência mínima e alívio forte da origem.",
+        "whenToUse": [
+          "Poucas chaves respondem pela maior parte do tráfego",
+          "Dado tolera TTL/invalidação"
+        ],
+        "whenToAvoid": [
+          "Consultas ad hoc variadas",
+          "Dado que não pode estar desatualizado sem invalidação confiável"
+        ],
+        "howItFails": "Stampede, avalanche, penetration e invalidação errada (dado velho).",
+        "tradeOff": "Muito barato por leitura, mas cria comportamento modal (cache quente vs frio).",
+        "example": "Página de produto em Redis com cache-aside."
+      }
+    ],
+    "howToChoose": "Leituras repetitivas e quentes → cache. Consultas variadas → réplica. Muitos sistemas usam cache na frente e réplicas atrás.",
+    "sourceRefs": [
+      {
+        "kind": "pdf",
+        "source": "System Design Workbook",
+        "locator": "p.128-140",
+        "note": "Cache: TTL, evicção, estratégias"
+      },
+      {
+        "kind": "pdf",
+        "source": "System Design Workbook",
+        "locator": "p.406-419",
+        "note": "Replicação de dados"
+      },
+      {
+        "kind": "reference",
+        "source": "Amazon Builders' Library — Caching challenges and strategies",
+        "locator": "aws.amazon.com/builders-library/caching-challenges-and-strategies/",
+        "note": "Comportamento modal do cache",
+        "url": "https://aws.amazon.com/builders-library/caching-challenges-and-strategies/"
+      },
+      {
+        "kind": "reference",
+        "source": "Amazon RDS docs — Working with DB instance read replicas",
+        "locator": "docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_ReadRepl.html",
+        "note": "Read replicas para cargas de leitura e relatórios",
+        "url": "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_ReadRepl.html"
+      }
+    ]
+  },
+  {
+    "id": "delivery-semantics",
+    "title": "At-most-once vs At-least-once vs Exactly-once",
+    "keywords": [
+      "semântica de entrega",
+      "exactly once kafka",
+      "at least once duplicata"
+    ],
+    "summary": "O que acontece com a mensagem quando alguém falha no meio do caminho — e por que 'exactly-once' quase sempre depende do destino.",
+    "keyDifference": "At-most-once pode perder e nunca repete; at-least-once nunca perde e pode repetir; exactly-once exige cooperação do destino (transação ou escrita idempotente).",
+    "options": [
+      {
+        "name": "At-most-once",
+        "refs": [
+          {
+            "kind": "topics",
+            "id": "messaging-streaming"
+          }
+        ],
+        "problemSolved": "Nunca processar em duplicidade quando perder é aceitável.",
+        "whenToUse": [
+          "Métricas/telemetria descartáveis"
+        ],
+        "whenToAvoid": [
+          "Qualquer efeito financeiro ou de negócio"
+        ],
+        "howItFails": "Consumidor salva a posição e cai antes de processar: a mensagem se perde.",
+        "tradeOff": "Simples e sem duplicata, com perda.",
+        "example": "Commit do offset antes de processar."
+      },
+      {
+        "name": "At-least-once",
+        "refs": [
+          {
+            "kind": "patterns",
+            "id": "idempotent-consumer"
+          },
+          {
+            "kind": "failure-modes",
+            "id": "missing-idempotency"
+          }
+        ],
+        "problemSolved": "Nunca perder mensagens.",
+        "whenToUse": [
+          "Padrão para eventos de negócio, com consumidor idempotente"
+        ],
+        "whenToAvoid": [
+          "Consumidor sem idempotência para efeitos não repetíveis"
+        ],
+        "howItFails": "Consumidor processa e cai antes de salvar a posição: reprocessa (duplicata).",
+        "tradeOff": "Sem perda, exige idempotência.",
+        "example": "Processar, gravar no banco e só então comitar o offset."
+      },
+      {
+        "name": "Exactly-once",
+        "refs": [
+          {
+            "kind": "interview-questions",
+            "id": "q31"
+          }
+        ],
+        "problemSolved": "Efeito aplicado uma única vez.",
+        "whenToUse": [
+          "Kafka → Kafka com transações",
+          "Destino que grava resultado + offset atomicamente ou aceita escrita idempotente"
+        ],
+        "whenToAvoid": [
+          "Assumir que a garantia do broker cobre banco/API externos"
+        ],
+        "howItFails": "A garantia de transações do Kafka cobre leitura-processamento-escrita em tópicos; num sink externo sem cooperação, volta a ser at-least-once.",
+        "tradeOff": "Complexidade e custo; na prática = at-least-once + idempotência no destino.",
+        "example": "Gravar o offset na mesma transação da saída, ou upsert idempotente por chave de domínio."
+      }
+    ],
+    "howToChoose": "Para efeitos de negócio, assuma at-least-once e torne o destino idempotente; reserve at-most-once para dado descartável; trate 'exactly-once' como uma propriedade ponta a ponta que você precisa construir no destino.",
+    "sourceRefs": [
+      {
+        "kind": "reference",
+        "source": "Apache Kafka 4.3 — Design: Message Delivery Semantics",
+        "locator": "kafka.apache.org/43/design/design/",
+        "note": "Definições das três semânticas; salvar posição antes/depois de processar; transações Kafka→Kafka; destinos externos exigem cooperação (offset junto com a saída ou escrita idempotente); producer idempotente",
+        "url": "https://kafka.apache.org/43/design/design/"
+      },
+      {
+        "kind": "reference",
+        "source": "Apache Kafka 4.0 — KafkaConsumer javadoc",
+        "locator": "kafka.apache.org/40/javadoc/org/apache/kafka/clients/consumer/KafkaConsumer.html",
+        "note": "Falha entre inserir no banco e comitar causa reprocessamento (at-least-once)",
+        "url": "https://kafka.apache.org/40/javadoc/org/apache/kafka/clients/consumer/KafkaConsumer.html"
+      },
+      {
+        "kind": "reference",
+        "source": "microservices.io",
+        "locator": "patterns/communication-style/idempotent-consumer.html",
+        "note": "Consumidor idempotente",
+        "url": "https://microservices.io/patterns/communication-style/idempotent-consumer.html"
+      }
+    ]
+  },
+  {
+    "id": "outbox-vs-dual-write",
+    "title": "Transactional Outbox vs Dual Write",
+    "keywords": [
+      "dual write problema",
+      "outbox vs publicar direto no kafka"
+    ],
+    "summary": "Gravar no banco E publicar no broker em duas operações independentes deixa janelas de inconsistência; o outbox transforma a publicação num dado da mesma transação.",
+    "keyDifference": "Dual write faz duas escritas não atômicas; outbox faz uma escrita atômica (estado + evento) e publica depois, at-least-once.",
+    "options": [
+      {
+        "name": "Dual Write",
+        "refs": [
+          {
+            "kind": "interview-questions",
+            "id": "q07"
+          }
+        ],
+        "problemSolved": "Parece resolver 'persistir e notificar' com código simples.",
+        "whenToUse": [
+          "Praticamente nunca para eventos de negócio; talvez para notificações descartáveis"
+        ],
+        "whenToAvoid": [
+          "Qualquer caso em que estado e evento precisam concordar"
+        ],
+        "howItFails": "Commit ok + publish falha = evento perdido; publish ok + rollback = evento fantasma.",
+        "tradeOff": "Simples, mas sem garantia.",
+        "example": "`repository.save(order); kafka.send(orderCreated)` sem coordenação."
+      },
+      {
+        "name": "Transactional Outbox",
+        "refs": [
+          {
+            "kind": "patterns",
+            "id": "transactional-outbox"
+          },
+          {
+            "kind": "patterns",
+            "id": "polling-publisher"
+          },
+          {
+            "kind": "patterns",
+            "id": "transaction-log-tailing"
+          }
+        ],
+        "problemSolved": "Garantir que estado e evento são gravados atomicamente.",
+        "whenToUse": [
+          "Serviço com banco transacional que precisa publicar eventos"
+        ],
+        "whenToAvoid": [
+          "Sem banco transacional local",
+          "Latência de publicação precisa ser mínima e sem relay"
+        ],
+        "howItFails": "Relay entrega at-least-once (duplicatas) e pode atrasar; outbox cresce sem limpeza.",
+        "tradeOff": "Consistência entre estado e evento, com relay a operar e consumidores idempotentes.",
+        "example": "INSERT do pedido + INSERT na tabela outbox na mesma transação; relay publica."
+      }
+    ],
+    "howToChoose": "Se estado e evento precisam concordar, use outbox (polling ou log tailing) e consumidores idempotentes.",
+    "sourceRefs": [
+      {
+        "kind": "reference",
+        "source": "microservices.io",
+        "locator": "patterns/data/transactional-outbox.html",
+        "note": "Outbox: estado e mensagem na mesma transação",
+        "url": "https://microservices.io/patterns/data/transactional-outbox.html"
+      },
+      {
+        "kind": "pdf",
+        "source": "System Design Workbook",
+        "locator": "p.445",
+        "note": "Transactional Outbox no contexto de CQRS; alternativa ao dual-write"
+      }
+    ]
+  },
+  {
+    "id": "saga-choreography-vs-orchestration",
+    "title": "Saga: Choreography vs Orchestration",
+    "keywords": [
+      "saga coreografada vs orquestrada",
+      "compensação distribuída"
+    ],
+    "summary": "Duas formas de coordenar transações locais com compensação: cada serviço reage a eventos (coreografia) ou um coordenador comanda os passos (orquestração).",
+    "keyDifference": "Coreografia distribui a lógica em eventos; orquestração centraliza a lógica numa máquina de estados.",
+    "options": [
+      {
+        "name": "Choreography",
+        "refs": [
+          {
+            "kind": "topics",
+            "id": "saga"
+          },
+          {
+            "kind": "patterns",
+            "id": "saga"
+          },
+          {
+            "kind": "diagrams",
+            "id": "saga-choreography"
+          }
+        ],
+        "problemSolved": "Coordenação sem ponto central e com baixo acoplamento.",
+        "whenToUse": [
+          "Poucos passos e poucos participantes"
+        ],
+        "whenToAvoid": [
+          "Fluxos longos com muitas ramificações e compensações"
+        ],
+        "howItFails": "Fluxo difícil de enxergar/depurar; ciclos de eventos e compensações perdidas.",
+        "tradeOff": "Autonomia dos serviços vs visibilidade do fluxo.",
+        "example": "Pedido criado → pagamento reage → estoque reage → falha dispara eventos de compensação."
+      },
+      {
+        "name": "Orchestration",
+        "refs": [
+          {
+            "kind": "topics",
+            "id": "saga"
+          },
+          {
+            "kind": "patterns",
+            "id": "saga"
+          },
+          {
+            "kind": "diagrams",
+            "id": "saga-orchestration"
+          }
+        ],
+        "problemSolved": "Fluxo explícito, estado central e compensações controladas.",
+        "whenToUse": [
+          "Muitos passos, regras de compensação complexas, necessidade de visibilidade"
+        ],
+        "whenToAvoid": [
+          "Fluxos triviais em que o coordenador vira overhead"
+        ],
+        "howItFails": "Orquestrador vira ponto de acoplamento e precisa ser resiliente e idempotente.",
+        "tradeOff": "Visibilidade e controle vs componente central a operar.",
+        "example": "Orquestrador comanda reservar estoque → cobrar → emitir; em falha, comanda as compensações."
+      }
+    ],
+    "howToChoose": "Poucos passos e times independentes → coreografia; fluxo longo, compensações complexas e auditoria do estado → orquestração. Nos dois casos, passos e compensações idempotentes.",
+    "diagrams": [
+      "saga-orchestration",
+      "saga-choreography"
+    ],
+    "sourceRefs": [
+      {
+        "kind": "pdf",
+        "source": "System Design Workbook",
+        "locator": "p.449-474",
+        "note": "Saga: orquestrado e coreografado, compensações"
+      },
+      {
+        "kind": "reference",
+        "source": "microservices.io",
+        "locator": "patterns/data/saga.html",
+        "note": "Saga",
+        "url": "https://microservices.io/patterns/data/saga.html"
+      }
+    ]
+  },
+  {
+    "id": "event-sourcing-vs-audit-log",
+    "title": "Event Sourcing vs Audit Log",
+    "keywords": [
+      "event sourcing ou log de auditoria",
+      "trilha de auditoria"
+    ],
+    "summary": "Os dois registram 'o que aconteceu', mas só no event sourcing os eventos SÃO a fonte de verdade do estado.",
+    "keyDifference": "Event sourcing deriva o estado dos eventos (replay); audit log é um registro paralelo ao estado atual, que continua sendo a fonte de verdade.",
+    "options": [
+      {
+        "name": "Event Sourcing",
+        "refs": [
+          {
+            "kind": "patterns",
+            "id": "event-sourcing"
+          },
+          {
+            "kind": "topics",
+            "id": "event-sourcing"
+          }
+        ],
+        "problemSolved": "Reconstituir estado, auditar por construção e projetar múltiplos read models.",
+        "whenToUse": [
+          "Domínio em que a história é o dado (ledger)",
+          "Necessidade de replay e projeções"
+        ],
+        "whenToAvoid": [
+          "CRUD simples em que só se precisa saber quem mudou o quê"
+        ],
+        "howItFails": "Versionamento de eventos, replay lento sem snapshots e complexidade operacional (q05).",
+        "tradeOff": "Auditoria e replay nativos vs complexidade de modelagem e evolução.",
+        "example": "Ledger com Event Store append-only e UNIQUE(aggregate_id, version)."
+      },
+      {
+        "name": "Audit Log",
+        "refs": [
+          {
+            "kind": "patterns",
+            "id": "audit-logging"
+          }
+        ],
+        "problemSolved": "Registrar quem fez o quê, quando e com qual resultado.",
+        "whenToUse": [
+          "Requisito regulatório de trilha sem mudar o modelo de persistência"
+        ],
+        "whenToAvoid": [
+          "Quando o log precisaria reconstruir o estado (aí é event sourcing)"
+        ],
+        "howItFails": "Log gravado fora da transação diverge do estado; logs sem correlação não contam a história.",
+        "tradeOff": "Simples de adicionar vs não garante reconstrução do estado.",
+        "example": "Tabela de auditoria com ator, ação, timestamp e correlation_id."
+      }
+    ],
+    "howToChoose": "Precisa reconstruir o estado e projetar visões → event sourcing. Precisa só de trilha → audit log (na mesma transação ou via outbox para não divergir).",
+    "sourceRefs": [
+      {
+        "kind": "pdf",
+        "source": "System Design Workbook",
+        "locator": "p.475-495",
+        "note": "Event Sourcing"
+      },
+      {
+        "kind": "pdf",
+        "source": "System Design Workbook",
+        "locator": "p.541",
+        "note": "Logs como registro imutável de eventos discretos"
+      },
+      {
+        "kind": "reference",
+        "source": "microservices.io",
+        "locator": "patterns/data/event-sourcing.html",
+        "note": "Event Sourcing",
+        "url": "https://microservices.io/patterns/data/event-sourcing.html"
+      }
+    ]
+  },
+  {
+    "id": "idempotent-request-vs-idempotent-consumer",
+    "title": "Idempotent Request vs Idempotent Consumer",
+    "keywords": [
+      "idempotência http vs consumidor",
+      "request dedup vs message dedup",
+      "Idempotency-Key vs movimentacao_id"
+    ],
+    "summary": "O mesmo problema — a mesma intenção atravessando uma fronteira mais de uma vez — em duas fronteiras com mecanismos e contratos diferentes.",
+    "keyDifference": "Na API o cliente fornece a chave, espera uma RESPOSTA (replay/conflito/em andamento) e pode chegar concorrente; no consumidor a chave vem do evento, não há resposta ao produtor e a repetição vem de redelivery/replay.",
+    "options": [
+      {
+        "name": "Idempotent Request (HTTP)",
+        "refs": [
+          {
+            "kind": "patterns",
+            "id": "idempotent-request"
+          },
+          {
+            "kind": "interview-questions",
+            "id": "q36"
+          }
+        ],
+        "problemSolved": "Retry, duplo clique e tentativas concorrentes do mesmo POST.",
+        "whenToUse": [
+          "POST/PATCH com efeito exposto a clientes com retry"
+        ],
+        "whenToAvoid": [
+          "Operações naturalmente idempotentes (GET/PUT/DELETE por id)"
+        ],
+        "howItFails": "Check-then-act concorrente, chave gravada fora da transação do efeito, mesma chave com payload diferente devolvendo o primeiro resultado.",
+        "tradeOff": "Armazenar chave + resultado com retenção e definir contrato de replay/conflito/in-progress.",
+        "example": "Idempotency-Key com UNIQUE(client, endpoint, key) e replay do 201 gravado."
+      },
+      {
+        "name": "Idempotent Consumer (mensagens)",
+        "refs": [
+          {
+            "kind": "patterns",
+            "id": "idempotent-consumer"
+          },
+          {
+            "kind": "interview-questions",
+            "id": "q02"
+          },
+          {
+            "kind": "interview-questions",
+            "id": "q35"
+          }
+        ],
+        "problemSolved": "Redelivery at-least-once, rebalance e replay de eventos.",
+        "whenToUse": [
+          "Todo consumidor com efeito sob at-least-once"
+        ],
+        "whenToAvoid": [
+          "Efeito naturalmente idempotente (setar valor absoluto por versão)"
+        ],
+        "howItFails": "Chave derivada do offset (muda no replay), marca de processado fora da transação do efeito, TTL de dedup curto.",
+        "tradeOff": "Estado de deduplicação por consumidor; ordem/versão para eventos fora de ordem.",
+        "example": "movimentacao_id único no read model; UPDATE ... IF version < ?."
+      }
+    ],
+    "howToChoose": "Use os dois em sequência: a API garante um efeito na borda (q36), o efeito vira evento via outbox (at-least-once) e cada consumidor é idempotente (q02/q35); em alto throughput a mesma chave ancora a dedup ponta a ponta (q31).",
+    "diagrams": [
+      "financial-http-idempotency",
+      "read-model-update"
+    ],
+    "sourceRefs": [
+      {
+        "kind": "reference",
+        "source": "Stripe API — Idempotent requests",
+        "locator": "docs.stripe.com/api/idempotent_requests",
+        "note": "Idempotência de requisições HTTP",
+        "url": "https://docs.stripe.com/api/idempotent_requests"
+      },
+      {
+        "kind": "reference",
+        "source": "microservices.io",
+        "locator": "patterns/communication-style/idempotent-consumer.html",
+        "note": "Consumidor idempotente",
+        "url": "https://microservices.io/patterns/communication-style/idempotent-consumer.html"
+      },
+      {
+        "kind": "reference",
+        "source": "PostgreSQL docs — INSERT ... ON CONFLICT",
+        "locator": "www.postgresql.org/docs/current/sql-insert.html",
+        "note": "ON CONFLICT como árbitro",
+        "url": "https://www.postgresql.org/docs/current/sql-insert.html"
+      },
+      {
+        "kind": "pdf",
+        "source": "System Design Workbook",
+        "locator": "p.494",
+        "note": "Idempotência com id único e version"
+      }
+    ]
+  },
+  {
+    "id": "transactional-vs-event-sourcing",
+    "title": "API Transacional vs Event Sourcing",
+    "keywords": [
+      "msc-transactions-api vs ledger",
+      "estado atual vs eventos"
+    ],
+    "summary": "Consistência forte com estado atual (transacional) vs eventos append-only como fonte de verdade com read models eventuais.",
+    "keyDifference": "Transacional valida e sobrescreve o estado dentro da transação; event sourcing grava fatos imutáveis e deriva o estado.",
+    "options": [
+      {
+        "name": "API Transacional (msc-transactions-api)",
+        "refs": [
+          {
+            "kind": "flows",
+            "id": "transactional-debit-credit"
+          },
+          {
+            "kind": "diagrams",
+            "id": "transactional-api-flow"
+          }
+        ],
+        "problemSolved": "Saldo e limite validados com consistência forte e rollback imediato.",
+        "whenToUse": [
+          "Regras de saldo/limite síncronas",
+          "Menor complexidade operacional"
+        ],
+        "whenToAvoid": [
+          "Quando histórico/replay e múltiplas projeções são requisitos centrais"
+        ],
+        "howItFails": "Contenção de locks e escala vertical do banco; pool exhaustion sob query lenta.",
+        "tradeOff": "Raciocínio simples e consistência forte vs escala e histórico limitados.",
+        "example": "Débito validado dentro de transação PostgreSQL com cache Redis para leituras."
+      },
+      {
+        "name": "Event Sourcing (event-source-distributed-ledger)",
+        "refs": [
+          {
+            "kind": "patterns",
+            "id": "event-sourcing"
+          },
+          {
+            "kind": "diagrams",
+            "id": "event-sourced-ledger-flow"
+          }
+        ],
+        "problemSolved": "Trilha de auditoria natural, replay e read models especializados.",
+        "whenToUse": [
+          "Ledger e domínios auditáveis"
+        ],
+        "whenToAvoid": [
+          "CRUD simples"
+        ],
+        "howItFails": "Consistência eventual nos read models; exige idempotência e ordem por agregado.",
+        "tradeOff": "Auditoria e escala de leitura vs complexidade.",
+        "example": "Postgres Event Store + ScyllaDB (saldo) + MongoDB (extrato)."
+      }
+    ],
+    "howToChoose": "Consistência forte com regras síncronas e pouca necessidade de histórico → transacional. Auditabilidade, replay e múltiplas visões → event sourcing.",
+    "diagrams": [
+      "transactional-api-flow",
+      "event-sourced-ledger-flow"
+    ],
+    "sourceRefs": [
+      {
+        "kind": "pdf",
+        "source": "System Design Workbook",
+        "locator": "p.74",
+        "note": "Modelo ACID"
+      },
+      {
+        "kind": "pdf",
+        "source": "System Design Workbook",
+        "locator": "p.475-495",
+        "note": "Event Sourcing"
+      },
+      {
+        "kind": "repo",
+        "source": "msc-transactions-api",
+        "locator": "services/",
+        "note": "Controle transacional de saldo e limite",
+        "url": "https://github.com/msfidelis/msc-transactions-api"
+      },
+      {
+        "kind": "repo",
+        "source": "event-source-distributed-ledger",
+        "locator": "ledger/, balance/, statement/",
+        "note": "Event Store e read models",
+        "url": "https://github.com/msfidelis/event-source-distributed-ledger"
+      }
+    ]
+  },
+  {
+    "id": "api-gateway-vs-bff",
+    "title": "API Gateway vs Backend for Frontend",
+    "keywords": [
+      "gateway ou bff",
+      "bff vs api gateway"
+    ],
+    "summary": "Porta de entrada genérica com preocupações transversais vs backend dedicado a uma experiência de cliente.",
+    "keyDifference": "O gateway não conhece a tela; o BFF existe por causa dela.",
+    "options": [
+      {
+        "name": "API Gateway",
+        "refs": [
+          {
+            "kind": "patterns",
+            "id": "api-gateway"
+          },
+          {
+            "kind": "topics",
+            "id": "api-gateway"
+          }
+        ],
+        "problemSolved": "Ponto de entrada único com auth, rate limit, roteamento e observabilidade.",
+        "whenToUse": [
+          "Muitos clientes e muitos serviços"
+        ],
+        "whenToAvoid": [
+          "Colocar lógica de composição específica de tela no gateway"
+        ],
+        "howItFails": "Vira monólito de configuração e ponto único de falha se não for redundante.",
+        "tradeOff": "Centraliza transversais vs vira gargalo organizacional.",
+        "example": "Kong como gateway de borda no ledger."
+      },
+      {
+        "name": "Backend for Frontend",
+        "refs": [
+          {
+            "kind": "patterns",
+            "id": "backend-for-frontend"
+          },
+          {
+            "kind": "topics",
+            "id": "bff"
+          }
+        ],
+        "problemSolved": "Payloads e composição sob medida por canal.",
+        "whenToUse": [
+          "Web e mobile com necessidades diferentes"
+        ],
+        "whenToAvoid": [
+          "Um único cliente simples"
+        ],
+        "howItFails": "BFFs duplicam lógica e dividem dependências críticas sem bulkhead.",
+        "tradeOff": "Experiência otimizada vs mais serviços para manter.",
+        "example": "BFF mobile agrega saldo + extrato numa resposta enxuta."
+      }
+    ],
+    "howToChoose": "Transversais → gateway. Composição por experiência → BFF atrás do gateway.",
+    "diagrams": [
+      "api-gateway-vs-bff"
+    ],
+    "sourceRefs": [
+      {
+        "kind": "pdf",
+        "source": "System Design Workbook",
+        "locator": "p.185",
+        "note": "API Gateway"
+      },
+      {
+        "kind": "pdf",
+        "source": "System Design Workbook",
+        "locator": "p.202",
+        "note": "BFF"
+      },
+      {
+        "kind": "repo",
+        "source": "event-source-distributed-ledger",
+        "locator": "kong/",
+        "note": "Kong como gateway",
+        "url": "https://github.com/msfidelis/event-source-distributed-ledger"
+      }
+    ]
+  },
+  {
+    "id": "strong-vs-eventual-consistency",
+    "title": "Consistência Forte vs Eventual",
+    "keywords": [
+      "consistência forte ou eventual",
+      "acid vs base"
+    ],
+    "summary": "Toda leitura vê a última escrita (forte) vs réplicas convergem com o tempo (eventual).",
+    "keyDifference": "Forte paga coordenação em latência/escala; eventual paga janela de inconsistência e exige idempotência/ordem.",
+    "options": [
+      {
+        "name": "Forte (ACID)",
+        "refs": [
+          {
+            "kind": "topics",
+            "id": "cap-acid-base"
+          }
+        ],
+        "problemSolved": "Correção simples de provar em regras críticas.",
+        "whenToUse": [
+          "Saldo, limite, reserva"
+        ],
+        "whenToAvoid": [
+          "Leituras de altíssima escala que toleram atraso"
+        ],
+        "howItFails": "Coordenação e locks limitam escala; sob partição, perde disponibilidade.",
+        "tradeOff": "Correção vs latência/disponibilidade.",
+        "example": "Validação de limite na transação do débito."
+      },
+      {
+        "name": "Eventual (BASE)",
+        "refs": [
+          {
+            "kind": "topics",
+            "id": "data-replication"
+          },
+          {
+            "kind": "failure-modes",
+            "id": "read-replica-lag"
+          }
+        ],
+        "problemSolved": "Disponibilidade e escala de leitura.",
+        "whenToUse": [
+          "Extrato, feeds, read models"
+        ],
+        "whenToAvoid": [
+          "Decisões que não podem ler dado atrasado"
+        ],
+        "howItFails": "Janela de inconsistência visível ao usuário; duplicatas e ordem sem idempotência.",
+        "tradeOff": "Escala vs janela de inconsistência.",
+        "example": "Read model de extrato atualizado por eventos."
+      }
+    ],
+    "howToChoose": "Por decisão, não por sistema: decisões críticas leem a fonte forte; visões toleram eventual com SLO de lag.",
+    "diagrams": [
+      "read-model-update"
+    ],
+    "sourceRefs": [
+      {
+        "kind": "pdf",
+        "source": "System Design Workbook",
+        "locator": "p.72",
+        "note": "CAP"
+      },
+      {
+        "kind": "pdf",
+        "source": "System Design Workbook",
+        "locator": "p.106",
+        "note": "Consistência forte vs eventual"
+      },
+      {
+        "kind": "reference",
+        "source": "Werner Vogels — Eventually Consistent, Revisited (2008)",
+        "locator": "www.allthingsdistributed.com/2008/12/eventually_consistent.html",
+        "note": "Consistência eventual e variações",
+        "url": "https://www.allthingsdistributed.com/2008/12/eventually_consistent.html"
+      }
+    ]
+  }
+]
