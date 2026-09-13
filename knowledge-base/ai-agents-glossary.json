@@ -225,23 +225,6 @@
     ]
   },
   {
-    "id": "rag",
-    "term": "RAG (Retrieval-Augmented Generation)",
-    "framing": "padrão de contexto",
-    "kind": "term",
-    "definition": "Em vez de confiar só no que o modelo 'sabe', você BUSCA documentos relevantes numa base sua e os injeta no prompt como contexto antes de gerar. Recuperar -> aumentar o prompt -> gerar.",
-    "backendAnalogy": "É um cache-aside semântico: no 'miss' de conhecimento você consulta um índice (vetorial), pega os trechos certos e monta a resposta com eles — como enriquecer um DTO com dados de outra fonte antes de responder.",
-    "pitfall": "Lixo entra, lixo sai: se a recuperação traz trecho irrelevante, o modelo responde errado com confiança. A qualidade do retrieval (chunking, índice) pesa mais que o modelo.",
-    "sourceRefs": [
-      {
-        "kind": "reference",
-        "source": "Anthropic",
-        "locator": "Contextual Retrieval",
-        "url": "https://anthropic.com/news/contextual-retrieval"
-      }
-    ]
-  },
-  {
     "id": "embeddings",
     "term": "Embeddings",
     "framing": "representação",

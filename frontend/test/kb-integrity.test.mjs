@@ -50,6 +50,15 @@ function assertDbRec(who, rec, databaseIds) {
   }
 }
 
+test("kb: ids únicos dentro de cada coleção", () => {
+  const all = { topics, patterns, flows, questions, diagrams, evidence, databases, aiGlossary };
+  for (const [name, arr] of Object.entries(all)) {
+    const seen = new Set();
+    const dups = arr.map((x) => x.id).filter((id) => (seen.has(id) ? true : (seen.add(id), false)));
+    assert.deepEqual(dups, [], `${name}: ids duplicados`);
+  }
+});
+
 test("kb: nenhuma coleção vazia", () => {
   for (const [name, arr] of Object.entries({ topics, patterns, flows, questions, diagrams, evidence, databases })) {
     assert.ok(arr.length > 0, `${name} vazia`);
@@ -104,8 +113,15 @@ test("kb: todo cross-ref resolve (topics/patterns/flows/questions/diagrams/evide
     assertSubset(`question:${q.id}.relatedTopics`, q.relatedTopics, topicIds);
     assertSubset(`question:${q.id}.diagrams`, q.diagrams, diagramIds);
   }
-  for (const d of diagrams) assert.ok(notBlank(d.mermaid), `diagram:${d.id}.mermaid em branco`);
-  for (const e of evidence) assertSubset(`evidence:${e.id}.relatedPatterns`, e.relatedPatterns, patternIds);
+  for (const d of diagrams) {
+    assert.ok(notBlank(d.mermaid), `diagram:${d.id}.mermaid em branco`);
+    assertSubset(`diagram:${d.id}.relatedTopics`, d.relatedTopics, topicIds);
+    assertSubset(`diagram:${d.id}.relatedPatterns`, d.relatedPatterns, patternIds);
+  }
+  for (const e of evidence) {
+    assertSubset(`evidence:${e.id}.relatedPatterns`, e.relatedPatterns, patternIds);
+    assertSubset(`evidence:${e.id}.relatedTopics`, e.relatedTopics, topicIds);
+  }
   for (const d of databases) {
     assertSubset(`database:${d.id}.relatedPatterns`, d.relatedPatterns, patternIds);
     assertSubset(`database:${d.id}.relatedTopics`, d.relatedTopics, topicIds);

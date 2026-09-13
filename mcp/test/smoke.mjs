@@ -4,6 +4,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { readFileSync } from "node:fs";
 import assert from "node:assert/strict";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -21,10 +22,16 @@ assert.deepEqual(names, ["get", "list", "overview", "search"], "unexpected tool 
 
 const parse = (res) => JSON.parse(res.content[0].text);
 
-// 2. overview returns 8 collections (incl. databases)
+// 2. overview returns every collection with the REAL count read from knowledge-base/ (no hardcoded
+//    numbers: a hardcoded "databases === 6" kept this smoke red on main after the 7th db was added).
+const KB = join(HERE, "..", "..", "knowledge-base");
+const countOf = (file) => JSON.parse(readFileSync(join(KB, file), "utf8")).length;
 const ov = parse(await client.callTool({ name: "overview", arguments: {} }));
 assert.equal(ov.length, 8, "overview should list 8 collections");
-assert.ok(ov.some((c) => c.kind === "databases" && c.count === 6), "databases collection (6) must be exposed");
+assert.ok(
+  ov.some((c) => c.kind === "databases" && c.count === countOf("databases.json")),
+  "databases collection must be exposed with the real count",
+);
 
 // 3. search finds the idempotency content
 const hits = parse(await client.callTool({ name: "search", arguments: { query: "idempotência kafka consumidor" } }));
