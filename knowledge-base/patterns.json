@@ -1698,5 +1698,145 @@
         "url": "https://microservices.io/patterns/observability/application-logging.html"
       }
     ]
+  },
+  {
+    "id": "idempotent-request",
+    "keywords": [
+      "Idempotency-Key",
+      "cliente clicou duas vezes",
+      "double click pagamento",
+      "retry depois de timeout",
+      "mesma idempotency key payload diferente",
+      "duas requests ao mesmo tempo mesma chave",
+      "atomic claim",
+      "check then act idempotency",
+      "existsByKey race",
+      "request repetida pagamento",
+      "replay da resposta"
+    ],
+    "name": "Idempotent Request / Idempotency Key",
+    "category": "API",
+    "problem": "Numa API com efeito (cobrar, transferir, criar pedido) o cliente pode enviar a MESMA intenção mais de uma vez: timeout sem saber se o servidor executou, duplo clique, retry automático de SDK/gateway, reenvio após queda de conexão. O cliente não consegue distinguir 'a requisição não chegou' de 'chegou, executou e só a resposta se perdeu'. Se o servidor tratar cada tentativa como nova operação, o efeito acontece duas vezes — e uma checagem ingênua 'essa chave já existe?' não resolve quando duas tentativas chegam ao mesmo tempo.",
+    "solution": "O cliente gera uma **chave de idempotência por intenção** (convenção forte: header `Idempotency-Key`) e a reenvia em todo retry. O servidor: (1) define o **escopo** da chave (ex.: cliente + endpoint + chave); (2) calcula um **fingerprint da intenção normalizada**; (3) faz um **claim atômico** da chave ANTES do efeito — UNIQUE constraint + `INSERT ... ON CONFLICT DO NOTHING` ou escrita condicional — de modo que só uma tentativa vence; (4) a vencedora executa o efeito e **persiste o resultado** (status, corpo e headers relevantes) na mesma fronteira transacional sempre que possível; (5) as demais tratam o registro existente: **mesma chave + mesmo fingerprint → replay** do resultado (sem novo efeito); **mesma chave + fingerprint diferente → conflito**; **ainda processando → comportamento de 'em andamento' definido no contrato**. Chaves têm **retenção** contratual. Idempotência HTTP ≠ idempotência de consumidor de mensagens, mas ambas resolvem o mesmo problema: a mesma intenção atravessando uma fronteira mais de uma vez.",
+    "whenToUse": [
+      "POST/PATCH com efeito financeiro ou irreversível (cobrança, transferência, criação de pedido, envio de notificação paga)",
+      "APIs chamadas por clientes móveis, SDKs ou gateways com retry automático",
+      "Integrações server-to-server em que o chamador faz retry após timeout",
+      "Operações longas em que o cliente precisa reconsultar o resultado sem reexecutar"
+    ],
+    "whenToAvoid": [
+      "Operações naturalmente idempotentes (GET, PUT de valor absoluto, DELETE de recurso por id) — a chave não acrescenta garantia",
+      "Leituras sem efeito colateral",
+      "Quando a própria entidade de negócio já tem identificador único fornecido pelo cliente e protegido por UNIQUE (ex.: `order_id` gerado pelo cliente) — a chave de idempotência seria redundante"
+    ],
+    "exampleFromRepo": "O `msc-transactions-api` declara suporte a idempotência nas movimentações de débito/crédito (lido via README, ver `docs/open-questions.md` OQ-1), e o fluxo `transactional-debit-credit` desta base descreve verificar a chave antes de abrir a transação. Este pattern descreve o desenho robusto a concorrência (claim atômico via UNIQUE antes do efeito) sem afirmar que o repositório o implementa exatamente assim: um lookup prévio (inclusive em cache) é otimização; o árbitro de correção é a constraint.",
+    "financialExample": "`POST /transactions` com `Idempotency-Key: abc123` e `{amount: \"500.00\", currency: \"BRL\", destinationAccount: \"987\"}`. O servidor normaliza a intenção para `operation=TRANSFER|amount=50000|currency=BRL|destination=987` (valor em centavos), calcula SHA-256, e dentro de uma transação PostgreSQL faz `INSERT INTO idempotency_record (client_id, endpoint, idempotency_key, request_fingerprint, status, ...) ON CONFLICT DO NOTHING RETURNING ...`. Se inseriu: debita, grava a transação e o resultado (`201` + corpo) e comita tudo junto. Se não inseriu: lê o registro — mesmo fingerprint e COMPLETED → devolve o `201` e o corpo gravados sem debitar de novo; fingerprint diferente (ex.: amount=90000) → `409`/erro de idempotência; nunca devolve o resultado dos R$ 500 para quem pediu R$ 900.",
+    "tradeOffs": [
+      {
+        "dimension": "Correção sob retry e concorrência",
+        "pro": "A mesma intenção produz um único efeito, mesmo com 20 tentativas simultâneas",
+        "con": "Uma escrita extra (claim) e armazenamento de chave + resultado por operação"
+      },
+      {
+        "dimension": "Escopo da chave",
+        "pro": "Escopo (cliente, endpoint, chave) evita que chaves iguais de clientes diferentes colidam",
+        "con": "Escopo largo demais reinterpreta tentativas independentes como a mesma; estreito demais deixa a mesma tentativa escapar por outro caminho (ex.: outro endpoint equivalente)"
+      },
+      {
+        "dimension": "Retenção",
+        "pro": "Retenção longa protege contra retries tardios",
+        "con": "Mais armazenamento; retenção curta faz um retry muito tardio virar operação nova"
+      },
+      {
+        "dimension": "Replay do resultado armazenado",
+        "pro": "Cliente recebe exatamente a mesma resposta (inclusive status), contrato previsível",
+        "con": "Guardar corpos de resposta custa espaço e exige cuidado com dados sensíveis"
+      },
+      {
+        "dimension": "Transação única vs estado PROCESSING",
+        "pro": "Mesma transação do banco torna claim + efeito + resultado atômicos",
+        "con": "Efeitos externos (gateway, broker) não cabem na transação e exigem estado explícito, recuperação e outbox"
+      }
+    ],
+    "relatedPatterns": [
+      "idempotent-consumer",
+      "transactional-outbox",
+      "saga",
+      "api-gateway"
+    ],
+    "interviewAngle": "Aparece em qualquer desenho de pagamentos: 'e se o cliente fizer retry?'. A resposta fraca é 'verifico se a chave existe'. A forte: chave com escopo, fingerprint semântico, claim atômico por UNIQUE/conditional write antes do efeito (e por que `exists()` + `insert` tem corrida), efeito e resultado na mesma transação, replay para mesma intenção, conflito para intenção diferente, contrato para PROCESSING, retenção e métricas. Nível staff: efeito que atravessa sistemas → outbox/saga e idempotência também no consumidor.",
+    "diagrams": [
+      "financial-http-idempotency",
+      "transactional-api-flow"
+    ],
+    "databaseRecommendation": {
+      "suggestedDbId": "rds-postgresql",
+      "level": "medium",
+      "rationale": "UNIQUE(client, endpoint, key) + INSERT ... ON CONFLICT no mesmo banco transacional do efeito dá claim atômico e resultado na mesma transação."
+    },
+    "sourceRefs": [
+      {
+        "kind": "reference",
+        "source": "Stripe API — Idempotent requests",
+        "locator": "docs.stripe.com/api/idempotent_requests",
+        "note": "Salva status e corpo da primeira requisição por chave (inclusive erros) e devolve nas repetições; compara parâmetros e dá erro se diferentes; chaves podem ser removidas após 24 h e reuso depois disso é nova requisição; conflito com requisição concorrente em execução não salva resultado e pode ser repetido; V4 UUID, até 255 caracteres, não usar dado sensível como chave",
+        "url": "https://docs.stripe.com/api/idempotent_requests"
+      },
+      {
+        "kind": "reference",
+        "source": "PostgreSQL docs — INSERT ... ON CONFLICT",
+        "locator": "www.postgresql.org/docs/current/sql-insert.html",
+        "note": "ON CONFLICT DO NOTHING com arbiter index (unique index/constraint); RETURNING só devolve linhas inseridas",
+        "url": "https://www.postgresql.org/docs/current/sql-insert.html"
+      },
+      {
+        "kind": "reference",
+        "source": "PostgreSQL docs — Index Uniqueness Checks",
+        "locator": "www.postgresql.org/docs/current/index-unique-checks.html",
+        "note": "Inserção que conflita com linha de transação ainda não comitada espera o desfecho: se comitar, violação/conflito; se abortar, não há conflito",
+        "url": "https://www.postgresql.org/docs/current/index-unique-checks.html"
+      },
+      {
+        "kind": "reference",
+        "source": "RFC 8785 — JSON Canonicalization Scheme (Informational)",
+        "locator": "www.rfc-editor.org/rfc/rfc8785.html",
+        "note": "Canonicalização JSON (ordem de propriedades, whitespace, números no modelo IEEE-754 do ECMAScript) antes de hash/assinatura; números sem lugar natural no ecossistema JSON devem ir como string",
+        "url": "https://www.rfc-editor.org/rfc/rfc8785.html"
+      },
+      {
+        "kind": "reference",
+        "source": "Java SE 21 API — java.math.BigDecimal",
+        "locator": "docs.oracle.com/en/java/javase/21/docs/api/java.base/java/math/BigDecimal.html",
+        "note": "equals considera escala (2.0 ≠ 2.00); compareTo considera iguais; stripTrailingZeros; construtor por String é previsível, por double não",
+        "url": "https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/math/BigDecimal.html"
+      },
+      {
+        "kind": "reference",
+        "source": "Stripe Blog — Designing robust and predictable APIs with idempotency (B. Leach, 2017)",
+        "locator": "stripe.com/blog/idempotency",
+        "note": "Falhas ambíguas: a conexão pode cair depois de o servidor concluir; Idempotency-Key permite repetir com segurança",
+        "url": "https://stripe.com/blog/idempotency"
+      },
+      {
+        "kind": "reference",
+        "source": "IETF HTTPAPI — The Idempotency-Key HTTP Header Field (Internet-Draft EXPIRADO, não é RFC)",
+        "locator": "datatracker.ietf.org/doc/draft-ietf-httpapi-idempotency-key-header/",
+        "note": "Internet-Draft EXPIRADO (rev. 07, out/2025), não é padrão: sugeria 422 para chave reutilizada com conteúdo diferente e 409 para requisição original ainda em processamento",
+        "url": "https://datatracker.ietf.org/doc/draft-ietf-httpapi-idempotency-key-header/"
+      },
+      {
+        "kind": "reference",
+        "source": "microservices.io",
+        "locator": "patterns/communication-style/idempotent-consumer.html",
+        "note": "Contraponto: idempotência no consumo de mensagens",
+        "url": "https://microservices.io/patterns/communication-style/idempotent-consumer.html"
+      },
+      {
+        "kind": "pdf",
+        "source": "System Design Workbook",
+        "locator": "p.504",
+        "note": "Chave de idempotência verificada antes de processar torna retries seguros"
+      }
+    ]
   }
 ]

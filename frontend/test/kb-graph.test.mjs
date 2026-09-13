@@ -1,0 +1,108 @@
+// Integridade do GRAFO da knowledge base (todas as coleções, inclusive as novas: failure-modes,
+// incident-drills, comparisons, learning-paths). Complementa kb-integrity.test.mjs:
+// - toda aresta (relatedX, canCause, mitigatedBy, passos de trilha…) aponta para um item que existe;
+// - nenhum item aponta para si mesmo por acidente;
+// - a narrativa da cadeia de falha é coerente com as arestas causais;
+// - todo failure mode passa pelos quality gates mínimos e não fica órfão.
+// Usa o MESMO módulo de grafo que o MCP e o frontend (shared/kb-graph.mjs).
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { readFileSync, existsSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { COLLECTIONS } from "../../shared/kb-kinds.mjs";
+import { buildGraph, brokenEdges, reachableFailureModes } from "../../shared/kb-graph.mjs";
+
+const KB = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "knowledge-base");
+const collections = {};
+for (const c of COLLECTIONS) {
+  const p = join(KB, c.file);
+  if (existsSync(p)) collections[c.kind] = JSON.parse(readFileSync(p, "utf-8"));
+}
+const graph = buildGraph(collections);
+const fms = collections["failure-modes"] ?? [];
+const fmIds = new Set(fms.map((f) => f.id));
+
+test("grafo: toda coleção do registro existe como arquivo", () => {
+  const missing = COLLECTIONS.filter((c) => !collections[c.kind]).map((c) => c.file);
+  assert.deepEqual(missing, [], "coleção registrada em shared/kb-kinds.mjs sem arquivo na KB");
+});
+
+test("grafo: ids únicos em todas as coleções", () => {
+  for (const [kind, items] of Object.entries(collections)) {
+    const seen = new Set();
+    const dups = items.map((x) => x.id).filter((id) => (seen.has(id) ? true : (seen.add(id), false)));
+    assert.deepEqual(dups, [], `${kind}: ids duplicados`);
+  }
+});
+
+test("grafo: toda aresta resolve e não há self-reference", () => {
+  const bad = brokenEdges(graph).map((e) => `${e.from.kind}/${e.from.id} -[${e.type}]-> ${e.to.kind}/${e.to.id}: ${e.problem}`);
+  assert.deepEqual(bad, [], "\n" + bad.join("\n"));
+  assert.ok(graph.edges.length > 1000, "grafo suspeitamente pequeno");
+});
+
+test("failure modes: pelo menos os 10 obrigatórios existem", () => {
+  const required = [
+    "cache-stampede", "thundering-herd", "hot-key-partition", "n-plus-one-queries", "retry-storm",
+    "unbounded-cache", "connection-pool-exhaustion", "read-replica-lag", "missing-idempotency", "no-backpressure",
+  ];
+  for (const id of required) assert.ok(fmIds.has(id), `failure mode obrigatório ausente: ${id}`);
+});
+
+test("failure modes: cadeia de falha coerente com as arestas canCause", () => {
+  const problems = [];
+  for (const fm of fms) {
+    const selfIdx = fm.failureChain.findIndex((s) => s.failureMode === fm.id);
+    const fromSelf = reachableFailureModes(fms, fm.id);
+    fm.failureChain.forEach((s, i) => {
+      if (!s.failureMode || s.failureMode === fm.id) return;
+      if (!fmIds.has(s.failureMode)) return problems.push(`${fm.id}: passo ${i} aponta para '${s.failureMode}' inexistente`);
+      const after = selfIdx < 0 || i > selfIdx;
+      if (after && !fromSelf.has(s.failureMode)) {
+        problems.push(`${fm.id}: passo '${s.step}' (${s.failureMode}) vem depois, mas não é alcançável por canCause`);
+      }
+      if (!after && !reachableFailureModes(fms, s.failureMode).has(fm.id)) {
+        problems.push(`${fm.id}: passo '${s.step}' (${s.failureMode}) vem antes, mas não leva a ${fm.id} por canCause`);
+      }
+    });
+    for (const c of fm.canCause) if (c.id === fm.id) problems.push(`${fm.id}: canCause aponta para si mesmo`);
+  }
+  assert.deepEqual(problems, [], "\n" + problems.join("\n"));
+});
+
+test("failure modes: quality gates (o que é, como piora, métricas, mitigação vs correção, entrevista, fontes)", () => {
+  const problems = [];
+  for (const fm of fms) {
+    const who = `failure-mode:${fm.id}`;
+    const need = (cond, msg) => { if (!cond) problems.push(`${who}: ${msg}`); };
+    need(fm.definition.length > 200, "definição rasa (O que é?)");
+    need(fm.whyItHappens.length > 150, "whyItHappens raso (Por que acontece?)");
+    need(fm.productionScenario.timeline.length >= 3, "timeline curta (Como começa/piora?)");
+    need(fm.failureChain.length >= 3, "cadeia curta");
+    need(fm.symptoms.userVisible.length >= 1 && fm.symptoms.system.length >= 2, "sintomas (usuário e sistema)");
+    need(fm.diagnosis.confirm.length >= 2, "confirmação do diagnóstico");
+    need(fm.immediateMitigation.length >= 1 && fm.longTermSolutions.length >= 1, "mitigação imediata E correção definitiva");
+    need(fm.antiPatterns.length >= 2, "anti-patterns (que solução ingênua pioraria?)");
+    need(fm.tradeOffs.length >= 2, "trade-offs");
+    need(fm.observability.metrics.length >= 3 && fm.observability.alerts.length >= 1, "observabilidade");
+    need(fm.interview.followUps.length >= 1 && fm.interview.redFlags.length >= 2 && fm.interview.strongSignals.length >= 2, "ângulo de entrevista");
+    need(fm.interview.strongAnswer.length > 400, "strongAnswer rasa");
+    need((fm.relatedTopics.length + fm.relatedPatterns.length) >= 2, "sem relações com a KB existente");
+    need(new Set(fm.sourceRefs.map((r) => r.source)).size >= 2, "menos de 2 fontes distintas");
+    need(fm.sourceRefs.every((r) => r.kind === "pdf" || /^https:\/\//.test(r.url ?? "")), "sourceRef externo sem url https");
+    need(fm.keywords.length >= 3, "poucas keywords de sintoma para a busca");
+  }
+  assert.deepEqual(problems, [], "\n" + problems.join("\n"));
+});
+
+test("failure modes: nenhum fica órfão (alguém aponta para ele)", () => {
+  const incoming = new Map([...fmIds].map((id) => [id, 0]));
+  for (const e of graph.edges) {
+    if (e.to.kind === "failure-modes" && !(e.from.kind === "failure-modes" && e.from.id === e.to.id)) {
+      incoming.set(e.to.id, (incoming.get(e.to.id) ?? 0) + 1);
+    }
+  }
+  const orphans = [...incoming].filter(([, n]) => n === 0).map(([id]) => id);
+  assert.deepEqual(orphans, [], "failure modes sem nenhuma aresta de entrada");
+});

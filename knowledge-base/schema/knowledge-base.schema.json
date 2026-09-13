@@ -7,7 +7,7 @@
   "additionalProperties": false,
   "required": [
     "topics.json", "patterns.json", "flows.json", "interview-questions.json", "diagrams.json",
-    "evidence.json", "databases.json", "ai-agents-glossary.json"
+    "evidence.json", "databases.json", "ai-agents-glossary.json", "failure-modes.json"
   ],
   "properties": {
     "topics.json": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/Topic" } },
@@ -17,9 +17,385 @@
     "diagrams.json": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/Diagram" } },
     "evidence.json": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/Evidence" } },
     "databases.json": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/Database" } },
-    "ai-agents-glossary.json": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/GlossaryEntry" } }
+    "ai-agents-glossary.json": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/GlossaryEntry" } },
+    "failure-modes.json": { "type": "array", "minItems": 10, "items": { "$ref": "#/$defs/FailureMode" } }
   },
   "$defs": {
+    "KbRef": {
+      "type": "object",
+      "description": "Ponteiro tipado para um item de outra coleção (usado por trilhas e comparações).",
+      "required": ["kind", "id"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": { "enum": ["topics", "patterns", "flows", "interview-questions", "diagrams", "failure-modes", "incident-drills", "comparisons"] },
+        "id": { "type": "string", "pattern": "^[a-z0-9-]+$" }
+      }
+    },
+    "TimelineEvent": {
+      "type": "object",
+      "required": ["t", "event"],
+      "additionalProperties": false,
+      "properties": {
+        "t": { "type": "string", "description": "marca de tempo relativa ou absoluta, ex.: 'T+0s', '12:00:00.300'" },
+        "event": { "type": "string" }
+      }
+    },
+    "QA": {
+      "type": "object",
+      "required": ["question", "answer"],
+      "additionalProperties": false,
+      "properties": {
+        "question": { "type": "string" },
+        "answer": { "type": "string" }
+      }
+    },
+    "Mitigation": {
+      "type": "object",
+      "description": "Uma ação de mitigação/correção. Os ids ligam a ação ao conteúdo que a explica (o 'mitigatedBy' do grafo é derivado daqui).",
+      "required": ["action", "how"],
+      "additionalProperties": false,
+      "properties": {
+        "action": { "type": "string", "description": "a ação em poucas palavras" },
+        "how": { "type": "string", "description": "como aplicar, com o mecanismo" },
+        "tradeOff": { "type": "string", "description": "o que se paga por ela" },
+        "patterns": { "type": "array", "items": { "type": "string" } },
+        "topics": { "type": "array", "items": { "type": "string" } },
+        "failureModes": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "FailureMode": {
+      "type": "object",
+      "description": "Como um sistema quebra em produção: cenário concreto → cadeia de falha → sintomas → diagnóstico → mitigação agora vs correção definitiva → trade-offs → observabilidade → resposta de entrevista. Números de cenário são DIDÁTICOS salvo quando a fonte é citada no texto.",
+      "required": [
+        "id", "title", "category", "difficulty", "summary", "keywords", "definition", "whyItHappens",
+        "productionScenario", "failureChain", "canCause", "symptoms", "rootCauses", "diagnosis",
+        "immediateMitigation", "longTermSolutions", "antiPatterns", "tradeOffs", "observability",
+        "interview", "relatedTopics", "relatedPatterns", "sourceRefs"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+        "title": { "type": "string" },
+        "aliases": { "type": "array", "items": { "type": "string" }, "description": "outros nomes do mesmo fenômeno (a terminologia varia entre fontes)" },
+        "keywords": { "type": "array", "minItems": 3, "items": { "type": "string" }, "description": "sintomas e frases coloquiais (PT/EN) pelas quais alguém descreveria o problema — alimentam a busca" },
+        "category": { "enum": ["Caching", "Database", "Messaging", "Resilience", "Scalability", "Consistency", "Runtime"] },
+        "difficulty": { "enum": ["senior", "staff"] },
+        "summary": { "type": "string", "description": "uma frase" },
+        "definition": { "type": "string", "description": "Markdown: o que é, com o mecanismo" },
+        "whyItHappens": { "type": "string", "description": "Markdown: por que acontece (e por que não aparece em teste pequeno)" },
+        "confusedWith": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "difference"],
+            "additionalProperties": false,
+            "properties": {
+              "id": { "type": "string", "description": "failure-mode id" },
+              "difference": { "type": "string" }
+            }
+          }
+        },
+        "productionScenario": {
+          "type": "object",
+          "required": ["dataKind", "context", "normalState", "trigger", "timeline", "impact"],
+          "additionalProperties": false,
+          "properties": {
+            "dataKind": { "enum": ["didactic"], "description": "os números do cenário são exemplo didático, não dado real de empresa" },
+            "context": { "type": "string" },
+            "normalState": { "type": "string" },
+            "trigger": { "type": "string" },
+            "timeline": { "type": "array", "minItems": 3, "items": { "$ref": "#/$defs/TimelineEvent" } },
+            "impact": { "type": "string" },
+            "numbers": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["label", "value"],
+                "additionalProperties": false,
+                "properties": {
+                  "label": { "type": "string" },
+                  "value": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "capacityMath": {
+          "type": "object",
+          "description": "Exercício de estimativa (simplificado de propósito).",
+          "required": ["exercise", "steps", "answer", "caveat"],
+          "additionalProperties": false,
+          "properties": {
+            "exercise": { "type": "string" },
+            "steps": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+            "answer": { "type": "string" },
+            "caveat": { "type": "string" }
+          }
+        },
+        "failureChain": {
+          "type": "array",
+          "minItems": 3,
+          "description": "Como a falha começa e se propaga, em ordem. Um passo pode apontar para outro failure mode (inclusive este).",
+          "items": {
+            "type": "object",
+            "required": ["step"],
+            "additionalProperties": false,
+            "properties": {
+              "step": { "type": "string" },
+              "failureMode": { "type": "string" }
+            }
+          }
+        },
+        "canCause": {
+          "type": "array",
+          "description": "Arestas causais dirigidas: este failure mode pode levar a outro.",
+          "items": {
+            "type": "object",
+            "required": ["id", "mechanism"],
+            "additionalProperties": false,
+            "properties": {
+              "id": { "type": "string" },
+              "mechanism": { "type": "string" }
+            }
+          }
+        },
+        "symptoms": {
+          "type": "object",
+          "required": ["userVisible", "system"],
+          "additionalProperties": false,
+          "properties": {
+            "userVisible": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+            "system": { "type": "array", "minItems": 1, "items": { "type": "string" } }
+          }
+        },
+        "rootCauses": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+        "diagnosis": {
+          "type": "object",
+          "required": ["firstSignal", "confirm", "causeVsSymptom"],
+          "additionalProperties": false,
+          "properties": {
+            "firstSignal": { "type": "string", "description": "qual sinal costuma mexer primeiro" },
+            "confirm": { "type": "array", "minItems": 1, "items": { "type": "string" }, "description": "como confirmar a hipótese" },
+            "causeVsSymptom": { "type": "string", "description": "como não confundir o sintoma com a causa" }
+          }
+        },
+        "immediateMitigation": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/Mitigation" } },
+        "longTermSolutions": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/Mitigation" } },
+        "antiPatterns": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["dont", "why"],
+            "additionalProperties": false,
+            "properties": {
+              "dont": { "type": "string" },
+              "why": { "type": "string" }
+            }
+          }
+        },
+        "tradeOffs": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/TradeOff" } },
+        "observability": {
+          "type": "object",
+          "required": ["metrics", "alerts"],
+          "additionalProperties": false,
+          "properties": {
+            "metrics": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+            "logs": { "type": "array", "items": { "type": "string" } },
+            "traces": { "type": "array", "items": { "type": "string" } },
+            "alerts": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+            "dashboard": { "type": "string" }
+          }
+        },
+        "implementationNotes": {
+          "type": "array",
+          "description": "EXEMPLO DE IMPLEMENTAÇÃO separado do CONCEITO (Java/Spring/Hikari/Postgres/Redis/Kafka…).",
+          "items": {
+            "type": "object",
+            "required": ["tech", "note"],
+            "additionalProperties": false,
+            "properties": {
+              "tech": { "type": "string" },
+              "note": { "type": "string" }
+            }
+          }
+        },
+        "interview": {
+          "type": "object",
+          "required": ["question", "shortAnswer", "strongAnswer", "followUps", "redFlags", "strongSignals", "ladder"],
+          "additionalProperties": false,
+          "properties": {
+            "question": { "type": "string" },
+            "shortAnswer": { "type": "string" },
+            "strongAnswer": { "type": "string" },
+            "followUps": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/QA" } },
+            "redFlags": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+            "strongSignals": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+            "ladder": {
+              "type": "object",
+              "description": "A mesma ideia em três níveis: junior pergunta definição; senior, mecanismo+mitigação; staff, trade-off+capacidade+blast radius+operação.",
+              "required": ["junior", "senior", "staff"],
+              "additionalProperties": false,
+              "properties": {
+                "junior": { "type": "string" },
+                "senior": { "type": "string" },
+                "staff": { "type": "string" }
+              }
+            },
+            "whatIf": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["question", "answer"],
+                "additionalProperties": false,
+                "properties": {
+                  "question": { "type": "string" },
+                  "answer": { "type": "string" },
+                  "leadsTo": { "type": "array", "items": { "type": "string" }, "description": "failure-mode ids para onde a conversa naturalmente segue" }
+                }
+              }
+            }
+          }
+        },
+        "relatedTopics": { "type": "array", "items": { "type": "string" } },
+        "relatedPatterns": { "type": "array", "items": { "type": "string" } },
+        "diagrams": { "type": "array", "items": { "type": "string" } },
+        "sourceRefs": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/SourceRef" } }
+      }
+    },
+    "IncidentDrill": {
+      "type": "object",
+      "description": "Treino determinístico de incidente: sinais → pergunta → dicas progressivas → diagnóstico → mitigação/correção. Cenário didático; o conteúdo genérico mora no failure mode ligado.",
+      "required": ["id", "title", "format", "difficulty", "scenario", "question", "hints", "answer", "failureModes", "sourceRefs"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+        "title": { "type": "string", "description": "título neutro — NÃO entrega o diagnóstico" },
+        "format": { "enum": ["incident", "metrics-detective", "timeline"] },
+        "difficulty": { "enum": ["senior", "staff"] },
+        "keywords": { "type": "array", "items": { "type": "string" } },
+        "scenario": {
+          "type": "object",
+          "required": ["dataKind", "context", "setup", "signals"],
+          "additionalProperties": false,
+          "properties": {
+            "dataKind": { "enum": ["didactic"] },
+            "context": { "type": "string" },
+            "setup": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+            "timeline": { "type": "array", "items": { "$ref": "#/$defs/TimelineEvent" } },
+            "signals": {
+              "type": "array",
+              "minItems": 2,
+              "items": {
+                "type": "object",
+                "required": ["metric", "value", "trend"],
+                "additionalProperties": false,
+                "properties": {
+                  "metric": { "type": "string" },
+                  "value": { "type": "string" },
+                  "trend": { "enum": ["up", "down", "flat", "spike", "saturated"] }
+                }
+              }
+            }
+          }
+        },
+        "question": { "type": "string" },
+        "hints": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+        "answer": {
+          "type": "object",
+          "required": ["diagnosis", "rootCause", "reasoning", "confirmWith", "immediateMitigation", "permanentFix", "wouldMakeItWorse", "whatToMonitor"],
+          "additionalProperties": false,
+          "properties": {
+            "diagnosis": { "type": "string" },
+            "rootCause": { "type": "string" },
+            "rootCauseAt": { "type": "integer", "description": "formato timeline: índice (0-based) do evento da timeline onde o incidente de fato começou" },
+            "reasoning": { "type": "string" },
+            "ruledOut": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["failureMode", "why"],
+                "additionalProperties": false,
+                "properties": {
+                  "failureMode": { "type": "string" },
+                  "why": { "type": "string" }
+                }
+              }
+            },
+            "confirmWith": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+            "immediateMitigation": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+            "permanentFix": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+            "wouldMakeItWorse": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+            "whatToMonitor": { "type": "array", "minItems": 1, "items": { "type": "string" } }
+          }
+        },
+        "failureModes": { "type": "array", "minItems": 1, "items": { "type": "string" }, "description": "o primeiro é o diagnóstico principal" },
+        "relatedQuestions": { "type": "array", "items": { "type": "string" } },
+        "sourceRefs": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/SourceRef" } }
+      }
+    },
+    "Comparison": {
+      "type": "object",
+      "description": "Comparação lado a lado de conceitos que costumam ser confundidos.",
+      "required": ["id", "title", "summary", "keyDifference", "options", "howToChoose", "sourceRefs"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+        "title": { "type": "string" },
+        "keywords": { "type": "array", "items": { "type": "string" } },
+        "summary": { "type": "string" },
+        "keyDifference": { "type": "string", "description": "a diferença essencial em uma frase" },
+        "options": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "object",
+            "required": ["name", "problemSolved", "whenToUse", "whenToAvoid", "howItFails", "tradeOff", "example"],
+            "additionalProperties": false,
+            "properties": {
+              "name": { "type": "string" },
+              "refs": { "type": "array", "items": { "$ref": "#/$defs/KbRef" } },
+              "problemSolved": { "type": "string" },
+              "whenToUse": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+              "whenToAvoid": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+              "howItFails": { "type": "string", "description": "o failure mode típico desta opção" },
+              "tradeOff": { "type": "string" },
+              "example": { "type": "string" }
+            }
+          }
+        },
+        "howToChoose": { "type": "string" },
+        "diagrams": { "type": "array", "items": { "type": "string" } },
+        "sourceRefs": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/SourceRef" } }
+      }
+    },
+    "LearningPath": {
+      "type": "object",
+      "description": "Sequência curada de estudo que atravessa coleções (conceito → padrão → falha → treino).",
+      "required": ["id", "title", "track", "level", "goal", "steps", "sourceRefs"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+        "title": { "type": "string" },
+        "track": { "enum": ["Resilience", "Messaging", "Database", "Caching", "Consistency", "Interview Staff", "Production Incidents"] },
+        "level": { "enum": ["senior", "staff"] },
+        "goal": { "type": "string" },
+        "steps": {
+          "type": "array",
+          "minItems": 3,
+          "items": {
+            "type": "object",
+            "required": ["ref", "why"],
+            "additionalProperties": false,
+            "properties": {
+              "ref": { "$ref": "#/$defs/KbRef" },
+              "why": { "type": "string" }
+            }
+          }
+        },
+        "sourceRefs": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/SourceRef" } }
+      }
+    },
     "GlossaryEntry": {
       "type": "object",
       "description": "Termo do glossário IA & Agentes (trilha separada, sourced a refs de IA).",
@@ -111,6 +487,8 @@
         "tradeOffs": { "type": "array", "items": { "$ref": "#/$defs/TradeOff" } },
         "interviewAngle": { "type": "string", "description": "How this shows up in a System Design interview" },
         "example": { "type": "string", "description": "Concrete example, ideally tied to the repos" },
+        "keywords": { "type": "array", "items": { "type": "string" }, "description": "termos coloquiais/sintomas extras para a busca" },
+        "productionExample": { "type": "string", "description": "Markdown: exemplo de produção com números (didáticos, salvo fonte citada): normal → trigger → degradado → consequência → impacto" },
         "diagrams": { "type": "array", "items": { "type": "string" }, "description": "diagram ids" },
         "databaseRecommendation": { "$ref": "#/$defs/DatabaseRecommendation" },
         "sourceRefs": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/SourceRef" } }
@@ -132,6 +510,8 @@
         "financialExample": { "type": "string", "description": "Realistic financial-systems example" },
         "tradeOffs": { "type": "array", "items": { "$ref": "#/$defs/TradeOff" } },
         "relatedPatterns": { "type": "array", "items": { "type": "string" } },
+        "keywords": { "type": "array", "items": { "type": "string" }, "description": "termos coloquiais/sintomas extras para a busca" },
+        "productionExample": { "type": "string", "description": "Markdown: exemplo de produção com números didáticos" },
         "interviewAngle": { "type": "string" },
         "diagrams": { "type": "array", "items": { "type": "string" } },
         "databaseRecommendation": { "$ref": "#/$defs/DatabaseRecommendation" },
@@ -184,6 +564,14 @@
         "tradeOffs": { "type": "array", "items": { "$ref": "#/$defs/TradeOff" } },
         "repoExample": { "type": "string" },
         "howToAnswerInInterview": { "type": "string", "description": "Meta-advice: how to structure the spoken answer" },
+        "keywords": { "type": "array", "items": { "type": "string" }, "description": "sintomas/frases coloquiais extras para a busca" },
+        "productionExample": { "type": "string", "description": "Markdown: cenário de produção com números didáticos" },
+        "followUps": { "type": "array", "items": { "$ref": "#/$defs/QA" }, "description": "perguntas de aprofundamento (tipicamente nível staff) com resposta" },
+        "redFlags": { "type": "array", "items": { "type": "string" }, "description": "o que derruba a resposta" },
+        "strongSignals": { "type": "array", "items": { "type": "string" }, "description": "o que diferencia uma resposta forte" },
+        "whatToMonitor": { "type": "array", "items": { "type": "string" } },
+        "failureModes": { "type": "array", "items": { "type": "string" }, "description": "failure-mode ids que a pergunta exercita" },
+        "relatedQuestions": { "type": "array", "items": { "type": "string" }, "description": "interview-question ids complementares" },
         "relatedTopics": { "type": "array", "items": { "type": "string" } },
         "diagrams": { "type": "array", "items": { "type": "string" } },
         "sourceRefs": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/SourceRef" } }

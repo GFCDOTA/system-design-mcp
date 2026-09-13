@@ -406,5 +406,252 @@
         "url": "https://microservices.io/patterns/data/saga.html"
       }
     ]
+  },
+  {
+    "id": "fm-cache-stampede",
+    "title": "Cache stampede: expiração de chave quente",
+    "description": "Sem coalizão, todo request na janela de recomputação vai à origem; com single-flight + stale-while-revalidate, um só recomputa e os demais recebem o valor anterior.",
+    "mermaid": "sequenceDiagram\n  participant C as 5.000 req/s\n  participant R as Redis\n  participant DB as PostgreSQL\n  Note over R: product:123 expira (TTL fixo)\n  C->>R: GET product:123\n  R-->>C: miss (para TODOS na janela de 200 ms)\n  par ~1.000 requests\n    C->>DB: mesma query cara\n  end\n  Note over DB: CPU/IO disputados: 200 ms vira 2 s<br/>janela alarga e mais requests entram\n  DB-->>C: timeouts e pool esgotado\n  Note over C,DB: Com single-flight + stale-while-revalidate\n  C->>R: GET product:123 (soft TTL vencido)\n  R-->>C: valor anterior (stale) para todos\n  C->>DB: UMA recomputacao em background\n  DB-->>R: SET product:123 novo valor",
+    "relatedTopics": [
+      "caching",
+      "resilience-patterns"
+    ],
+    "relatedPatterns": [
+      "bulkhead"
+    ],
+    "sourceRefs": [
+      {
+        "kind": "reference",
+        "source": "Vattani, Chierichetti, Lowenstein — Optimal Probabilistic Cache Stampede Prevention (VLDB 2015)",
+        "locator": "www.vldb.org/pvldb/vol8/p886-vattani.pdf",
+        "note": "Tamanho da stampede depende da taxa de acesso e do tempo de recomputação",
+        "url": "https://www.vldb.org/pvldb/vol8/p886-vattani.pdf"
+      },
+      {
+        "kind": "reference",
+        "source": "Amazon Builders' Library — Caching challenges and strategies",
+        "locator": "aws.amazon.com/builders-library/caching-challenges-and-strategies/",
+        "note": "Request coalescing e soft TTL",
+        "url": "https://aws.amazon.com/builders-library/caching-challenges-and-strategies/"
+      }
+    ]
+  },
+  {
+    "id": "fm-retry-storm",
+    "title": "Retry storm: o laço de amplificação",
+    "description": "Uma dependência lenta faz o chamador estourar timeout; retries multiplicam as tentativas sobre quem já está degradado, que fica mais lento e gera mais timeouts.",
+    "mermaid": "flowchart TD\n  U[\"Clientes: 1.000 req/s\"] --> P[\"Payment Service<br/>timeout 1 s, 3 retries\"]\n  P -->|\"tentativas\"| F[\"Fraud Service<br/>100 ms virou 3 s\"]\n  F -->|\"resposta depois de 1 s\"| T[\"Timeout no Payment\"]\n  T --> R[\"Retry imediato\"]\n  R -->|\"ate 4.000 tentativas/s\"| F\n  F -.->|\"tentativas abandonadas continuam executando\"| S[\"Threads e conexoes do Fraud esgotam\"]\n  S -->|\"mais latencia\"| F\n  T -.->|\"threads presas esperando\"| X[\"Payment trava: cascata\"]\n  B[\"Quebra do laco: timeout + retry limitado com jitter<br/>retry budget + circuit breaker + idempotencia\"] -.-> R",
+    "relatedTopics": [
+      "resilience-patterns"
+    ],
+    "relatedPatterns": [
+      "circuit-breaker",
+      "bulkhead"
+    ],
+    "sourceRefs": [
+      {
+        "kind": "reference",
+        "source": "Google SRE Book — Addressing Cascading Failures",
+        "locator": "sre.google/sre-book/addressing-cascading-failures/",
+        "note": "Retries amplificam carga; limites, budget e backoff randomizado",
+        "url": "https://sre.google/sre-book/addressing-cascading-failures/"
+      },
+      {
+        "kind": "reference",
+        "source": "Azure Architecture Center — Retry Storm antipattern",
+        "locator": "learn.microsoft.com/en-us/azure/architecture/antipatterns/retry-storm/",
+        "note": "Retry storm e mitigação com limites, backoff e circuit breaker",
+        "url": "https://learn.microsoft.com/en-us/azure/architecture/antipatterns/retry-storm/"
+      }
+    ]
+  },
+  {
+    "id": "fm-connection-pool-exhaustion",
+    "title": "Connection pool exhaustion: do slow query ao retry storm",
+    "description": "Com a query lenta, cada request segura a conexão por segundos; o 21º request espera no pool até o connectionTimeout e o cliente faz retry.",
+    "mermaid": "sequenceDiagram\n  participant Req as Requests (200/s por pod)\n  participant Pool as HikariCP (max 20)\n  participant DB as PostgreSQL\n  Note over DB: deploy: query 50 ms virou 15 s\n  Req->>Pool: getConnection() x20\n  Pool->>DB: 20 queries lentas em execucao\n  Req->>Pool: request 21, 22, 23...\n  Note over Pool: active=20 idle=0 pending sobe<br/>CPU da app BAIXA (threads esperando)\n  Pool-->>Req: SQLTransientConnectionException apos connectionTimeout\n  Req->>Pool: retries dos clientes somam na fila\n  Note over Req,DB: Mitigar: pg_cancel_backend + rollback<br/>Corrigir: indice + statement_timeout + bulkhead<br/>NAO: pool de 100 em 10 pods = 1.000 conexoes no banco",
+    "relatedTopics": [
+      "databases-indexing",
+      "capacity-queueing",
+      "bulkhead"
+    ],
+    "relatedPatterns": [
+      "bulkhead"
+    ],
+    "sourceRefs": [
+      {
+        "kind": "reference",
+        "source": "HikariCP — README (configuração)",
+        "locator": "github.com/brettwooldridge/HikariCP",
+        "note": "connectionTimeout e SQLException ao estourar",
+        "url": "https://github.com/brettwooldridge/HikariCP"
+      },
+      {
+        "kind": "reference",
+        "source": "HikariCP wiki — About Pool Sizing",
+        "locator": "github.com/brettwooldridge/HikariCP/wiki/About-Pool-Sizing",
+        "note": "Pools menores costumam performar melhor",
+        "url": "https://github.com/brettwooldridge/HikariCP/wiki/About-Pool-Sizing"
+      },
+      {
+        "kind": "reference",
+        "source": "PostgreSQL docs — System Administration Functions (pg_cancel_backend)",
+        "locator": "www.postgresql.org/docs/current/functions-admin.html",
+        "note": "pg_cancel_backend",
+        "url": "https://www.postgresql.org/docs/current/functions-admin.html"
+      }
+    ]
+  },
+  {
+    "id": "fm-read-replica-lag",
+    "title": "Read replica lag: leitura logo após a escrita",
+    "description": "A leitura cai na réplica antes de ela aplicar a escrita (janela de inconsistência) e o usuário vê o valor antigo; ler do primário após escrever garante read-your-writes.",
+    "mermaid": "sequenceDiagram\n  participant U as Usuario\n  participant API\n  participant P as Primario\n  participant Rp as Replica (assincrona)\n  U->>API: POST /profile nome=Ana\n  API->>P: UPDATE (12:00:00.000 commit)\n  API-->>U: 200 OK\n  U->>API: GET /profile (12:00:00.300)\n  API->>Rp: SELECT\n  Rp-->>API: nome ANTIGO (ainda nao aplicou)\n  API-->>U: valor antigo\n  P-)Rp: replicacao aplica (12:00:01.500)\n  Note over API,Rp: Read-your-writes: apos escrita, fixar a sessao no primario<br/>ou esperar a replica alcancar a posicao da escrita",
+    "relatedTopics": [
+      "data-replication",
+      "cap-acid-base"
+    ],
+    "relatedPatterns": [
+      "cqrs"
+    ],
+    "sourceRefs": [
+      {
+        "kind": "reference",
+        "source": "Werner Vogels — Eventually Consistent, Revisited (2008)",
+        "locator": "www.allthingsdistributed.com/2008/12/eventually_consistent.html",
+        "note": "Read-your-writes e janela de inconsistência",
+        "url": "https://www.allthingsdistributed.com/2008/12/eventually_consistent.html"
+      },
+      {
+        "kind": "reference",
+        "source": "PostgreSQL docs — Monitoring Database Activity (pg_stat_activity, pg_stat_replication)",
+        "locator": "www.postgresql.org/docs/current/monitoring-stats.html",
+        "note": "replay_lag aproxima o atraso até ficar visível no standby",
+        "url": "https://www.postgresql.org/docs/current/monitoring-stats.html"
+      }
+    ]
+  },
+  {
+    "id": "fm-no-backpressure",
+    "title": "Sem backpressure: produtor 50k msg/s, consumidor 10k msg/s",
+    "description": "O backlog cresce (λ − μ) por segundo; buffering adia, backpressure ajusta o produtor, rate limiting limita a entrada e load shedding descarta para proteger o essencial.",
+    "mermaid": "flowchart LR\n  Prod[\"Produtor<br/>λ = 50k msg/s\"] -->|\"sem sinal de limite\"| Q[(\"Topico / fila<br/>backlog +40k msg/s<br/>60 s = 2,4 milhoes\")]\n  Q --> Cons[\"Consumidores<br/>μ = 10k msg/s<br/>paralelismo = particoes\"]\n  Cons --> DB[(\"Banco a jusante\")]\n  Q -.->|\"lag cresce\"| L[\"Latencia ponta a ponta, memoria,<br/>retencao, rebalances\"]\n  Cons -.->|\"pause/resume quando o destino satura\"| Q\n  G[\"Admissao / rate limit / load shedding na entrada\"] -.-> Prod\n  Scale[\"Escalar consumidores sem limitar escrita\"] -.->|\"move a sobrecarga\"| DB",
+    "relatedTopics": [
+      "messaging-streaming",
+      "capacity-queueing"
+    ],
+    "relatedPatterns": [
+      "idempotent-consumer"
+    ],
+    "sourceRefs": [
+      {
+        "kind": "reference",
+        "source": "Azure Architecture Center — Queue-Based Load Leveling pattern",
+        "locator": "learn.microsoft.com/en-us/azure/architecture/patterns/queue-based-load-leveling",
+        "note": "Produtor acima do consumidor faz a fila crescer; escalar sem limitar a jusante move a sobrecarga",
+        "url": "https://learn.microsoft.com/en-us/azure/architecture/patterns/queue-based-load-leveling"
+      },
+      {
+        "kind": "reference",
+        "source": "Apache Kafka 4.0 — KafkaConsumer javadoc",
+        "locator": "kafka.apache.org/40/javadoc/org/apache/kafka/clients/consumer/KafkaConsumer.html",
+        "note": "Partição consumida por um consumidor do grupo; pause/resume",
+        "url": "https://kafka.apache.org/40/javadoc/org/apache/kafka/clients/consumer/KafkaConsumer.html"
+      }
+    ]
+  },
+  {
+    "id": "fm-hot-partition",
+    "title": "Hot partition: capacidade total não é capacidade útil",
+    "description": "Uma chave concentra tráfego num shard que satura enquanto os demais ficam ociosos; leitura se resolve replicando o valor, escrita dividindo a chave.",
+    "mermaid": "flowchart TD\n  T[\"545k req/s\"] --> H{\"hash(chave)\"}\n  H -->|\"article:final 500k\"| S7[\"Shard 7: 500k req/s<br/>limite 100k: SATURADO\"]\n  H -->|\"5k\"| S1[\"Shard 1: 5%\"]\n  H -->|\"5k\"| S2[\"Shard 2: 5%\"]\n  H -->|\"5k\"| S9[\"... Shards 3-10: 5%\"]\n  S7 -.->|\"timeouts + retries voltam para o mesmo shard\"| S7\n  S7 -.->|\"chaves frias do shard 7 tambem sofrem\"| X[\"10% das chaves indisponiveis\"]\n  M1[\"Leitura: replicar valor quente / cache L1 / CDN\"] -.-> S7\n  M2[\"Escrita: key splitting chave:bucket<br/>(fan-out na leitura)\"] -.-> S7",
+    "relatedTopics": [
+      "sharding-partitioning",
+      "caching",
+      "cell-based"
+    ],
+    "relatedPatterns": [
+      "consistent-hashing",
+      "cell-based-architecture"
+    ],
+    "sourceRefs": [
+      {
+        "kind": "pdf",
+        "source": "System Design Workbook",
+        "locator": "p.378",
+        "note": "Hot partition vira gargalo enquanto as outras ficam subutilizadas"
+      },
+      {
+        "kind": "reference",
+        "source": "Amazon DynamoDB docs — Using write sharding to distribute workloads evenly",
+        "locator": "docs.aws.amazon.com/amazondynamodb/latest/developerguide/bp-partition-key-sharding.html",
+        "note": "Write sharding com sufixo aleatório vs calculado",
+        "url": "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/bp-partition-key-sharding.html"
+      }
+    ]
+  },
+  {
+    "id": "fm-cascading-failure",
+    "title": "Cascading failure: o laço de realimentação",
+    "description": "Uma degradação local prende recursos, derruba instâncias e redistribui carga; retries e restarts mantêm o laço vivo mesmo depois que a causa some.",
+    "mermaid": "flowchart TD\n  A[\"Query lenta no Inventory\"] --> B[\"Order Service segura threads esperando\"]\n  B --> C[\"Pool de threads satura\"]\n  C --> D[\"Health check falha: replicas reiniciam\"]\n  D --> E[\"Replicas restantes recebem mais carga\"]\n  E --> C\n  C --> F[\"Timeouts no gateway e no app\"]\n  F --> G[\"Retries\"]\n  G --> E\n  D --> H[\"Replicas voltam frias\"]\n  H --> E\n  Q[\"Quebrar o laco: derrubar trafego, modo degradado,<br/>readiness em vez de liveness, bulkhead, deadlines, retry budget\"] -.-> E",
+    "relatedTopics": [
+      "resilience-patterns",
+      "bulkhead",
+      "spof-dr"
+    ],
+    "relatedPatterns": [
+      "circuit-breaker",
+      "bulkhead",
+      "health-check-api"
+    ],
+    "sourceRefs": [
+      {
+        "kind": "reference",
+        "source": "Google SRE Book — Addressing Cascading Failures",
+        "locator": "sre.google/sre-book/addressing-cascading-failures/",
+        "note": "Realimentação positiva, gatilhos e passos imediatos",
+        "url": "https://sre.google/sre-book/addressing-cascading-failures/"
+      }
+    ]
+  },
+  {
+    "id": "financial-http-idempotency",
+    "title": "Idempotência HTTP financeira: claim atômico antes do efeito",
+    "description": "Os quatro caminhos de um POST com Idempotency-Key: chave nova (claim e processa), mesma intenção concluída (replay sem novo efeito), mesma chave com intenção diferente (conflito) e tentativa concorrente enquanto a primeira processa. O claim atômico por UNIQUE vem ANTES do débito.",
+    "mermaid": "flowchart TD\n  Client[\"Cliente: POST /transactions<br/>Idempotency-Key: abc123\"]\n  API[\"Transaction API\"]\n  FP[\"Normaliza intenção<br/>fingerprint = SHA-256(op, amount em centavos, moeda, destino)\"]\n  Claim[\"Claim atômico<br/>INSERT ... ON CONFLICT DO NOTHING<br/>UNIQUE(client, endpoint, key)\"]\n  Won{\"Inseriu?\"}\n  Tx[\"MESMA transação:<br/>débito + registro da transação<br/>+ resultado 201 e corpo\"]\n  DB[(\"PostgreSQL\")]\n  Read[\"Lê registro existente<br/>(concorrente espera o commit do vencedor)\"]\n  Same{\"Mesmo fingerprint?\"}\n  State{\"Estado?\"}\n  Replay[\"Replay do resultado gravado<br/>sem novo débito\"]\n  Conflict[\"Erro de idempotência<br/>ex.: 409 conforme contrato\"]\n  Progress[\"Em andamento<br/>esperar, 202 + polling ou erro 'in progress'\"]\n  Client --> API --> FP --> Claim --> Won\n  Won -->|sim: chave nova| Tx --> DB\n  DB -->|commit| Client\n  Won -->|não: chave existe| Read --> Same\n  Same -->|não| Conflict --> Client\n  Same -->|sim| State\n  State -->|COMPLETED| Replay --> Client\n  State -->|PROCESSING| Progress --> Client",
+    "relatedTopics": [
+      "resilience-patterns",
+      "sync-communication",
+      "cap-acid-base"
+    ],
+    "relatedPatterns": [
+      "idempotent-request",
+      "idempotent-consumer",
+      "transactional-outbox"
+    ],
+    "sourceRefs": [
+      {
+        "kind": "reference",
+        "source": "PostgreSQL docs — INSERT ... ON CONFLICT",
+        "locator": "www.postgresql.org/docs/current/sql-insert.html",
+        "note": "INSERT ... ON CONFLICT DO NOTHING e arbiter index",
+        "url": "https://www.postgresql.org/docs/current/sql-insert.html"
+      },
+      {
+        "kind": "reference",
+        "source": "PostgreSQL docs — Index Uniqueness Checks",
+        "locator": "www.postgresql.org/docs/current/index-unique-checks.html",
+        "note": "Conflito com transação não comitada: o segundo insert espera o desfecho",
+        "url": "https://www.postgresql.org/docs/current/index-unique-checks.html"
+      },
+      {
+        "kind": "reference",
+        "source": "Stripe API — Idempotent requests",
+        "locator": "docs.stripe.com/api/idempotent_requests",
+        "note": "Resultado da primeira requisição salvo e devolvido nas repetições; parâmetros diferentes geram erro",
+        "url": "https://docs.stripe.com/api/idempotent_requests"
+      }
+    ]
   }
 ]

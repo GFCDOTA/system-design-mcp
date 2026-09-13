@@ -140,6 +140,14 @@
         "locator": "patterns/communication-style/idempotent-consumer.html",
         "url": "https://microservices.io/patterns/communication-style/idempotent-consumer.html"
       }
+    ],
+    "relatedQuestions": [
+      "q35",
+      "q36",
+      "q31"
+    ],
+    "failureModes": [
+      "missing-idempotency"
     ]
   },
   {
@@ -1249,14 +1257,15 @@
     "question": "Como você protege as APIs financeiras (débito/crédito) de uma plataforma de pagamentos?",
     "difficulty": "senior",
     "shortAnswer": "Defesa em camadas: autenticação/autorização forte com tokens de escopo mínimo na borda (gateway), rate limiting/throttling por cliente, validação rigorosa de input em toda borda (rejeitar cedo com erro tipado), idempotência obrigatória (idempotency key) para que retry não duplique débito, e validação transacional de saldo/limite na fonte ACID. Tudo com auditoria e segredos fora do código.",
-    "detailedAnswer": "## Modelo de defesa em camadas\n\nAPI financeira é alvo: a proteção é **em profundidade**, não um único muro.\n\n### 1. Borda (API Gateway / Envoy)\n- **Authn/Authz**: token de acesso (JWT/OAuth) validado no gateway; **least privilege** — cada cliente recebe só o escopo necessário (consultar ≠ movimentar).\n- **Rate limiting / throttling**: limite por cliente/chave. No repo do ledger isso aparece com **Envoy fazendo rate limit** e **Kong como gateway**. Protege de abuso e de tempestade de retries.\n\n### 2. Validação de entrada em TODA borda\n- Rejeitar cedo, com **erro tipado**, qualquer payload inválido (valor negativo, moeda errada, conta inexistente). Nunca deixar input não-validado propagar para o domínio. Query **sempre parametrizada**, nunca concatenar SQL.\n\n### 3. Idempotência (a defesa que mais gente esquece)\n- Toda operação de movimentação carrega uma **idempotency key** (ou `movimentacao_id`). Se o cliente reenvia por timeout/retry, o sistema reconhece a chave e **não debita de novo** — devolve o resultado da primeira execução. No ledger isso é garantido com `movimentacao_id` único nos read models e `INSERT IF NOT EXISTS` (Mongo ignora erro de chave duplicada 11000; Scylla usa LWT). Sem isso, um retry vira prejuízo real.\n\n### 4. Consistência transacional na fonte\n- A decisão de débito **valida saldo e limite dentro da transação ACID** do ledger (abre txn → persiste evento com versão/optimistic lock → lê saldo → calcula → valida regra → commit → publica). Nunca autorizar lendo de read model eventual.\n\n### 5. Segredos e auditoria\n- **Zero credencial hardcoded**; segredo vem de env/secret manager fora do git. **Redatar PII/segredo em log**. Registrar quem fez o quê (ver audit logging na q19).\n\n## Resiliência também é segurança\n- **Circuit breaker** (no shard-router já existe: threshold 5 falhas, open 30s) evita que uma dependência caída seja martelada e vire DoS interno; **bulkhead/sharding** contém blast radius de um cliente abusivo a uma célula.",
+    "detailedAnswer": "## Modelo de defesa em camadas\n\nAPI financeira é alvo: a proteção é **em profundidade**, não um único muro.\n\n### 1. Borda (API Gateway / Envoy)\n- **Authn/Authz**: token de acesso (JWT/OAuth) validado no gateway; **least privilege** — cada cliente recebe só o escopo necessário (consultar ≠ movimentar).\n- **Rate limiting / throttling**: limite por cliente/chave. No repo do ledger isso aparece com **Envoy fazendo rate limit** e **Kong como gateway**. Protege de abuso e de tempestade de retries.\n\n### 2. Validação de entrada em TODA borda\n- Rejeitar cedo, com **erro tipado**, qualquer payload inválido (valor negativo, moeda errada, conta inexistente). Nunca deixar input não-validado propagar para o domínio. Query **sempre parametrizada**, nunca concatenar SQL.\n\n### 3. Idempotência (a defesa que mais gente esquece)\n- Toda operação de movimentação carrega uma **idempotency key** (ou `movimentacao_id`). Se o cliente reenvia por timeout/retry, o sistema reconhece a chave e **não debita de novo** — devolve o resultado da primeira execução. No ledger isso é garantido com `movimentacao_id` único nos read models e `INSERT IF NOT EXISTS` (Mongo ignora erro de chave duplicada 11000; Scylla usa LWT). Sem isso, um retry vira prejuízo real. **Retry seguro não é apenas 'consultar se a key existe':** duas tentativas concorrentes passam juntas pelo `exists()`; a disputa deve ser arbitrada atomicamente por UNIQUE/conditional write antes do efeito — deep-dive dos quatro caminhos (nova, replay, conflito, em andamento) na **q36** e no pattern *Idempotent Request*.\n\n### 4. Consistência transacional na fonte\n- A decisão de débito **valida saldo e limite dentro da transação ACID** do ledger (abre txn → persiste evento com versão/optimistic lock → lê saldo → calcula → valida regra → commit → publica). Nunca autorizar lendo de read model eventual.\n\n### 5. Segredos e auditoria\n- **Zero credencial hardcoded**; segredo vem de env/secret manager fora do git. **Redatar PII/segredo em log**. Registrar quem fez o quê (ver audit logging na q19).\n\n## Resiliência também é segurança\n- **Circuit breaker** (no shard-router já existe: threshold 5 falhas, open 30s) evita que uma dependência caída seja martelada e vire DoS interno; **bulkhead/sharding** contém blast radius de um cliente abusivo a uma célula.",
     "mentalModel": "Cebola de camadas concêntricas. De fora para dentro: 'Auth + escopo mínimo' → 'Rate limit / throttle' → 'Validação de input (rejeita cedo)' → 'Idempotency key' → 'Transação ACID valida saldo/limite' → núcleo 'Event Store'. Setas de retry batendo na camada de idempotência e sendo absorvidas (não duplicam).",
     "patterns": [
       "api-gateway",
       "idempotent-consumer",
       "circuit-breaker",
       "bulkhead",
-      "audit-logging"
+      "audit-logging",
+      "idempotent-request"
     ],
     "risks": [
       "Falta de idempotência: um retry de timeout debita o cliente duas vezes",
@@ -1294,7 +1303,8 @@
     "diagrams": [
       "api-gateway-vs-bff",
       "transactional-api-flow",
-      "financial-movement"
+      "financial-movement",
+      "financial-http-idempotency"
     ],
     "sourceRefs": [
       {
@@ -1321,6 +1331,13 @@
         "locator": "patterns/communication-style/idempotent-consumer.html",
         "url": "https://microservices.io/patterns/communication-style/idempotent-consumer.html"
       }
+    ],
+    "relatedQuestions": [
+      "q36"
+    ],
+    "failureModes": [
+      "missing-idempotency",
+      "retry-storm"
     ]
   },
   {
@@ -2341,6 +2358,14 @@
         "locator": "statement/consumer.go",
         "url": "https://github.com/msfidelis/event-source-distributed-ledger"
       }
+    ],
+    "relatedQuestions": [
+      "q02",
+      "q35",
+      "q36"
+    ],
+    "failureModes": [
+      "missing-idempotency"
     ]
   },
   {
@@ -2517,6 +2542,241 @@
         "source": "morling.dev",
         "locator": "On idempotency keys",
         "url": "https://morling.dev/blog/on-idempotency-keys/"
+      }
+    ],
+    "relatedQuestions": [
+      "q02",
+      "q36",
+      "q31"
+    ],
+    "failureModes": [
+      "missing-idempotency"
+    ]
+  },
+  {
+    "id": "q36",
+    "question": "Como você garante idempotência em uma API financeira quando o cliente pode repetir a mesma requisição por timeout, double-click ou retry concorrente?",
+    "difficulty": "senior",
+    "shortAnswer": "Trato o POST como uma intenção que pode chegar mais de uma vez. O cliente envia uma Idempotency-Key com escopo definido; o servidor calcula o fingerprint da intenção normalizada e faz o claim atômico da chave por UNIQUE/conditional write ANTES do efeito — nunca `exists()` seguido de `insert`. A vencedora executa e grava o resultado na mesma transação; mesma chave + mesma intenção recebe replay sem novo efeito, mesma chave + intenção diferente é conflito, e o contrato define o que acontece enquanto a primeira ainda processa. Com retenção e métricas de replay/conflict.",
+    "detailedAnswer": "## 1. O problema: a mesma intenção atravessa a rede duas vezes\n\n```text\nPOST /transactions\nIdempotency-Key: abc123\n{ \"amount\": \"500.00\", \"currency\": \"BRL\", \"destinationAccount\": \"987\" }\n```\n\n```text\nClient ── POST abc123 ──▶ API ── debita R$500 ──▶ DB (commit)\nClient ◀──────X───────── API        (resposta perdida)\nClient: \"deu timeout\" → retry ↓\nClient ── POST abc123 ──▶ API   ... sem idempotência: debita de novo\nR$500 + R$500 = DOUBLE CHARGE\n```\n\nO ponto central: **o cliente não sabe** se a primeira tentativa não chegou, falhou, ou **chegou, executou e só a resposta se perdeu**. Duplo clique, retry de SDK e retry de gateway produzem a mesma situação. A única estratégia segura para o cliente é repetir **a mesma intenção com a mesma chave**; a responsabilidade de não repetir o efeito é do servidor.\n\n## 2. Os quatro caminhos (não é só \"existe / não existe\")\n\n**Caso A — chave nova.** `key nova + fingerprint novo → claim atômico → processa → débito → persiste resultado → COMPLETED`. Resposta normal (ex.: `201 Created`).\n\n**Caso B — mesma chave + mesma intenção.** Retry semanticamente equivalente, mesmo que o JSON venha diferente:\n\n```json\n{ \"amount\": \"500.00\", \"currency\": \"BRL\" }\n{ \"currency\": \"BRL\", \"amount\": \"500.000\" }\n```\n\n`same key + same fingerprint + COMPLETED → NÃO processa de novo → replay do resultado anterior`. **O efeito de negócio não acontece de novo.** Qual status devolver é **decisão de contrato**: uma estratégia forte é gravar `response_status`, `response_body` e headers relevantes e reproduzir a resposta original (primeira execução `201` → retry `201` com a mesma representação, sem novo efeito) — a Stripe documenta que guarda status e corpo da primeira requisição, inclusive erros. Uma API também pode definir `200` no replay; o que não pode é ser implícito ou inconsistente.\n\n**Caso C — mesma chave + intenção diferente.** `abc123, amount=500` e depois `abc123, amount=900`. **Isso não é replay: é reutilização incorreta da chave.** `same key + different fingerprint → CONFLITO`. Um `409 Conflict` (ou `422`) é apropriado quando é o contrato da API — o draft da IETF sobre `Idempotency-Key`, hoje **expirado e não padronizado**, sugeria `422` para esse caso. **Nunca** devolver silenciosamente o resultado da operação de R$ 500 para quem pediu R$ 900: o cliente acharia que transferiu R$ 900.\n\n**Caso D — duas requests simultâneas com a mesma chave.** É o caso que separa conhecimento superficial de produção:\n\n```java\nif (!repository.existsByKey(key)) {   // A: false     B: false\n    process();                         // A: debita    B: debita\n}\n```\n\n```text\nRequest A                  Request B\nexists(key)? → false       exists(key)? → false\nprocess → debit 500        process → debit 500\n```\n\n`existsByKey()` é **observação**, não exclusão mútua: entre o CHECK e o ACT existe uma janela concorrente. Nenhum dos dois viu o outro.\n\n## 3. Atomic claim: a constraint é o árbitro\n\nA garantia forte fica no armazenamento transacional:\n\n```sql\nCREATE TABLE idempotency_record (\n  client_id            VARCHAR(64)  NOT NULL,\n  endpoint             VARCHAR(128) NOT NULL,\n  idempotency_key      VARCHAR(255) NOT NULL,\n  request_fingerprint  CHAR(64)     NOT NULL,   -- SHA-256 hex\n  status               VARCHAR(16)  NOT NULL,   -- PROCESSING | COMPLETED | FAILED\n  transaction_id       UUID,\n  response_status      INTEGER,\n  response_body        JSONB,\n  created_at           TIMESTAMPTZ  NOT NULL,\n  updated_at           TIMESTAMPTZ  NOT NULL,\n  expires_at           TIMESTAMPTZ,\n  UNIQUE (client_id, endpoint, idempotency_key)\n);\n\nINSERT INTO idempotency_record (client_id, endpoint, idempotency_key, request_fingerprint, status, created_at, updated_at, expires_at)\nVALUES ($1, $2, $3, $4, 'PROCESSING', now(), now(), now() + interval '24 hours')\nON CONFLICT (client_id, endpoint, idempotency_key) DO NOTHING\nRETURNING idempotency_key;   -- 0 linhas = alguém já fez o claim\n```\n\n**UNIQUE + INSERT atômico**: só uma request consegue o claim daquela identidade; as concorrentes detectam o conflito (o `RETURNING` não devolve linha para o insert ignorado) e passam a tratar o registro existente. No PostgreSQL, se o vencedor ainda não comitou, o segundo insert **espera** o desfecho daquela transação: se ela comitar, há conflito; se abortar, não há — ou seja, o perdedor nunca decide em cima de um estado pela metade. A aplicação **pode** fazer um lookup antes (inclusive em cache) como otimização, mas **a correção não depende de check-then-act**: a constraint/conditional write é o árbitro final.\n\n## 4. Escopo da chave\n\n`customer A, key=payment-001` e `customer B, key=payment-001` **não** são necessariamente a mesma operação. Escopos típicos: `(client_id, endpoint, idempotency_key)` ou `(tenant_id, operation_type, idempotency_key)`. O escopo deve **impedir colisão entre operações/clientes independentes sem permitir que a mesma tentativa seja reinterpretada** (por exemplo, por chegar por uma rota equivalente).\n\n## 5. Fingerprint da intenção (não do corpo bruto)\n\n`SHA-256(raw HTTP body)` **não** é regra: JSON equivalente pode mudar ordem de propriedades, whitespace, representação numérica e campos default omitidos. Pipeline: `Request → parse → normalizar a intenção de domínio → representação canônica → SHA-256`.\n\n```text\namountMinorUnits = 50000   currency = BRL   destinationAccount = 987   operation = TRANSFER\nSHA-256(\"operation=TRANSFER|amount=50000|currency=BRL|destination=987\")\n```\n\n**Dinheiro:** nunca `double`/`float`. Em Java, `BigDecimal` (construído a partir de `String`) ou unidades mínimas em `long`. Cuidado: `BigDecimal.equals` considera a escala (`100.5` ≠ `100.50`), enquanto `compareTo` os considera iguais — normalize para a escala da moeda (BRL: 2 casas) antes do hash. `100.5`, `100.50` e `100.5000` podem ser a mesma intenção **segundo a regra da moeda**; um valor com casas além do permitido deve ser **rejeitado na validação**, não arredondado em silêncio.\n\n**RFC 8785 (JCS)** é um mecanismo formal de canonicalização de JSON para hash/assinatura (ordena propriedades, remove whitespace, serializa números no modelo IEEE-754 do ECMAScript). Mas ela **não substitui** a canonicalização **semântica** do domínio: a própria RFC recomenda levar como string números sem lugar natural no JSON — e `\"500.00\"` e `\"500.000\"` como strings canonicalizam diferente embora sejam a mesma intenção financeira.\n\n## 6. Estados do registro — dois desenhos\n\n**Desenho simples (tudo no mesmo PostgreSQL).** Se claim + débito + registro da transação + resultado cabem na **mesma transação**:\n\n```text\nBEGIN\n  claim key (INSERT ... ON CONFLICT DO NOTHING)\n  debit account\n  insert transaction\n  store result (status, body) → COMPLETED\nCOMMIT\n```\n\nCrash **antes** do COMMIT → rollback de tudo (nenhum débito, nenhuma chave). Crash **depois** → o resultado existe e o retry faz replay. Um concorrente fica esperando o índice único e, após o commit, faz replay. É a solução mais forte quando todo o efeito relevante está no mesmo banco.\n\n**Desenho com efeito externo/longo** (antifraude, outro serviço, gateway, broker, processamento assíncrono): o efeito não cabe na transação, então o estado precisa ser explícito: `PROCESSING → COMPLETED` ou `PROCESSING → FAILED`. O claim `PROCESSING` é comitado sozinho (para os outros enxergarem), o efeito externo acontece, e o resultado é gravado depois. Se chega uma segunda request enquanto a primeira está `PROCESSING`, o contrato decide **deterministicamente** entre: esperar um tempo curto, responder \"em andamento\" (`202` + polling), ou erro de requisição em progresso (o draft expirado sugeria `409`; a Stripe não salva resultado para a requisição que conflita com outra em execução e permite repeti-la). Não existe resposta universal — o invariante é **não executar o efeito de novo**. Registros presos em `PROCESSING` (dono caiu) precisam de expiração/lease e de **reconciliação com o sistema externo** antes de qualquer reexecução — de preferência propagando uma chave de idempotência derivada para o provedor externo.\n\n## 7. Crash windows (staff)\n\n```text\nreserve key → debit → CRASH → ?\n```\n\nO que acontece se a aplicação cair **entre o efeito financeiro e a gravação do resultado idempotente**? Se forem transações separadas, fica `debit commitado + idempotency record perdido (ou preso)` e o retry duplica (ou fica bloqueado para sempre). Regra: **a marca de idempotência e o efeito devem compartilhar a mesma atomicidade sempre que possível** (desenho simples). Quando o efeito cruza sistemas, surge o problema de **dual-write** (q07): publique o efeito via **Transactional Outbox** na mesma transação, trate a sequência longa como **Saga** e garanta **Idempotent Consumer** do outro lado (q02/q35), porque o outbox entrega at-least-once.\n\n## 8. ID gerado pela aplicação (detalhe secundário)\n\n`UUID transactionId = UUID.randomUUID()` faz o `transaction_id` existir **antes** do INSERT, o que simplifica gravar o resultado e referenciar a transação no registro de idempotência. O contraste correto é \"ID gerado pela aplicação vs IDs cujo valor só fica disponível após persistência\" (ex.: identity retornada pelo INSERT) — não \"sequence só gera ID depois do INSERT\", o que não é universal (uma sequence pode ser consumida antes). E **UUID sozinho não cria idempotência**: um UUID novo a cada retry é, justamente, uma chave diferente.\n\n## 9. Retenção (TTL)\n\nA tabela não precisa crescer para sempre: `created_at`/`expires_at` e uma **janela contratual** (\"idempotência garantida por N horas/dias\"). Depois dela a chave pode ser removida e um reuso futuro pode ser tratado como nova operação — conforme o contrato (a Stripe, por exemplo, pode remover chaves com pelo menos 24 h; isso é decisão dela, não regra universal). Retenção **longa** → mais proteção contra retry tardio e mais storage; **curta** → menos storage e retry muito tardio escapando da janela. A retenção precisa ser **maior que a janela real de retries** de todos os clientes (SDK, filas de reenvio, jobs noturnos).\n\n## 10. Observabilidade\n\nMétricas: `idempotency.new.count`, `idempotency.replay.count`, `idempotency.conflict.count`, `idempotency.in_progress.count`, `idempotency.expired.count`; transações criadas vs requests aceitos; mutações de saldo; conflitos de chave duplicada no banco; latência de lookup/claim; duração do processamento. Logs estruturados com `trace_id`, `client_id`, **hash/redação da chave**, `transaction_id`, fingerprint e `idempotency_result` (new/replay/conflict/in_progress) — **sem payload financeiro nem PII** no log.\n\n## 11. Como provar (testes com PostgreSQL real, ex.: Testcontainers)\n\nBanco em memória não reproduz a espera do índice único nem o isolamento real; use o PostgreSQL de verdade.\n\n1. **Nova chave** — key A + payload X → resposta normal (201), **1 transação**, saldo alterado **uma vez**.\n2. **Replay** — key A + payload X repetido N vezes → mesma operação lógica, **1 transação**, saldo alterado uma vez, resultado original reproduzido.\n3. **Chave reutilizada com payload diferente** — key A + X, depois key A + Y → **conflito**, 1 transação, saldo refletindo só X.\n4. **Chaves diferentes + mesmo payload** — key A + X e key B + X → **2 operações** (intenções independentes; não deduplicar por payload).\n5. **Concorrência** — 20 requests simultâneas com o mesmo cliente, endpoint, chave e payload → **gate final: transactions = 1 e saldo mutado 1×**; as outras replayam/aguardam/recebem in-progress conforme o contrato, nenhuma produz efeito extra. É o teste que prova que não existe a corrida `exists → process`.\n6. **Concorrência com payload diferente** — key A amount 500 e key A amount 900 simultâneas → uma intenção vence o claim, a outra é conflito, **nunca as duas**.\n7. **Rollback** — falha forçada antes do commit → saldo original, contagem de transações original e estado de idempotência coerente (sem chave presa, sem débito parcial).\n\n## 12. Onde isso se encaixa\n\n```text\nHTTP client retry → q36 Idempotent Request\n      ↓ efeito vira mensagem/evento\nq02 / q35 Idempotent Consumer\n      ↓ pipeline distribuído de alto throughput\nq31 deduplicação ponta a ponta\n\nq36 → Transactional Outbox → at-least-once → Idempotent Consumer\n```",
+    "mentalModel": "Uma catraca com um único bilhete por (cliente, endpoint, chave). Quatro pessoas chegam com o mesmo bilhete: a primeira passa (claim) e faz a compra; quem chega com o bilhete E o mesmo pedido recebe a nota fiscal já emitida (replay); quem chega com o mesmo bilhete e outro pedido é barrado (conflito); quem chega enquanto a primeira ainda está no caixa espera ou recebe 'em andamento'. A catraca é a constraint UNIQUE — não um funcionário olhando se o bilhete 'parece usado' (existsByKey).",
+    "patterns": [
+      "idempotent-request",
+      "idempotent-consumer",
+      "transactional-outbox",
+      "saga",
+      "api-gateway"
+    ],
+    "risks": [
+      "❌ existsByKey() → process() como garantia de concorrência (janela check-then-act)",
+      "❌ armazenar a key depois do débito em uma transação separada",
+      "❌ usar payload bruto como hash sem canonicalização",
+      "❌ usar apenas o payload como identidade e deduplicar duas compras legítimas iguais",
+      "❌ mesma key com payload diferente retornar silenciosamente o primeiro resultado",
+      "❌ achar que UUID sozinho cria idempotência",
+      "❌ confiar em retry sem proteger side effects",
+      "❌ guardar idempotency keys eternamente sem política",
+      "❌ TTL menor que a janela real de retries",
+      "❌ logar payload financeiro sensível inteiro",
+      "❌ tratar HTTP idempotency e consumer idempotency como exatamente a mesma implementação"
+    ],
+    "tradeOffs": [
+      {
+        "dimension": "Escopo da chave",
+        "pro": "(client_id, endpoint, key) evita colisão entre clientes/operações independentes",
+        "con": "Escopo errado reinterpreta tentativas independentes como iguais ou deixa a mesma tentativa escapar por outra rota"
+      },
+      {
+        "dimension": "Transação única vs PROCESSING explícito",
+        "pro": "Mesma transação: claim + efeito + resultado atômicos, sem estado preso",
+        "con": "Efeito externo não cabe na transação: exige PROCESSING, lease/recuperação, outbox e reconciliação"
+      },
+      {
+        "dimension": "Replay do resultado armazenado",
+        "pro": "Cliente recebe a mesma resposta (ex.: 201) e o contrato é previsível",
+        "con": "Guarda corpo de resposta (espaço, dados sensíveis); a escolha de status no replay precisa ser explícita"
+      },
+      {
+        "dimension": "Retenção",
+        "pro": "Longa protege retries tardios",
+        "con": "Mais storage; curta deixa retry muito tardio virar operação nova"
+      },
+      {
+        "dimension": "Fingerprint semântico vs JSON canônico",
+        "pro": "Semântico reconhece a mesma intenção financeira (500.00 = 500.000 em centavos)",
+        "con": "Exige código de normalização por operação e versionamento quando o contrato muda"
+      }
+    ],
+    "repoExample": "O `msc-transactions-api` declara suporte a idempotência nas movimentações e o fluxo `transactional-debit-credit` desta base descreve checar a chave antes da transação. A leitura do repositório foi por README (OQ-1), então não afirmo como a concorrência é tratada lá; o desenho desta resposta (claim por UNIQUE antes do efeito, na mesma transação do débito no PostgreSQL) é o que resiste ao Caso D. O `event-source-distributed-ledger` mostra o lado do consumidor: `movimentacao_id` único e escrita condicional — o par q02/q35.",
+    "howToAnswerInInterview": "Resposta forte (~1 min): 'Para uma operação financeira eu trato POST como uma intenção que pode atravessar a rede mais de uma vez. O cliente envia uma Idempotency-Key com escopo definido. No servidor eu calculo um fingerprint da intenção normalizada e tento reservar a key atomicamente usando uma unique constraint ou conditional write — nunca dependo de exists() seguido de insert, porque duas requests concorrentes podem passar pelo check. A request vencedora executa o efeito e persiste o resultado dentro da mesma fronteira transacional sempre que possível. Um replay com a mesma key e mesmo fingerprint recebe o resultado anterior sem novo efeito; a mesma key com fingerprint diferente é conflito. Também defino retenção, comportamento para PROCESSING e métricas de replay/conflict.' Depois eleve para staff: 'Se o efeito atravessa outro sistema, a atomicidade local deixa de resolver tudo; aí conecto com Outbox/Saga e idempotência também nos consumidores.' Desenhe os quatro caminhos e o Caso D com dois timelines lado a lado.",
+    "keywords": [
+      "cliente clicou duas vezes e cobrou duas vezes",
+      "cobrança duplicada",
+      "double charge",
+      "retry depois de timeout",
+      "mesma idempotency key payload diferente",
+      "same idempotency key different payload",
+      "duas requests simultâneas mesma chave",
+      "Idempotency-Key",
+      "check then act idempotency",
+      "existsByKey race",
+      "request repetida pagamento",
+      "atomic claim",
+      "replay 201"
+    ],
+    "productionExample": "Exemplo didático: 100 mil pagamentos/dia, timeout do app 10 s, pico do adquirente a 12 s em 1% das chamadas → ~1.000 retries/dia do mesmo POST. Sem idempotência: até ~1.000 cobranças duplicadas/dia. Com Idempotency-Key + claim atômico: ~1.000 `idempotency.replay.count`, 0 débitos extras — o mesmo incidente de latência vira apenas uma métrica de replay subindo.",
+    "followUps": [
+      {
+        "question": "(Staff) E se o débito chama um gateway externo que leva 8 s?",
+        "answer": "O efeito não cabe na transação local: claim PROCESSING comitado, chamada ao gateway com uma chave de idempotência derivada, resultado gravado em seguida; concorrentes recebem 'em andamento' conforme contrato; registros presos em PROCESSING expiram por lease e são reconciliados consultando o gateway antes de qualquer reexecução."
+      },
+      {
+        "question": "(Staff) O que acontece se a aplicação cair entre o débito e a gravação do resultado?",
+        "answer": "Se estiverem em transações separadas, o débito fica sem marca e o retry duplica (ou a chave fica presa). Por isso claim + efeito + resultado na mesma transação sempre que possível; quando cruza sistemas, outbox na mesma transação e consumidor idempotente do outro lado."
+      },
+      {
+        "question": "(Staff) Por que não SHA-256 do corpo bruto?",
+        "answer": "Ordem de campos, whitespace, representação numérica e defaults mudam o hash sem mudar a intenção. Normalize a intenção de domínio (valor em centavos, moeda, destino, operação) e só então faça o hash; RFC 8785 ajuda a canonicalizar JSON, mas não resolve equivalência semântica de dinheiro."
+      },
+      {
+        "question": "(Staff) Qual status devolver no replay: 200 ou 201?",
+        "answer": "Decisão de contrato. Reproduzir a resposta original gravada (201 + mesmo corpo) é forte e previsível; 200 no replay também é válido se documentado. Inaceitável é variar sem regra."
+      },
+      {
+        "question": "(Staff) Idempotency-Key tem que estar no header?",
+        "answer": "Header é a convenção natural porque a chave é metadado da tentativa, não dado de negócio — mas a propriedade fundamental é o servidor reconhecer a mesma intenção; um identificador de negócio gerado pelo cliente e protegido por UNIQUE atinge o mesmo objetivo."
+      },
+      {
+        "question": "(Staff) Como a idempotência continua depois da API?",
+        "answer": "q36 garante um efeito na borda; o efeito vira evento via outbox (at-least-once), e cada consumidor precisa ser idempotente (q02/q35); em pipeline de alto throughput, a mesma chave ancora a deduplicação ponta a ponta (q31)."
+      }
+    ],
+    "redFlags": [
+      "existsByKey() → process() como garantia de concorrência",
+      "Gravar a chave depois do débito em transação separada",
+      "Hash do payload bruto sem canonicalização",
+      "Deduplicar só pelo payload (duas compras legítimas iguais viram uma)",
+      "Mesma key com payload diferente devolvendo o primeiro resultado",
+      "'UUID resolve' sem chave estável entre retries",
+      "Sem política de retenção ou TTL menor que a janela de retries",
+      "Logar payload financeiro sensível",
+      "Tratar idempotência HTTP e de consumidor como a mesma implementação"
+    ],
+    "strongSignals": [
+      "Client-generated idempotency key",
+      "Scope da key",
+      "Semantic fingerprint",
+      "Atomic claim",
+      "DB UNIQUE / conditional write",
+      "Race condition do check-then-act",
+      "Same key + same intent = replay",
+      "Same key + different intent = conflict",
+      "Transaction boundary",
+      "Stored original result",
+      "Concorrência (teste com N requests simultâneas)",
+      "Retention/TTL",
+      "Observability",
+      "Outbox quando há side effect externo",
+      "Idempotent Consumer downstream"
+    ],
+    "whatToMonitor": [
+      "idempotency.new.count / replay.count / conflict.count / in_progress.count / expired.count",
+      "transações criadas vs requests aceitos",
+      "mutações de saldo por operação lógica",
+      "conflitos de chave duplicada no banco",
+      "latência do lookup/claim e duração do processamento",
+      "registros presos em PROCESSING além do lease"
+    ],
+    "failureModes": [
+      "missing-idempotency",
+      "retry-storm"
+    ],
+    "relatedQuestions": [
+      "q18",
+      "q02",
+      "q35",
+      "q31",
+      "q07"
+    ],
+    "relatedTopics": [
+      "resilience-patterns",
+      "sync-communication",
+      "cap-acid-base",
+      "messaging-streaming"
+    ],
+    "diagrams": [
+      "financial-http-idempotency",
+      "transactional-api-flow"
+    ],
+    "sourceRefs": [
+      {
+        "kind": "reference",
+        "source": "Stripe API — Idempotent requests",
+        "locator": "docs.stripe.com/api/idempotent_requests",
+        "note": "Status e corpo da primeira requisição salvos e devolvidos (inclusive erros); parâmetros diferentes geram erro; resultado não salvo em conflito com requisição concorrente (pode repetir); remoção após ≥24 h e reuso vira nova requisição; V4 UUID; até 255 caracteres; sem dado sensível na chave",
+        "url": "https://docs.stripe.com/api/idempotent_requests"
+      },
+      {
+        "kind": "reference",
+        "source": "Stripe Blog — Designing robust and predictable APIs with idempotency (B. Leach, 2017)",
+        "locator": "stripe.com/blog/idempotency",
+        "note": "Falha ambígua: conexão cai depois de o servidor concluir; retry seguro com Idempotency-Key",
+        "url": "https://stripe.com/blog/idempotency"
+      },
+      {
+        "kind": "reference",
+        "source": "PostgreSQL docs — INSERT ... ON CONFLICT",
+        "locator": "www.postgresql.org/docs/current/sql-insert.html",
+        "note": "INSERT ... ON CONFLICT DO NOTHING com arbiter unique index; RETURNING não devolve linhas ignoradas",
+        "url": "https://www.postgresql.org/docs/current/sql-insert.html"
+      },
+      {
+        "kind": "reference",
+        "source": "PostgreSQL docs — Index Uniqueness Checks",
+        "locator": "www.postgresql.org/docs/current/index-unique-checks.html",
+        "note": "Insert conflitante com transação não comitada espera: commit → conflito; abort → sem conflito",
+        "url": "https://www.postgresql.org/docs/current/index-unique-checks.html"
+      },
+      {
+        "kind": "reference",
+        "source": "RFC 8785 — JSON Canonicalization Scheme (Informational)",
+        "locator": "www.rfc-editor.org/rfc/rfc8785.html",
+        "note": "JCS: ordenação de propriedades, sem whitespace, números no modelo IEEE-754/ECMAScript; números sem lugar natural (ex.: monetários) como string — por isso não substitui normalização semântica",
+        "url": "https://www.rfc-editor.org/rfc/rfc8785.html"
+      },
+      {
+        "kind": "reference",
+        "source": "Java SE 21 API — java.math.BigDecimal",
+        "locator": "docs.oracle.com/en/java/javase/21/docs/api/java.base/java/math/BigDecimal.html",
+        "note": "equals considera escala; compareTo não; construtor por String é previsível",
+        "url": "https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/math/BigDecimal.html"
+      },
+      {
+        "kind": "reference",
+        "source": "IETF HTTPAPI — The Idempotency-Key HTTP Header Field (Internet-Draft EXPIRADO, não é RFC)",
+        "locator": "datatracker.ietf.org/doc/draft-ietf-httpapi-idempotency-key-header/",
+        "note": "Internet-Draft EXPIRADO, não é RFC: sugeria 422 para conteúdo diferente e 409 para requisição em processamento — citado só como referência histórica",
+        "url": "https://datatracker.ietf.org/doc/draft-ietf-httpapi-idempotency-key-header/"
+      },
+      {
+        "kind": "reference",
+        "source": "microservices.io",
+        "locator": "patterns/data/transactional-outbox.html",
+        "note": "Outbox quando o efeito precisa virar mensagem na mesma transação",
+        "url": "https://microservices.io/patterns/data/transactional-outbox.html"
+      },
+      {
+        "kind": "reference",
+        "source": "microservices.io",
+        "locator": "patterns/communication-style/idempotent-consumer.html",
+        "note": "Idempotência do lado do consumidor",
+        "url": "https://microservices.io/patterns/communication-style/idempotent-consumer.html"
+      },
+      {
+        "kind": "pdf",
+        "source": "System Design Workbook",
+        "locator": "p.504",
+        "note": "Retry exige idempotência; chave de idempotência verificada antes de processar"
       }
     ]
   }
