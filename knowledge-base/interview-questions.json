@@ -212,6 +212,12 @@
       "reliability",
       "trade-offs",
       "communication"
+    ],
+    "keywords": [
+      "kafka entregou a mesma mensagem duas vezes",
+      "mensagem duplicada no consumer",
+      "consumer processou a mesma mensagem duas vezes",
+      "redelivery depois de rebalance"
     ]
   },
   {
@@ -2919,6 +2925,11 @@
     ],
     "failureModes": [
       "missing-idempotency"
+    ],
+    "keywords": [
+      "mensagem entregue mais de uma vez",
+      "evento duplicado no consumidor",
+      "at-least-once duplicata"
     ]
   },
   {

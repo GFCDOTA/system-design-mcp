@@ -643,6 +643,7 @@
   },
   {
     "id": "idempotent-consumer",
+    "keywords": ["kafka entregou a mesma mensagem duas vezes", "mensagem duplicada", "consumer idempotente", "redelivery at-least-once"],
     "databaseRecommendation": {"suggestedDbId": "rds-postgresql", "level": "medium", "rationale": "Chave de idempotência com UNIQUE no banco do consumidor."},
     "name": "Idempotent Consumer",
     "category": "Messaging",
