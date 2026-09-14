@@ -30,6 +30,12 @@ O repo traz `.mcp.json`:
 - Spring AI MCP Client (stdio): comando `node`, argumento `<repo>/mcp/dist/server.js`; o processo
   precisa enxergar `<repo>/knowledge-base` e `<repo>/shared` (o server resolve os caminhos relativos
   a `dist/`).
+  - Consumidor real: **`GFCDOTA/system-design-lab`** (privado), cujo CI roda um contrato contra o
+    `main` daqui. Quebram esse contrato: mudar a mensagem `Não encontrado: kind/id` do `get`, os nomes
+    das tools (`search`/`list`/`get`/`overview`) ou a lista de kinds do `overview`, e renomear ou
+    remover campos de `interview-questions` (`followUps`, `failureInjections`, `redFlags`,
+    `expectedSignals`, `strongSignals`, `acceptableSolutions`, `decisionCriteria`, `rubricDimensions`),
+    de `rubrics` ou de `incident-drills` (`scenario`/`hints`/`answer`).
 
 ## As 5 tools
 
