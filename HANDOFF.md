@@ -36,9 +36,12 @@
 
 ## 3. Pendências / próximos passos
 1. Merge do PR desta branch (CI verde) e `git pull --ff-only` no `main`.
-2. **`GFCDOTA/system-design-lab`** (repo já existe, privado): Java 21 + Spring AI + Ollama +
-   React consumindo este MCP por stdio (ver FOR-AGENTS §Registrar). O Lab deve tratar a rubrica e
-   os pacotes de entrevista como authoritative e nunca duplicar a KB.
+2. **`GFCDOTA/system-design-lab`** (privado): **backend existe** — `feat/lab-backend` mergeado em
+   `develop` (clone `E:\Claude\apps\system-design-lab`). Java 21 + Spring AI + Ollama; consome este
+   MCP por stdio via Spring AI MCP client (conexão `system-design`, escolhida pelo `serverInfo.name`),
+   usa só as tools `search`/`list`/`get`/`overview` e nunca copia JSON da KB. Trata rubrica e pacotes
+   de entrevista como authoritative. Tem contrato contra o `main` deste repo no CI dele (ver
+   FOR-AGENTS §Registrar). **Próximo passo do Lab: o frontend React.**
 3. Segunda onda de failure modes com fonte: split brain, clock skew, lost update/write skew, noisy
    neighbor, rebalancing storm.
 4. Branch órfã `origin/feat/content-batch` (era BFF): decisão do Felipe — conteúdo já está quase
