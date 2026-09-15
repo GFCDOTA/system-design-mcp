@@ -636,7 +636,12 @@
               "id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
               "dimension": { "enum": ["requirements", "capacity", "architecture", "data-consistency", "reliability", "trade-offs", "observability", "communication"] },
               "level": { "enum": ["core", "followup"], "description": "core: esperado já na resposta à pergunta; followup: só conta quando o aprofundamento correspondente foi explorado (ausência não reduz a nota)" },
-              "signal": { "type": "string", "description": "afirmação verificável sobre o que o candidato demonstra" }
+              "signal": { "type": "string", "description": "afirmação verificável sobre o que o candidato demonstra" },
+              "misconceptions": {
+                "type": "array",
+                "items": { "type": "string", "minLength": 10 },
+                "description": "crenças erradas conhecidas sobre o sinal (derivadas dos redFlags/cenários da pergunta); afirmar uma delas marca o sinal como erro conceitual"
+              }
             }
           }
         },

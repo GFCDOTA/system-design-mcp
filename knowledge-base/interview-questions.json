@@ -225,13 +225,19 @@
         "id": "q02-at-least-once",
         "dimension": "data-consistency",
         "level": "core",
-        "signal": "Assume entrega at-least-once: a mesma mensagem pode chegar mais de uma vez e isso é o caso normal."
+        "signal": "Assume entrega at-least-once: a mesma mensagem pode chegar mais de uma vez e isso é o caso normal.",
+        "misconceptions": [
+          "Confiar no exactly-once do broker para evitar duplicata no banco."
+        ]
       },
       {
         "id": "q02-domain-key",
         "dimension": "data-consistency",
         "level": "core",
-        "signal": "Deduplica por uma chave de domínio estável do evento (ex.: movimentacao_id), não pelo offset."
+        "signal": "Deduplica por uma chave de domínio estável do evento (ex.: movimentacao_id), não pelo offset.",
+        "misconceptions": [
+          "Usar o offset (ou partição + offset) como chave de deduplicação: um retry do produtor gera outro offset para o mesmo evento."
+        ]
       },
       {
         "id": "q02-unique-destination",
@@ -243,7 +249,10 @@
         "id": "q02-atomic-mark",
         "dimension": "data-consistency",
         "level": "core",
-        "signal": "Grava a marca de processado na mesma transação do efeito; checar duplicata fora dessa transação abre corrida."
+        "signal": "Grava a marca de processado na mesma transação do efeito; checar duplicata fora dessa transação abre corrida.",
+        "misconceptions": [
+          "Checar se a mensagem já foi processada numa consulta separada e só depois aplicar o efeito, fora da mesma transação."
+        ]
       },
       {
         "id": "q02-http-vs-consumer",
@@ -255,7 +264,11 @@
         "id": "q02-db-commit-vs-offset",
         "dimension": "reliability",
         "level": "core",
-        "signal": "Separa o commit da transação no banco do commit do offset: se cair depois do COMMIT e antes do offset, o Kafka reentrega e a segunda execução precisa virar no-op."
+        "signal": "Separa o commit da transação no banco do commit do offset: se cair depois do COMMIT e antes do offset, o Kafka reentrega e a segunda execução precisa virar no-op.",
+        "misconceptions": [
+          "Achar que, se o consumer cai antes de comitar o offset, a escrita no banco não foi persistida: o COMMIT no banco já aconteceu e a mensagem será reentregue.",
+          "Achar que o Kafka não reentrega a mensagem porque o efeito já foi aplicado no banco."
+        ]
       },
       {
         "id": "q02-rebalance-replay",
@@ -863,7 +876,10 @@
         "id": "q09-useful-capacity",
         "dimension": "capacity",
         "level": "core",
-        "signal": "Mostra que capacidade total ≠ capacidade útil: um shard quente satura com o cluster folgado."
+        "signal": "Mostra que capacidade total ≠ capacidade útil: um shard quente satura com o cluster folgado.",
+        "misconceptions": [
+          "Achar que adicionar mais shards resolve um shard quente."
+        ]
       },
       {
         "id": "q09-hot-tenant",
@@ -875,7 +891,10 @@
         "id": "q09-high-cardinality",
         "dimension": "architecture",
         "level": "core",
-        "signal": "Escolhe sharding key de alta cardinalidade e evita atributo concentrado (país, status)."
+        "signal": "Escolhe sharding key de alta cardinalidade e evita atributo concentrado (país, status).",
+        "misconceptions": [
+          "Particionar por um atributo concentrado (país, status) achando que ele distribui bem a carga."
+        ]
       },
       {
         "id": "q09-consistent-hashing",
@@ -887,7 +906,10 @@
         "id": "q09-salting-cost",
         "dimension": "trade-offs",
         "level": "core",
-        "signal": "Declara o custo de dividir a chave quente: sufixo espalha a escrita mas obriga fan-out na leitura agregada."
+        "signal": "Declara o custo de dividir a chave quente: sufixo espalha a escrita mas obriga fan-out na leitura agregada.",
+        "misconceptions": [
+          "Adicionar sufixo aleatório à chave sem considerar que a leitura agregada passa a exigir fan-out."
+        ]
       },
       {
         "id": "q09-read-vs-write",
@@ -1360,7 +1382,11 @@
         "id": "q14-slo-alerts",
         "dimension": "reliability",
         "level": "core",
-        "signal": "Alerta por SLO/burn rate com ação associada, não por CPU e memória."
+        "signal": "Alerta por SLO/burn rate com ação associada, não por CPU e memória.",
+        "misconceptions": [
+          "Usar CPU e memória como principal sinal de saúde do sistema.",
+          "Criar alertas sem ação associada."
+        ]
       },
       {
         "id": "q14-first-signal",
@@ -1569,7 +1595,10 @@
         "id": "q15-backoff-jitter",
         "dimension": "reliability",
         "level": "core",
-        "signal": "Retry limitado, com backoff exponencial e jitter."
+        "signal": "Retry limitado, com backoff exponencial e jitter.",
+        "misconceptions": [
+          "Fazer retry infinito ou imediato, sem limite nem backoff."
+        ]
       },
       {
         "id": "q15-amplification",
@@ -1587,7 +1616,10 @@
         "id": "q15-idempotent-retry",
         "dimension": "data-consistency",
         "level": "core",
-        "signal": "Retry e reprocessamento exigem consumidor idempotente."
+        "signal": "Retry e reprocessamento exigem consumidor idempotente.",
+        "misconceptions": [
+          "Achar que o retry é seguro mesmo sem consumidor idempotente."
+        ]
       },
       {
         "id": "q15-ordering-dlq",
@@ -1599,13 +1631,19 @@
         "id": "q15-dlq-monitoring",
         "dimension": "observability",
         "level": "core",
-        "signal": "DLQ tem alerta e reprocessamento controlado, não é depósito esquecido."
+        "signal": "DLQ tem alerta e reprocessamento controlado, não é depósito esquecido.",
+        "misconceptions": [
+          "Deixar a DLQ sem alerta."
+        ]
       },
       {
         "id": "q15-error-classification",
         "dimension": "trade-offs",
         "level": "core",
-        "signal": "Escolhe a política pelo tipo de erro (transitório vs permanente) e pelo custo de duplicar o efeito."
+        "signal": "Escolhe a política pelo tipo de erro (transitório vs permanente) e pelo custo de duplicar o efeito.",
+        "misconceptions": [
+          "Aplicar a mesma política de retry para qualquer erro, transitório ou permanente."
+        ]
       }
     ],
     "clarifications": [
@@ -1755,7 +1793,10 @@
         "id": "q16-critical-read",
         "dimension": "data-consistency",
         "level": "core",
-        "signal": "Decisão crítica (ex.: autorizar saldo) lê da fonte de verdade, não do read model."
+        "signal": "Decisão crítica (ex.: autorizar saldo) lê da fonte de verdade, não do read model.",
+        "misconceptions": [
+          "Autorizar saldo a partir do read model."
+        ]
       },
       {
         "id": "q16-read-your-writes",
@@ -1773,7 +1814,10 @@
         "id": "q16-ui-contract",
         "dimension": "trade-offs",
         "level": "core",
-        "signal": "Propõe contrato de produto/UI para a janela e declara o custo de prometer consistência imediata."
+        "signal": "Propõe contrato de produto/UI para a janela e declara o custo de prometer consistência imediata.",
+        "misconceptions": [
+          "Prometer consistência imediata sem declarar o custo."
+        ]
       }
     ],
     "clarifications": [
@@ -2484,7 +2528,11 @@
         "id": "q24-bottleneck-shift",
         "dimension": "architecture",
         "level": "core",
-        "signal": "Mostra o gargalo mudando por degrau e só adiciona componente quando o degrau exige."
+        "signal": "Mostra o gargalo mudando por degrau e só adiciona componente quando o degrau exige.",
+        "misconceptions": [
+          "Usar a mesma arquitetura para 100 e 10.000 TPS sem justificar.",
+          "Colocar microsserviços ou Kafka desde o primeiro degrau sem requisito."
+        ]
       },
       {
         "id": "q24-partitioning",
@@ -2633,7 +2681,10 @@
         "id": "q25-saturation",
         "dimension": "capacity",
         "level": "core",
-        "signal": "Coloca o ponto de saturação antes de 100% de utilização."
+        "signal": "Coloca o ponto de saturação antes de 100% de utilização.",
+        "misconceptions": [
+          "Achar que o sistema só satura quando chega a 100% de utilização."
+        ]
       },
       {
         "id": "q25-backlog",
@@ -2651,7 +2702,10 @@
         "id": "q25-variability",
         "dimension": "reliability",
         "level": "core",
-        "signal": "Dimensiona considerando variabilidade (percentis), não só a média."
+        "signal": "Dimensiona considerando variabilidade (percentis), não só a média.",
+        "misconceptions": [
+          "Dimensionar pela média, sem considerar variabilidade."
+        ]
       },
       {
         "id": "q25-show-math",
@@ -2894,7 +2948,10 @@
         "id": "q27-subkey-cost",
         "dimension": "trade-offs",
         "level": "core",
-        "signal": "Sub-chaveamento com custo declarado (perde ordem por entidade ou exige fan-out)."
+        "signal": "Sub-chaveamento com custo declarado (perde ordem por entidade ou exige fan-out).",
+        "misconceptions": [
+          "Usar sufixo aleatório para contador ou saldo sem discutir a exatidão da agregação."
+        ]
       }
     ],
     "clarifications": [
@@ -3719,25 +3776,38 @@
         "id": "q36-client-key-scope",
         "dimension": "data-consistency",
         "level": "core",
-        "signal": "Chave de idempotência gerada pelo cliente, com escopo (cliente, endpoint)."
+        "signal": "Chave de idempotência gerada pelo cliente, com escopo (cliente, endpoint).",
+        "misconceptions": [
+          "Gerar um UUID novo a cada tentativa, sem chave estável entre retries."
+        ]
       },
       {
         "id": "q36-atomic-claim",
         "dimension": "data-consistency",
         "level": "core",
-        "signal": "Claim atômico por UNIQUE/conditional write antes do efeito; existsByKey() → process() tem corrida."
+        "signal": "Claim atômico por UNIQUE/conditional write antes do efeito; existsByKey() → process() tem corrida.",
+        "misconceptions": [
+          "Usar existsByKey() e depois processar como garantia contra requisições concorrentes."
+        ]
       },
       {
         "id": "q36-replay-conflict",
         "dimension": "data-consistency",
         "level": "core",
-        "signal": "Mesma chave e mesma intenção devolve o resultado guardado; mesma chave com payload diferente é conflito."
+        "signal": "Mesma chave e mesma intenção devolve o resultado guardado; mesma chave com payload diferente é conflito.",
+        "misconceptions": [
+          "Devolver o resultado da primeira requisição para a mesma chave com payload diferente.",
+          "Deduplicar só pelo payload, fundindo duas compras legítimas iguais."
+        ]
       },
       {
         "id": "q36-same-transaction",
         "dimension": "reliability",
         "level": "core",
-        "signal": "Claim, efeito e resultado na mesma transação; quando cruza sistemas, estado PROCESSING ou outbox."
+        "signal": "Claim, efeito e resultado na mesma transação; quando cruza sistemas, estado PROCESSING ou outbox.",
+        "misconceptions": [
+          "Gravar a chave de idempotência depois do débito, em transação separada."
+        ]
       },
       {
         "id": "q36-external-gateway",
@@ -3755,7 +3825,10 @@
         "id": "q36-retention",
         "dimension": "trade-offs",
         "level": "core",
-        "signal": "Define retenção/TTL da chave pela janela real de retries dos clientes."
+        "signal": "Define retenção/TTL da chave pela janela real de retries dos clientes.",
+        "misconceptions": [
+          "Não ter política de retenção ou usar TTL menor que a janela de retries dos clientes."
+        ]
       },
       {
         "id": "q36-fingerprint",
@@ -3933,13 +4006,19 @@
         "id": "q37-origin-capacity",
         "dimension": "capacity",
         "level": "core",
-        "signal": "Usa números: com 100k req/s, a carga na origem depende do hit ratio."
+        "signal": "Usa números: com 100k req/s, a carga na origem depende do hit ratio.",
+        "misconceptions": [
+          "Não perceber que a carga na origem depende do hit ratio."
+        ]
       },
       {
         "id": "q37-cache-aside",
         "dimension": "architecture",
         "level": "core",
-        "signal": "Cache-aside com invalidação e limite de tamanho/evicção."
+        "signal": "Cache-aside com invalidação e limite de tamanho/evicção.",
+        "misconceptions": [
+          "Resolver cada nova restrição só aumentando a memória do Redis."
+        ]
       },
       {
         "id": "q37-hot-key",
@@ -3957,7 +4036,10 @@
         "id": "q37-expiration",
         "dimension": "reliability",
         "level": "core",
-        "signal": "Na expiração, evita que todos recomputem juntos (single-flight, stale-while-revalidate, jitter de TTL)."
+        "signal": "Na expiração, evita que todos recomputem juntos (single-flight, stale-while-revalidate, jitter de TTL).",
+        "misconceptions": [
+          "Proteger a recomputação com lock distribuído sem TTL."
+        ]
       },
       {
         "id": "q37-redis-down",
@@ -4189,7 +4271,11 @@
         "id": "q38-first-bottleneck",
         "dimension": "architecture",
         "level": "core",
-        "signal": "Aponta o primeiro gargalo e como a falha se propaga entre API, Redis e PostgreSQL."
+        "signal": "Aponta o primeiro gargalo e como a falha se propaga entre API, Redis e PostgreSQL.",
+        "misconceptions": [
+          "Achar que escalar horizontalmente a API resolve, sem citar o gargalo compartilhado.",
+          "Colocar Kafka sem requisito assíncrono."
+        ]
       },
       {
         "id": "q38-hot-key-consistency",
