@@ -159,7 +159,11 @@ test("rubrica por pergunta: toda pergunta entrevistável tem sinais que cobrem e
       if (signalIds.has(s.id)) problems.push(`${q.id}: id de sinal repetido '${s.id}'`);
       signalIds.add(s.id);
       if (!s.id.startsWith(`${q.id}-`)) problems.push(`${q.id}: sinal '${s.id}' sem o prefixo da pergunta`);
+      for (const m of s.misconceptions ?? []) {
+        if (m.trim().length < 10) problems.push(`${q.id}: erro conceitual vazio em '${s.id}'`);
+      }
     }
+    if (!signals.some((s) => s.misconceptions?.length)) problems.push(`${q.id}: nenhum erro conceitual conhecido nos sinais`);
     const clarificationIds = new Set();
     for (const c of q.clarifications ?? []) {
       if (clarificationIds.has(c.id)) problems.push(`${q.id}: esclarecimento repetido '${c.id}'`);
