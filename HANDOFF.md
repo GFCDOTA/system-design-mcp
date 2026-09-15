@@ -35,16 +35,22 @@
 - Categoria do pattern `idempotent-request` = `API` (taxonomia existente), com keywords de resiliência.
 
 ## 3. Pendências / próximos passos
-1. Merge do PR desta branch (CI verde) e `git pull --ff-only` no `main`.
+1. ~~Merge do PR desta branch~~ feito: PR #2 mergeado no `main` (6f6118f), CI verde.
 2. **`GFCDOTA/system-design-lab`** (privado): **backend existe** — `feat/lab-backend` mergeado em
    `develop` (clone `E:\Claude\apps\system-design-lab`). Java 21 + Spring AI + Ollama; consome este
    MCP por stdio via Spring AI MCP client (conexão `system-design`, escolhida pelo `serverInfo.name`),
    usa só as tools `search`/`list`/`get`/`overview` e nunca copia JSON da KB. Trata rubrica e pacotes
    de entrevista como authoritative. Tem contrato contra o `main` deste repo no CI dele (ver
    FOR-AGENTS §Registrar). **Próximo passo do Lab: o frontend React.**
-3. Segunda onda de failure modes com fonte: split brain, clock skew, lost update/write skew, noisy
+3. **Rubrica por pergunta (2026-09-14):** as 11 perguntas entrevistáveis ganharam `scoringSignals`
+   (sinais por dimensão, `core`/`followup`) e `clarifications` com fonte, depois que a primeira entrevista
+   real do Lab mostrou o avaliador cobrando critério genérico (circuit breaker na q02). A q02 ficou sem
+   ambiguidade (COMMIT no PostgreSQL antes do offset) e sem sonda duplicada. Teste
+   `rubrica por pergunta` em `frontend/test/kb-graph.test.mjs`. Revisar os sinais das perguntas staff
+   (q24/q37/q38) com entrevistas reais.
+4. Segunda onda de failure modes com fonte: split brain, clock skew, lost update/write skew, noisy
    neighbor, rebalancing storm.
-4. Branch órfã `origin/feat/content-batch` (era BFF): decisão do Felipe — conteúdo já está quase
+5. Branch órfã `origin/feat/content-batch` (era BFF): decisão do Felipe — conteúdo já está quase
    todo no `main`.
 
 ## 4. Gotchas

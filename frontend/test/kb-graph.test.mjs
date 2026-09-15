@@ -138,6 +138,40 @@ test("rubrica: dimensões usadas pelas perguntas existem e a escala é 0..5", ()
   assert.ok(packages.length >= 8, `só ${packages.length} perguntas têm pacote completo para mock interview`);
 });
 
+test("rubrica por pergunta: toda pergunta entrevistável tem sinais que cobrem exatamente suas dimensões", () => {
+  const problems = [];
+  const interviewable = collections["interview-questions"].filter(
+    (q) => q.rubricDimensions?.length && (q.followUps?.length || q.failureInjections?.length),
+  );
+  assert.ok(interviewable.length >= 8, `só ${interviewable.length} perguntas entrevistáveis`);
+  const signalIds = new Set();
+  for (const q of interviewable) {
+    const signals = q.scoringSignals ?? [];
+    if (!signals.length) {
+      problems.push(`${q.id}: entrevistável sem scoringSignals`);
+      continue;
+    }
+    const dims = new Set(signals.map((s) => s.dimension));
+    for (const d of q.rubricDimensions) if (!dims.has(d)) problems.push(`${q.id}: dimensão '${d}' sem sinal`);
+    for (const d of dims) if (!q.rubricDimensions.includes(d)) problems.push(`${q.id}: sinal na dimensão '${d}', que a pergunta não declara`);
+    if (!signals.some((s) => s.level === "core")) problems.push(`${q.id}: nenhum sinal core`);
+    for (const s of signals) {
+      if (signalIds.has(s.id)) problems.push(`${q.id}: id de sinal repetido '${s.id}'`);
+      signalIds.add(s.id);
+      if (!s.id.startsWith(`${q.id}-`)) problems.push(`${q.id}: sinal '${s.id}' sem o prefixo da pergunta`);
+    }
+    const clarificationIds = new Set();
+    for (const c of q.clarifications ?? []) {
+      if (clarificationIds.has(c.id)) problems.push(`${q.id}: esclarecimento repetido '${c.id}'`);
+      clarificationIds.add(c.id);
+      if (c.explanation.length > 400) problems.push(`${q.id}: esclarecimento '${c.id}' longo demais para uma resposta curta`);
+    }
+  }
+  const outside = collections["interview-questions"].filter((q) => q.scoringSignals?.length && !interviewable.includes(q));
+  for (const q of outside) problems.push(`${q.id}: scoringSignals numa pergunta sem pacote de entrevista`);
+  assert.deepEqual(problems, [], "\n" + problems.join("\n"));
+});
+
 test("comparações e trilhas: estrutura mínima útil", () => {
   for (const c of collections.comparisons ?? []) {
     assert.ok(c.options.length >= 2, `${c.id}: menos de 2 opções`);

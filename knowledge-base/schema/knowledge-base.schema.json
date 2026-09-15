@@ -625,6 +625,36 @@
         "acceptableSolutions": { "type": "array", "items": { "type": "string" }, "description": "desenhos aceitáveis (não existe resposta de ouro única)" },
         "decisionCriteria": { "type": "array", "items": { "type": "string" } },
         "rubricDimensions": { "type": "array", "items": { "enum": ["requirements", "capacity", "architecture", "data-consistency", "reliability", "trade-offs", "observability", "communication"] }, "description": "dimensões da rubrica system-design-interview exercitadas" },
+        "scoringSignals": {
+          "type": "array",
+          "description": "rubrica específica da pergunta: o que conta em cada dimensão. Evita avaliar a pergunta por critérios genéricos da dimensão (ex.: circuit breaker numa pergunta de idempotência).",
+          "items": {
+            "type": "object",
+            "required": ["id", "dimension", "level", "signal"],
+            "additionalProperties": false,
+            "properties": {
+              "id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+              "dimension": { "enum": ["requirements", "capacity", "architecture", "data-consistency", "reliability", "trade-offs", "observability", "communication"] },
+              "level": { "enum": ["core", "followup"], "description": "core: esperado já na resposta à pergunta; followup: só conta quando o aprofundamento correspondente foi explorado (ausência não reduz a nota)" },
+              "signal": { "type": "string", "description": "afirmação verificável sobre o que o candidato demonstra" }
+            }
+          }
+        },
+        "clarifications": {
+          "type": "array",
+          "description": "esclarecimentos autorados para termos que o candidato pode perguntar durante a entrevista; explicam o conceito sem entregar a solução",
+          "items": {
+            "type": "object",
+            "required": ["id", "term", "explanation", "sourceRefs"],
+            "additionalProperties": false,
+            "properties": {
+              "id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+              "term": { "type": "string" },
+              "explanation": { "type": "string" },
+              "sourceRefs": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/SourceRef" } }
+            }
+          }
+        },
         "relatedTopics": { "type": "array", "items": { "type": "string" } },
         "diagrams": { "type": "array", "items": { "type": "string" } },
         "sourceRefs": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/SourceRef" } }

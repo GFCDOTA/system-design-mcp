@@ -34,7 +34,8 @@ O repo traz `.mcp.json`:
     `main` daqui. Quebram esse contrato: mudar a mensagem `Não encontrado: kind/id` do `get`, os nomes
     das tools (`search`/`list`/`get`/`overview`) ou a lista de kinds do `overview`, e renomear ou
     remover campos de `interview-questions` (`followUps`, `failureInjections`, `redFlags`,
-    `expectedSignals`, `strongSignals`, `acceptableSolutions`, `decisionCriteria`, `rubricDimensions`),
+    `expectedSignals`, `strongSignals`, `acceptableSolutions`, `decisionCriteria`, `rubricDimensions`,
+    `scoringSignals`, `clarifications`, `howToAnswerInInterview`),
     de `rubrics` ou de `incident-drills` (`scenario`/`hints`/`answer`).
 
 ## As 5 tools
@@ -63,7 +64,12 @@ campo aditivo `matched`. `related` é nova (operação de grafo — ver ADR-0006
 - **`interview-questions`** — pacote de entrevista: `shortAnswer`, `detailedAnswer`,
   `howToAnswerInInterview`, e (quando existem) `expectedSignals`, `strongSignals`, `redFlags`,
   `followUps`, `failureInjections`, `acceptableSolutions`, `decisionCriteria`, `whatToMonitor`,
-  `failureModes`, `relatedQuestions`, `rubricDimensions`.
+  `failureModes`, `relatedQuestions`, `rubricDimensions`. Perguntas entrevistáveis trazem ainda:
+  - `scoringSignals`: a **rubrica específica da pergunta**, um sinal verificável por dimensão, `core`
+    (esperado na resposta) ou `followup` (só conta se o aprofundamento foi explorado). Avalie a pergunta por
+    esses sinais, não pela descrição genérica da dimensão, que menciona circuit breaker, retries etc.
+  - `clarifications`: explicação curta, com fonte, para termos que o candidato pode perguntar (ex.:
+    rebalance). Explica o conceito sem entregar a solução.
 - **`rubrics`** — `system-design-interview`: 8 dimensões (requirements, capacity, architecture,
   data-consistency, reliability, trade-offs, observability, communication), escala 0–5
   (absent → staff signal). **Toda nota precisa citar evidência do transcript**; dimensões não
