@@ -146,6 +146,13 @@
         "locator": "kafka.apache.org/40/javadoc/org/apache/kafka/clients/consumer/KafkaConsumer.html",
         "note": "Falha entre inserir no banco e comitar o offset leva a reprocessamento",
         "url": "https://kafka.apache.org/40/javadoc/org/apache/kafka/clients/consumer/KafkaConsumer.html"
+      },
+      {
+        "kind": "reference",
+        "source": "Apache Kafka 4.0 — KafkaConsumer javadoc",
+        "locator": "kafka.apache.org/40/javadoc/org/apache/kafka/clients/consumer/KafkaConsumer.html",
+        "note": "max.poll.interval.ms tira o consumidor do grupo e dispara rebalance; ConsumerRebalanceListener avisa a revogação das partições",
+        "url": "https://kafka.apache.org/40/javadoc/org/apache/kafka/clients/consumer/KafkaConsumer.html"
       }
     ],
     "relatedQuestions": [
@@ -174,18 +181,18 @@
     ],
     "followUps": [
       {
-        "question": "E se o consumidor cair depois de gravar no banco e antes de comitar o offset?",
+        "question": "O consumer conclui e COMMITA a transação no PostgreSQL, mas cai antes de confirmar o offset no Kafka. O que acontece?",
         "answer": "O broker reentrega o lote: com a marca de processado na mesma transação do efeito (UNIQUE ou version), a segunda aplicação vira no-op."
       },
       {
-        "question": "E se um rebalance acontecer no meio do lote?",
-        "answer": "Outro consumidor recebe as mesmas mensagens a partir do último offset comitado; idempotência por chave de domínio cobre."
+        "question": "Você já aplicou os efeitos de 60 das 100 mensagens de um lote quando um rebalance revoga suas partições. Como evita processamento inconsistente?",
+        "answer": "As mensagens voltam a partir do último offset comitado para outro consumidor; com a marca de processado atômica por mensagem, os 60 efeitos já aplicados viram no-op na reentrega, e comitar os offsets processados ao ser avisado da revogação (ConsumerRebalanceListener) reduz o reprocessamento."
       }
     ],
     "failureInjections": [
       {
-        "injection": "Consumer cai entre o INSERT e o commit do offset.",
-        "expectedReasoning": "Redelivery; UNIQUE/version torna o reprocessamento no-op."
+        "injection": "O produtor faz retry e publica o mesmo evento duas vezes, com o mesmo movimentacao_id e offsets diferentes.",
+        "expectedReasoning": "Duplicata não vem só da reentrega do broker: a chave de domínio no destino cobre o retry do produtor, e deduplicar pelo offset não pegaria."
       },
       {
         "injection": "Replay do tópico inteiro após bug no read model.",
@@ -212,6 +219,98 @@
       "reliability",
       "trade-offs",
       "communication"
+    ],
+    "scoringSignals": [
+      {
+        "id": "q02-at-least-once",
+        "dimension": "data-consistency",
+        "level": "core",
+        "signal": "Assume entrega at-least-once: a mesma mensagem pode chegar mais de uma vez e isso é o caso normal."
+      },
+      {
+        "id": "q02-domain-key",
+        "dimension": "data-consistency",
+        "level": "core",
+        "signal": "Deduplica por uma chave de domínio estável do evento (ex.: movimentacao_id), não pelo offset."
+      },
+      {
+        "id": "q02-unique-destination",
+        "dimension": "data-consistency",
+        "level": "core",
+        "signal": "Garante unicidade no destino (UNIQUE com INSERT ... ON CONFLICT, version ou tabela inbox)."
+      },
+      {
+        "id": "q02-atomic-mark",
+        "dimension": "data-consistency",
+        "level": "core",
+        "signal": "Grava a marca de processado na mesma transação do efeito; checar duplicata fora dessa transação abre corrida."
+      },
+      {
+        "id": "q02-http-vs-consumer",
+        "dimension": "data-consistency",
+        "level": "followup",
+        "signal": "Diferencia consumidor idempotente de idempotência HTTP."
+      },
+      {
+        "id": "q02-db-commit-vs-offset",
+        "dimension": "reliability",
+        "level": "core",
+        "signal": "Separa o commit da transação no banco do commit do offset: se cair depois do COMMIT e antes do offset, o Kafka reentrega e a segunda execução precisa virar no-op."
+      },
+      {
+        "id": "q02-rebalance-replay",
+        "dimension": "reliability",
+        "level": "followup",
+        "signal": "No rebalance ou no replay do tópico, as mensagens voltam a partir do último offset comitado e todo consumidor downstream precisa ser idempotente."
+      },
+      {
+        "id": "q02-choose-mechanism",
+        "dimension": "trade-offs",
+        "level": "core",
+        "signal": "Escolhe o mecanismo pelo tipo de efeito: UNIQUE quando há chave natural, version/LWW para read model por estado, inbox quando não há chave natural."
+      },
+      {
+        "id": "q02-ordering-related",
+        "dimension": "trade-offs",
+        "level": "followup",
+        "signal": "Trata ordem por partição/version como problema relacionado, mas diferente de idempotência."
+      },
+      {
+        "id": "q02-mechanism-flow",
+        "dimension": "communication",
+        "level": "core",
+        "signal": "Explica pelo fluxo (entrega → efeito → marca de processado → offset) antes de citar tecnologia."
+      }
+    ],
+    "clarifications": [
+      {
+        "id": "q02-rebalance",
+        "term": "rebalance",
+        "explanation": "Rebalance é a redistribuição das partições entre os consumidores de um mesmo grupo. Acontece quando um consumidor entra, sai ou para de responder (por exemplo, fica mais tempo que max.poll.interval.ms sem chamar poll): as partições revogadas de uma instância passam para outra.",
+        "sourceRefs": [
+          {
+            "kind": "reference",
+            "source": "Apache Kafka 4.0 — KafkaConsumer javadoc",
+            "locator": "kafka.apache.org/40/javadoc/org/apache/kafka/clients/consumer/KafkaConsumer.html",
+            "note": "max.poll.interval.ms tira o consumidor do grupo e dispara rebalance; ConsumerRebalanceListener avisa a revogação das partições",
+            "url": "https://kafka.apache.org/40/javadoc/org/apache/kafka/clients/consumer/KafkaConsumer.html"
+          }
+        ]
+      },
+      {
+        "id": "q02-offset-commit",
+        "term": "commit do offset",
+        "explanation": "O offset é a posição da próxima mensagem a ler numa partição. Comitar o offset registra no Kafka até onde o consumidor do grupo já processou.",
+        "sourceRefs": [
+          {
+            "kind": "reference",
+            "source": "Apache Kafka 4.0 — KafkaConsumer javadoc",
+            "locator": "kafka.apache.org/40/javadoc/org/apache/kafka/clients/consumer/KafkaConsumer.html",
+            "note": "max.poll.interval.ms tira o consumidor do grupo e dispara rebalance; ConsumerRebalanceListener avisa a revogação das partições",
+            "url": "https://kafka.apache.org/40/javadoc/org/apache/kafka/clients/consumer/KafkaConsumer.html"
+          }
+        ]
+      }
     ],
     "keywords": [
       "kafka entregou a mesma mensagem duas vezes",
@@ -752,6 +851,80 @@
       "capacity",
       "architecture",
       "trade-offs"
+    ],
+    "scoringSignals": [
+      {
+        "id": "q09-access-pattern",
+        "dimension": "requirements",
+        "level": "core",
+        "signal": "Pergunta pelo padrão de acesso antes de escolher a chave: particionar baseado em quê, como os clientes são lidos e escritos."
+      },
+      {
+        "id": "q09-useful-capacity",
+        "dimension": "capacity",
+        "level": "core",
+        "signal": "Mostra que capacidade total ≠ capacidade útil: um shard quente satura com o cluster folgado."
+      },
+      {
+        "id": "q09-hot-tenant",
+        "dimension": "capacity",
+        "level": "followup",
+        "signal": "Para um cliente com 40% das escritas, isola ou divide o tenant quente em vez de só adicionar shards."
+      },
+      {
+        "id": "q09-high-cardinality",
+        "dimension": "architecture",
+        "level": "core",
+        "signal": "Escolhe sharding key de alta cardinalidade e evita atributo concentrado (país, status)."
+      },
+      {
+        "id": "q09-consistent-hashing",
+        "dimension": "architecture",
+        "level": "core",
+        "signal": "Usa consistent hashing (ou mapa de partições) para rebalancear movendo poucas chaves."
+      },
+      {
+        "id": "q09-salting-cost",
+        "dimension": "trade-offs",
+        "level": "core",
+        "signal": "Declara o custo de dividir a chave quente: sufixo espalha a escrita mas obriga fan-out na leitura agregada."
+      },
+      {
+        "id": "q09-read-vs-write",
+        "dimension": "trade-offs",
+        "level": "followup",
+        "signal": "Separa hot key de leitura (réplica/cache) de hot key de escrita (dividir a chave)."
+      }
+    ],
+    "clarifications": [
+      {
+        "id": "q09-hot-partition",
+        "term": "hot partition",
+        "explanation": "Hot partition é uma partição (ou shard) que recebe tráfego desproporcional em relação às outras, por exemplo porque concentra chaves muito acessadas.",
+        "sourceRefs": [
+          {
+            "kind": "reference",
+            "source": "Amazon DynamoDB docs — Best practices for designing partition keys",
+            "locator": "docs.aws.amazon.com/amazondynamodb/latest/developerguide/bp-partition-key-design.html",
+            "note": "Partição com tráfego desproporcional (hot partition)",
+            "url": "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/bp-partition-key-design.html"
+          }
+        ]
+      },
+      {
+        "id": "q09-consistent-hashing",
+        "term": "consistent hashing",
+        "explanation": "Consistent hashing distribui as chaves num anel de hashes; quando um nó entra ou sai, só as chaves dos vizinhos no anel mudam de lugar.",
+        "sourceRefs": [
+          {
+            "kind": "reference",
+            "source": "DeCandia et al. — Dynamo: Amazon's Highly Available Key-value Store (SOSP 2007)",
+            "locator": "www.allthingsdistributed.com/files/amazon-dynamo-sosp2007.pdf",
+            "note": "Consistent hashing: ao entrar ou sair um nó, só os vizinhos no anel são afetados",
+            "url": "https://www.allthingsdistributed.com/files/amazon-dynamo-sosp2007.pdf"
+          }
+        ]
+      }
     ]
   },
   {
@@ -1163,6 +1336,73 @@
       "observability",
       "reliability",
       "communication"
+    ],
+    "scoringSignals": [
+      {
+        "id": "q14-signal-frameworks",
+        "dimension": "observability",
+        "level": "core",
+        "signal": "Instrumenta com um framework de sinais (RED, USE ou Four Golden Signals) em vez de métricas soltas."
+      },
+      {
+        "id": "q14-business-metrics",
+        "dimension": "observability",
+        "level": "core",
+        "signal": "Mede métricas de negócio (ex.: transações aceitas vs criadas) além das técnicas."
+      },
+      {
+        "id": "q14-traces",
+        "dimension": "observability",
+        "level": "core",
+        "signal": "Usa traces e correlação para seguir uma requisição entre serviços."
+      },
+      {
+        "id": "q14-slo-alerts",
+        "dimension": "reliability",
+        "level": "core",
+        "signal": "Alerta por SLO/burn rate com ação associada, não por CPU e memória."
+      },
+      {
+        "id": "q14-first-signal",
+        "dimension": "reliability",
+        "level": "followup",
+        "signal": "Diz qual sinal mexe primeiro e qual é consequência (ex.: pending do pool antes da CPU do banco)."
+      },
+      {
+        "id": "q14-signal-to-decision",
+        "dimension": "communication",
+        "level": "core",
+        "signal": "Liga cada sinal a uma decisão ou ação, em vez de listar métricas."
+      }
+    ],
+    "clarifications": [
+      {
+        "id": "q14-red-use",
+        "term": "RED e USE",
+        "explanation": "RED mede Rate, Errors e Duration de cada serviço; USE mede Utilization, Saturation e Errors de cada recurso (CPU, pool, disco).",
+        "sourceRefs": [
+          {
+            "kind": "pdf",
+            "source": "System Design Workbook",
+            "locator": "p.551",
+            "note": "USE Method / RED Method / Four Golden Signals"
+          }
+        ]
+      },
+      {
+        "id": "q14-burn-rate",
+        "term": "burn rate",
+        "explanation": "Burn rate é a velocidade com que um serviço consome o orçamento de erro de um SLO, relativa ao que o SLO permite.",
+        "sourceRefs": [
+          {
+            "kind": "reference",
+            "source": "Google SRE Workbook — Alerting on SLOs",
+            "locator": "sre.google/workbook/alerting-on-slos/",
+            "note": "Burn rate: velocidade de consumo do orçamento de erro relativa ao SLO",
+            "url": "https://sre.google/workbook/alerting-on-slos/"
+          }
+        ]
+      }
     ]
   },
   {
@@ -1323,6 +1563,79 @@
       "data-consistency",
       "observability",
       "trade-offs"
+    ],
+    "scoringSignals": [
+      {
+        "id": "q15-backoff-jitter",
+        "dimension": "reliability",
+        "level": "core",
+        "signal": "Retry limitado, com backoff exponencial e jitter."
+      },
+      {
+        "id": "q15-amplification",
+        "dimension": "reliability",
+        "level": "core",
+        "signal": "Reconhece retry como amplificação de carga e limita (retry budget ou retry numa só camada)."
+      },
+      {
+        "id": "q15-poison-to-dlq",
+        "dimension": "reliability",
+        "level": "followup",
+        "signal": "Manda erro permanente ou poison message para a DLQ em vez de tentar de novo e bloquear a partição."
+      },
+      {
+        "id": "q15-idempotent-retry",
+        "dimension": "data-consistency",
+        "level": "core",
+        "signal": "Retry e reprocessamento exigem consumidor idempotente."
+      },
+      {
+        "id": "q15-ordering-dlq",
+        "dimension": "data-consistency",
+        "level": "followup",
+        "signal": "Se a ordem por conta é exigida, trata o que acontece com as próximas mensagens da conta quando uma vai para a DLQ."
+      },
+      {
+        "id": "q15-dlq-monitoring",
+        "dimension": "observability",
+        "level": "core",
+        "signal": "DLQ tem alerta e reprocessamento controlado, não é depósito esquecido."
+      },
+      {
+        "id": "q15-error-classification",
+        "dimension": "trade-offs",
+        "level": "core",
+        "signal": "Escolhe a política pelo tipo de erro (transitório vs permanente) e pelo custo de duplicar o efeito."
+      }
+    ],
+    "clarifications": [
+      {
+        "id": "q15-dlq",
+        "term": "DLQ",
+        "explanation": "Dead Letter Queue é a fila para onde vão mensagens que não foram processadas depois das tentativas, para não ficarem em tentativas infinitas na fila principal.",
+        "sourceRefs": [
+          {
+            "kind": "pdf",
+            "source": "System Design Workbook",
+            "locator": "p.305",
+            "note": "DLQ tira a mensagem da fila principal sem tentativas infinitas"
+          }
+        ]
+      },
+      {
+        "id": "q15-jitter",
+        "term": "jitter",
+        "explanation": "Jitter é um atraso aleatório somado ao backoff, para que clientes que falharam juntos não tentem de novo no mesmo instante.",
+        "sourceRefs": [
+          {
+            "kind": "reference",
+            "source": "AWS Architecture Blog — Exponential Backoff And Jitter (Marc Brooker, 2015)",
+            "locator": "aws.amazon.com/blogs/architecture/exponential-backoff-and-jitter/",
+            "note": "Jitter espalha retries que falharam juntos",
+            "url": "https://aws.amazon.com/blogs/architecture/exponential-backoff-and-jitter/"
+          }
+        ]
+      }
     ]
   },
   {
@@ -1430,6 +1743,54 @@
       "data-consistency",
       "communication",
       "trade-offs"
+    ],
+    "scoringSignals": [
+      {
+        "id": "q16-lag-window",
+        "dimension": "data-consistency",
+        "level": "core",
+        "signal": "Traduz 'eventual' numa janela mensurável de atraso (SLO de lag)."
+      },
+      {
+        "id": "q16-critical-read",
+        "dimension": "data-consistency",
+        "level": "core",
+        "signal": "Decisão crítica (ex.: autorizar saldo) lê da fonte de verdade, não do read model."
+      },
+      {
+        "id": "q16-read-your-writes",
+        "dimension": "data-consistency",
+        "level": "followup",
+        "signal": "Resolve 'salvei e vi o valor antigo' com read-your-writes, sem mandar toda leitura ao primário."
+      },
+      {
+        "id": "q16-business-language",
+        "dimension": "communication",
+        "level": "core",
+        "signal": "Explica em linguagem de negócio: o que o usuário vê e por quanto tempo."
+      },
+      {
+        "id": "q16-ui-contract",
+        "dimension": "trade-offs",
+        "level": "core",
+        "signal": "Propõe contrato de produto/UI para a janela e declara o custo de prometer consistência imediata."
+      }
+    ],
+    "clarifications": [
+      {
+        "id": "q16-eventual",
+        "term": "consistência eventual",
+        "explanation": "Consistência eventual significa que, sem novas escritas, todas as cópias acabam convergindo para o mesmo valor; até lá, uma leitura pode ver um valor antigo.",
+        "sourceRefs": [
+          {
+            "kind": "reference",
+            "source": "Werner Vogels — Eventually Consistent, Revisited (2008)",
+            "locator": "www.allthingsdistributed.com/2008/12/eventually_consistent.html",
+            "note": "Definição de consistência eventual",
+            "url": "https://www.allthingsdistributed.com/2008/12/eventually_consistent.html"
+          }
+        ]
+      }
     ]
   },
   {
@@ -2105,7 +2466,64 @@
       "trade-offs",
       "observability",
       "communication"
-    ]
+    ],
+    "scoringSignals": [
+      {
+        "id": "q24-assumptions",
+        "dimension": "requirements",
+        "level": "core",
+        "signal": "Declara as premissas de cada degrau (leitura vs escrita, consistência exigida) antes de desenhar."
+      },
+      {
+        "id": "q24-estimates",
+        "dimension": "capacity",
+        "level": "core",
+        "signal": "Estima cada degrau com números (conexões, instâncias, vazão) e usa as contas para decidir."
+      },
+      {
+        "id": "q24-bottleneck-shift",
+        "dimension": "architecture",
+        "level": "core",
+        "signal": "Mostra o gargalo mudando por degrau e só adiciona componente quando o degrau exige."
+      },
+      {
+        "id": "q24-partitioning",
+        "dimension": "data-consistency",
+        "level": "core",
+        "signal": "Particiona a escrita quando ela não cabe num nó e diz o que isso custa em consistência e transações."
+      },
+      {
+        "id": "q24-failure-modes",
+        "dimension": "reliability",
+        "level": "core",
+        "signal": "Nomeia o failure mode de cada degrau pelo mecanismo."
+      },
+      {
+        "id": "q24-db-slow",
+        "dimension": "reliability",
+        "level": "followup",
+        "signal": "Com o banco 10× mais lento, diz o que quebra primeiro (pool, retries, filas) e como conter."
+      },
+      {
+        "id": "q24-ops-cost",
+        "dimension": "trade-offs",
+        "level": "core",
+        "signal": "Declara o custo operacional da complexidade adicionada em cada degrau."
+      },
+      {
+        "id": "q24-capacity-signals",
+        "dimension": "observability",
+        "level": "core",
+        "signal": "Diz quais sinais mostram que o degrau atual chegou ao limite (capacidade útil vs total)."
+      },
+      {
+        "id": "q24-step-by-step",
+        "dimension": "communication",
+        "level": "core",
+        "signal": "Estrutura a resposta degrau a degrau, dizendo o que mudou em relação ao anterior."
+      }
+    ],
+    "clarifications": []
   },
   {
     "id": "q25",
@@ -2203,6 +2621,59 @@
       "capacity",
       "reliability",
       "communication"
+    ],
+    "scoringSignals": [
+      {
+        "id": "q25-little-law",
+        "dimension": "capacity",
+        "level": "core",
+        "signal": "Aplica L = λ × W com números para achar concorrência ou fila."
+      },
+      {
+        "id": "q25-saturation",
+        "dimension": "capacity",
+        "level": "core",
+        "signal": "Coloca o ponto de saturação antes de 100% de utilização."
+      },
+      {
+        "id": "q25-backlog",
+        "dimension": "capacity",
+        "level": "followup",
+        "signal": "Calcula backlog = (λ − μ) × t quando a chegada supera a vazão."
+      },
+      {
+        "id": "q25-connection-time",
+        "dimension": "reliability",
+        "level": "core",
+        "signal": "Relaciona W com o tempo de posse da conexão: query lenta derruba a vazão do pool."
+      },
+      {
+        "id": "q25-variability",
+        "dimension": "reliability",
+        "level": "core",
+        "signal": "Dimensiona considerando variabilidade (percentis), não só a média."
+      },
+      {
+        "id": "q25-show-math",
+        "dimension": "communication",
+        "level": "core",
+        "signal": "Mostra a conta passo a passo e o que ela decide."
+      }
+    ],
+    "clarifications": [
+      {
+        "id": "q25-little",
+        "term": "Lei de Little",
+        "explanation": "A Lei de Little relaciona três médias de um sistema estável: L = λ × W, em que L é o número médio de itens no sistema, λ a taxa de chegada e W o tempo médio que cada item passa nele.",
+        "sourceRefs": [
+          {
+            "kind": "pdf",
+            "source": "System Design Workbook",
+            "locator": "p.612",
+            "note": "A Lei de Little: L = λ × W"
+          }
+        ]
+      }
     ]
   },
   {
@@ -2393,6 +2864,54 @@
       "data-consistency",
       "capacity",
       "trade-offs"
+    ],
+    "scoringSignals": [
+      {
+        "id": "q27-order-vs-distribution",
+        "dimension": "data-consistency",
+        "level": "core",
+        "signal": "Explica a tensão entre ordem (mesma chave, mesma partição) e distribuição da carga."
+      },
+      {
+        "id": "q27-aggregation-impact",
+        "dimension": "data-consistency",
+        "level": "followup",
+        "signal": "Diz o que sub-chavear faz com ordem e com agregação exata (contador, saldo)."
+      },
+      {
+        "id": "q27-cardinality-lag",
+        "dimension": "capacity",
+        "level": "core",
+        "signal": "Escolhe chave de alta cardinalidade e detecta hotspot pelo lag por partição."
+      },
+      {
+        "id": "q27-hot-key-40",
+        "dimension": "capacity",
+        "level": "followup",
+        "signal": "Para uma chave com 40% do tráfego, separa hot key de leitura e de escrita e propõe mitigação."
+      },
+      {
+        "id": "q27-subkey-cost",
+        "dimension": "trade-offs",
+        "level": "core",
+        "signal": "Sub-chaveamento com custo declarado (perde ordem por entidade ou exige fan-out)."
+      }
+    ],
+    "clarifications": [
+      {
+        "id": "q27-hot-partition",
+        "term": "hot partition",
+        "explanation": "Hot partition é uma partição que recebe tráfego desproporcional em relação às outras, por exemplo porque concentra chaves muito acessadas.",
+        "sourceRefs": [
+          {
+            "kind": "reference",
+            "source": "Amazon DynamoDB docs — Best practices for designing partition keys",
+            "locator": "docs.aws.amazon.com/amazondynamodb/latest/developerguide/bp-partition-key-design.html",
+            "note": "Partição com tráfego desproporcional (hot partition)",
+            "url": "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/bp-partition-key-design.html"
+          }
+        ]
+      }
     ]
   },
   {
@@ -3194,6 +3713,84 @@
       "trade-offs",
       "observability",
       "communication"
+    ],
+    "scoringSignals": [
+      {
+        "id": "q36-client-key-scope",
+        "dimension": "data-consistency",
+        "level": "core",
+        "signal": "Chave de idempotência gerada pelo cliente, com escopo (cliente, endpoint)."
+      },
+      {
+        "id": "q36-atomic-claim",
+        "dimension": "data-consistency",
+        "level": "core",
+        "signal": "Claim atômico por UNIQUE/conditional write antes do efeito; existsByKey() → process() tem corrida."
+      },
+      {
+        "id": "q36-replay-conflict",
+        "dimension": "data-consistency",
+        "level": "core",
+        "signal": "Mesma chave e mesma intenção devolve o resultado guardado; mesma chave com payload diferente é conflito."
+      },
+      {
+        "id": "q36-same-transaction",
+        "dimension": "reliability",
+        "level": "core",
+        "signal": "Claim, efeito e resultado na mesma transação; quando cruza sistemas, estado PROCESSING ou outbox."
+      },
+      {
+        "id": "q36-external-gateway",
+        "dimension": "reliability",
+        "level": "followup",
+        "signal": "Com gateway externo lento, usa PROCESSING com lease e reconciliação em vez de segurar a transação."
+      },
+      {
+        "id": "q36-transaction-boundary",
+        "dimension": "architecture",
+        "level": "core",
+        "signal": "Posiciona o registro de idempotência na mesma fronteira transacional do débito."
+      },
+      {
+        "id": "q36-retention",
+        "dimension": "trade-offs",
+        "level": "core",
+        "signal": "Define retenção/TTL da chave pela janela real de retries dos clientes."
+      },
+      {
+        "id": "q36-fingerprint",
+        "dimension": "trade-offs",
+        "level": "followup",
+        "signal": "Usa fingerprint semântico (canonicalizado) em vez de hash do corpo bruto."
+      },
+      {
+        "id": "q36-idempotency-metrics",
+        "dimension": "observability",
+        "level": "core",
+        "signal": "Mede replay, conflito e em-andamento (ex.: idempotency.replay.count)."
+      },
+      {
+        "id": "q36-intent-first",
+        "dimension": "communication",
+        "level": "core",
+        "signal": "Parte da intenção que pode chegar duas vezes e explica o mecanismo antes da tecnologia."
+      }
+    ],
+    "clarifications": [
+      {
+        "id": "q36-idempotency",
+        "term": "idempotência",
+        "explanation": "Uma operação é idempotente quando repeti-la com a mesma chave não repete o efeito: o resultado é o mesmo de executá-la uma vez.",
+        "sourceRefs": [
+          {
+            "kind": "reference",
+            "source": "Stripe API — Idempotent requests",
+            "locator": "docs.stripe.com/api/idempotent_requests",
+            "note": "Repetir a requisição com a mesma chave não repete o efeito",
+            "url": "https://docs.stripe.com/api/idempotent_requests"
+          }
+        ]
+      }
     ]
   },
   {
@@ -3324,6 +3921,83 @@
       "trade-offs",
       "observability",
       "communication"
+    ],
+    "scoringSignals": [
+      {
+        "id": "q37-freshness",
+        "dimension": "requirements",
+        "level": "core",
+        "signal": "Pergunta a tolerância a dado atrasado por tipo de campo (preço/estoque vs descrição)."
+      },
+      {
+        "id": "q37-origin-capacity",
+        "dimension": "capacity",
+        "level": "core",
+        "signal": "Usa números: com 100k req/s, a carga na origem depende do hit ratio."
+      },
+      {
+        "id": "q37-cache-aside",
+        "dimension": "architecture",
+        "level": "core",
+        "signal": "Cache-aside com invalidação e limite de tamanho/evicção."
+      },
+      {
+        "id": "q37-hot-key",
+        "dimension": "architecture",
+        "level": "followup",
+        "signal": "Para a chave com 40% do tráfego, replica o valor quente (L1/CDN) em vez de só crescer o Redis."
+      },
+      {
+        "id": "q37-stale-fields",
+        "dimension": "data-consistency",
+        "level": "core",
+        "signal": "Declara quais campos podem servir dado atrasado e como invalidar os que não podem."
+      },
+      {
+        "id": "q37-expiration",
+        "dimension": "reliability",
+        "level": "core",
+        "signal": "Na expiração, evita que todos recomputem juntos (single-flight, stale-while-revalidate, jitter de TTL)."
+      },
+      {
+        "id": "q37-redis-down",
+        "dimension": "reliability",
+        "level": "followup",
+        "signal": "Com o Redis fora, protege a origem (L1, limite de concorrência, degradação, reaquecimento controlado)."
+      },
+      {
+        "id": "q37-stale-tradeoff",
+        "dimension": "trade-offs",
+        "level": "core",
+        "signal": "Declara o custo: servir dado atrasado protege a origem mas relaxa freshness."
+      },
+      {
+        "id": "q37-cache-signals",
+        "dimension": "observability",
+        "level": "core",
+        "signal": "Monitora hit ratio, taxa na origem e distribuição de acesso por chave."
+      },
+      {
+        "id": "q37-adapts",
+        "dimension": "communication",
+        "level": "core",
+        "signal": "Muda o desenho a cada nova restrição da entrevista em vez de repetir a primeira resposta."
+      }
+    ],
+    "clarifications": [
+      {
+        "id": "q37-hit-ratio",
+        "term": "hit ratio",
+        "explanation": "Hit ratio é a fração das leituras atendidas pelo cache; o restante (misses) vai para a origem.",
+        "sourceRefs": [
+          {
+            "kind": "reference",
+            "source": "Amazon Builders' Library — Caching challenges and strategies",
+            "locator": "aws.amazon.com/builders-library/caching-challenges-and-strategies/",
+            "note": "Hit ratio e dependência da origem em relação ao cache"
+          }
+        ]
+      }
     ],
     "relatedTopics": [
       "caching",
@@ -3497,6 +4171,78 @@
       "trade-offs",
       "observability",
       "communication"
+    ],
+    "scoringSignals": [
+      {
+        "id": "q38-assumptions",
+        "dimension": "requirements",
+        "level": "core",
+        "signal": "Declara as premissas da carga 100× (leitura vs escrita, o que pode degradar)."
+      },
+      {
+        "id": "q38-numbers",
+        "dimension": "capacity",
+        "level": "core",
+        "signal": "Estima por componente (conexões do pool, memória do Redis, CPU do banco) com números."
+      },
+      {
+        "id": "q38-first-bottleneck",
+        "dimension": "architecture",
+        "level": "core",
+        "signal": "Aponta o primeiro gargalo e como a falha se propaga entre API, Redis e PostgreSQL."
+      },
+      {
+        "id": "q38-hot-key-consistency",
+        "dimension": "data-consistency",
+        "level": "followup",
+        "signal": "Com uma chave concentrando 30% das leituras, replica o valor quente e diz o custo de consistência."
+      },
+      {
+        "id": "q38-three-failure-modes",
+        "dimension": "reliability",
+        "level": "core",
+        "signal": "Nomeia pelo menos três failure modes pelo mecanismo (ex.: pool exhaustion, stampede, retry storm)."
+      },
+      {
+        "id": "q38-slow-downstream",
+        "dimension": "reliability",
+        "level": "followup",
+        "signal": "Com downstream lento sem erro, usa timeouts, load shedding e circuit breaker para conter a cascata."
+      },
+      {
+        "id": "q38-degradation",
+        "dimension": "trade-offs",
+        "level": "core",
+        "signal": "Planeja a degradação (o que desligar primeiro) e declara o custo de cada defesa."
+      },
+      {
+        "id": "q38-signal-per-defense",
+        "dimension": "observability",
+        "level": "core",
+        "signal": "Associa cada defesa a um sinal de observabilidade (pending do pool, hit ratio, taxa de retries)."
+      },
+      {
+        "id": "q38-first-to-propagation",
+        "dimension": "communication",
+        "level": "core",
+        "signal": "Conduz do primeiro gargalo à propagação, sem lista solta de tecnologias."
+      }
+    ],
+    "clarifications": [
+      {
+        "id": "q38-load-shedding",
+        "term": "load shedding",
+        "explanation": "Load shedding é rejeitar de propósito parte das requisições, cedo e barato, para proteger o que o sistema ainda consegue atender.",
+        "sourceRefs": [
+          {
+            "kind": "reference",
+            "source": "Google SRE Book — Handling Overload",
+            "locator": "sre.google/sre-book/handling-overload/",
+            "note": "Rejeitar parte das requisições para proteger o que o sistema consegue atender",
+            "url": "https://sre.google/sre-book/handling-overload/"
+          }
+        ]
+      }
     ],
     "relatedTopics": [
       "capacity-queueing",
